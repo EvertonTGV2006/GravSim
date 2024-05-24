@@ -13,12 +13,12 @@
 class SphereGeometry {
 public:
 
-	std::vector<Vertex> *vertices;
-	std::vector<uint16_t>* indices;
+	std::vector<Vertex> *vertices = nullptr;
+	std::vector<uint16_t>* indices = nullptr;
 	std::vector<Edge> edges;
 	std::vector<uint16_t> edgeIndices;
 	std::map<uint16_t, uint16_t> LODoffsets;
-	uint16_t mode;
+	uint16_t mode = 0;
 	float scale = 0.02f;
 	void createSphereLongLat(uint16_t);
 	void createSphereIcosphere(uint16_t);

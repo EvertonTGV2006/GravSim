@@ -1580,7 +1580,7 @@ void VulkanRenderer::recordComputeCommandBuffer(VkCommandBuffer commandBuffer, u
     double currentTime = computePrevTime;
     computePrevTime = glfwGetTime();
 
-    ComputeConstants constants;
+    ComputeConstants constants{};
     constants.deltaTime = (computePrevTime-currentTime);
     if (player->timeAccel == true) {
         constants.deltaTime *= 100;
@@ -1965,7 +1965,10 @@ void VulkanRenderer::drawFrame() {
         frameCount = 0;
         computeCount = 0;
         deltaTimeCount = 0;
+
+        
     }
+    
     frameCount++;
     //computeCount++;
     
