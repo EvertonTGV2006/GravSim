@@ -181,6 +181,7 @@ void VulkanRenderer::initVulkan() {
     //for (uint16_t cursor = 0; cursor < indices.size(); cursor += 3) {
     //    std::cout << "Triangle: " << cursor / 3 << " | " << indices[cursor] << " " << indices[cursor + 1] << " " << indices[cursor + 2] << std::endl;
     //}
+    
 
     ParticleGeometry part;
     particles.clear();
@@ -296,8 +297,9 @@ void VulkanRenderer::pickPhysicalDevice() {
             rt.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
             features2.pNext = &rt;
             vkGetPhysicalDeviceFeatures2(physicalDevice, &features2);
-            std::cout << "Ray Tracing Support: "<<rt.rayTracingPipeline << std::endl;
-            std::cout << VK_TRUE << std::endl;
+            //std::cout << "Ray Tracing Support: "<<rt.rayTracingPipeline << std::endl;
+            if (rt.rayTracingPipeline==VK_TRUE){ std::cout << "Ray Tracing Supported: " << rt.rayTracingPipeline << std::endl; }
+            //std::cout << VK_TRUE << std::endl;
         }
     }
 }
@@ -587,6 +589,7 @@ void VulkanRenderer::createGraphicsPipeline() {
     //rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
     rasterizer.lineWidth = 1.0f;
     rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
+    //rasterizer.cullMode = VK_CULL_MODE_NONE;
     rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
     
