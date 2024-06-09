@@ -176,7 +176,7 @@ void VulkanRenderer::initVulkan() {
     sphere.vertices = &vertices;
     sphere.indices = &indices;
     //sphere.createIcosahedron(true);
-    sphere.createSphereIcosphere(1);
+    sphere.createSphereIcosphere(5);
     std::cout <<"Indices: " <<indices.size()<<" Vertices: "<<vertices.size()<<std::endl;
     //for (uint16_t cursor = 0; cursor < indices.size(); cursor += 3) {
     //    std::cout << "Triangle: " << cursor / 3 << " | " << indices[cursor] << " " << indices[cursor + 1] << " " << indices[cursor + 2] << std::endl;
@@ -187,7 +187,7 @@ void VulkanRenderer::initVulkan() {
     particles.clear();
     std::cout << "Particles capacity: " << particles.max_size() << std::endl;
     part.particles = &particles;
-    part.createParticles(16384);
+    part.createParticles(1);
 
     std::cout << std::endl << "Particle: " << sizeof(Particle) << std::endl;
     std::cout << "Position: " << sizeof(particles[0].position) << " " << offsetof(Particle, position) << std::endl;;
@@ -899,6 +899,7 @@ void VulkanRenderer::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, V
     }
 
     vkBindBufferMemory(device, buffer, bufferMemory, 0);
+    
 }
 void VulkanRenderer::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
     VkImageCreateInfo imageInfo{};

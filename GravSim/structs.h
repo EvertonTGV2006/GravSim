@@ -88,3 +88,16 @@ struct Particle {
 struct ComputeConstants {
     double deltaTime;
 };
+
+struct MemInit {
+    VkDeviceMemory memory;
+    uint32_t offset;
+    uint32_t range;
+};
+
+struct Mesh {
+    std::vector<Vertex>* vertices;
+    std::vector<uint16_t>* indices;
+    uint32_t vertexCount;
+    uint32_t indexCount;
+};

@@ -79,7 +79,7 @@ int main() {
 		renderer.initVulkan();
 		double endTime = glfwGetTime();
 		std::cout << "Start: " << startTime << " End: " << endTime << " Elapsed Time: " << endTime - startTime << std::endl;
-		renderer.queue();
+		//renderer.queue();
 		//MainLoop(&winmanager, &renderer);
 		renderer.cleanup();
 		winmanager.cleanup();
