@@ -33,6 +33,10 @@
 
 
 void VulkanEngine::initEngine() {
+    winmanager.initWindow();
+    player->winmanager = winmanager;
+    player->updateGLFWcallbacks();
+    
     createInstance();
     setupDebugMessenger();
     createSurface();
