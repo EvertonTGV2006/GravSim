@@ -2,7 +2,7 @@
 
 #include "grav.h"
 
-void GravEngine::initGrav(GravInit details) {
+void GravEngine::initGrav_A(GravInit details) {
 	device = details.device;
 	commandPool = details.commandPool;
 	descriptorPool = details.descriptorPool;
@@ -12,10 +12,16 @@ void GravEngine::initGrav(GravInit details) {
 	shaderCode = details.shaderCode;
 	particles = details.particles;
 
-	createPipeline();
-	createDescriptorSets();
-		createCommandBuffers();
 	createStorageBuffers();
+
+	
+}
+void GravEngine::initGrav_B() {
+	createDescriptorSets();
+	createPipeline();
+
+	createCommandBuffers();
+	createSyncObjects();
 }
 
 void GravEngine::createPipeline() {
@@ -52,11 +58,12 @@ void GravEngine::createPipeline() {
 	VkComputePipelineCreateInfo pipeInfo{};
 	pipeInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
 	pipeInfo.layout = gravPipelineLayout;
+	pipeInfo.flags = 0;
 	pipeInfo.stage = shaderStage;
 	pipeInfo.basePipelineHandle = VK_NULL_HANDLE;
 
 	if (vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &pipeInfo, nullptr, &gravPipeline) != VK_SUCCESS) { throw std::runtime_error("Failed to create GravPipeline"); }
-
+	
 	vkDestroyShaderModule(device, shader, nullptr);
 }
 
@@ -85,7 +92,7 @@ void GravEngine::createDescriptorSets() {
 	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &gravDescriptorSetLayout) != VK_SUCCESS) { throw std::runtime_error("Failed to create GravDescriptorSetLayout"); }
 
 	//then create descriptor sets
-	std::array<VkDescriptorSetLayout, COMPUTE_STEPS> layouts{ gravDescriptorSetLayout , gravDescriptorSetLayout };
+	std::array<VkDescriptorSetLayout, COMPUTE_STEPS> layouts{ gravDescriptorSetLayout , gravDescriptorSetLayout, gravDescriptorSetLayout };
 
 	VkDescriptorSetAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -100,7 +107,7 @@ void GravEngine::createDescriptorSets() {
 		uint32_t readIndex = i;
 		uint32_t writeIndex = (i + 1) % COMPUTE_STEPS;
 
-		uint32_t range = static_cast<uint32_t>(particles->size());
+		uint32_t range = static_cast<uint32_t>(particles->size()) * sizeof(Particle);
 
 		uint32_t readOffset = readIndex * range;
 		uint32_t writeOffset = writeIndex * range;
@@ -162,20 +169,23 @@ void GravEngine::createStorageBuffers() {
 
 	if (vkCreateBuffer(device, &createInfo, nullptr, &storageBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create GravStorageBuffer"); }
 
-	vkGetBufferMemoryRequirements(device, storageBuffer, &storageRequirements);
+	vkGetBufferMemoryRequirements(device, storageBuffer, &(storageRequirements.requirements));
 
+	storageRequirements.flags = 0;
 
 }
 
 void GravEngine::initMemory(MemInit details) {
 	storageMemory = details.memory;
 	storageMemOffset = details.offset;
-	if (storageRequirements.size != details.range) { throw std::runtime_error("Mismatch in GravStorageMemory size"); }
+	if (storageRequirements.requirements.size != details.range) { throw std::runtime_error("Mismatch in GravStorageMemory size"); }
+
+	std::cout << details.range << " | " << storageRequirements.requirements.size << std::endl;
 
 	vkBindBufferMemory(device, storageBuffer, storageMemory, storageMemOffset);
 }
 
-void GravEngine::syncBufferData_A(VkMemoryRequirements* stagingRequirements) {
+void GravEngine::syncBufferData_A(MemoryDetails* stagingRequirements) {
 	VkBufferCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	createInfo.size = sizeof(Particle) * particles->size();
@@ -184,9 +194,9 @@ void GravEngine::syncBufferData_A(VkMemoryRequirements* stagingRequirements) {
 
 	if (vkCreateBuffer(device, &createInfo, nullptr, &stagingBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create gravEngine staging buffer"); }
 
-	vkGetBufferMemoryRequirements(device, stagingBuffer, stagingRequirements);
+	vkGetBufferMemoryRequirements(device, stagingBuffer, &(stagingRequirements->requirements));
 
-	(*stagingRequirements).memoryTypeBits |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+	stagingRequirements->flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 }
 void GravEngine::syncBufferData_B(bool direction, MemInit memory) {
 	//direction: true => CPU -> GPU, false => GPU -> CPU
@@ -201,14 +211,14 @@ void GravEngine::syncBufferData_B(bool direction, MemInit memory) {
 	VkFence transferFence;
 	VkFenceCreateInfo fenceInfo{};
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+	fenceInfo.flags = 0;
 
 	if (vkCreateFence(device, &fenceInfo, nullptr, &transferFence) != VK_SUCCESS) { throw std::runtime_error("Failed to create transfer fence for GravDataSync"); }
 
 	//record copy operation
 	VkCommandBufferBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
 	vkBeginCommandBuffer(transferCommandBuffer, &beginInfo);
 
@@ -249,6 +259,7 @@ void GravEngine::syncBufferData_B(bool direction, MemInit memory) {
 	vkQueueSubmit(gravQueue, 1, &submitInfo, transferFence);
 
 	vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
+	vkResetFences(device, 1, &transferFence);
 
 	if (!direction) { // if retreive then get data from buffer
 		vkMapMemory(device, memory.memory, memory.offset, dataSize, 0, &data);
@@ -257,7 +268,7 @@ void GravEngine::syncBufferData_B(bool direction, MemInit memory) {
 	}
 
 	//cleanup resources
-	vkDestroyBuffer(device, stagingBuffer, nullptr);
+	//vkDestroyBuffer(device, stagingBuffer, nullptr);
 	vkDestroyFence(device, transferFence, nullptr);
 	vkResetCommandBuffer(transferCommandBuffer, 0);
 }
@@ -274,22 +285,22 @@ void GravEngine::simGrav(double dt) {
 
 	VkSemaphoreSubmitInfo waitInfo1{};
 	waitInfo1.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-	waitInfo1.stageMask = VK_SHADER_STAGE_COMPUTE_BIT;
+	waitInfo1.stageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 	waitInfo1.semaphore = gravFinishedSemaphores[computeIndex];
 
 	VkSemaphoreSubmitInfo waitInfo2{};
 	waitInfo2.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-	waitInfo2.stageMask = VK_SHADER_STAGE_COMPUTE_BIT;
+	waitInfo2.stageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 	waitInfo2.semaphore = renderGravSemaphores[computeIndex];
 	
 	VkSemaphoreSubmitInfo signalInfo1{};
 	signalInfo1.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-	signalInfo1.stageMask = VK_SHADER_STAGE_COMPUTE_BIT;
+	signalInfo1.stageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 	signalInfo1.semaphore = gravFinishedSemaphores[(computeIndex + 1) % COMPUTE_STEPS];
 
 	VkSemaphoreSubmitInfo signalInfo2{};
 	signalInfo2.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-	signalInfo2.stageMask = VK_SHADER_STAGE_COMPUTE_BIT;
+	signalInfo2.stageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 	signalInfo2.semaphore = gravRenderSemaphores[(computeIndex + 1) % COMPUTE_STEPS];
 
 	std::array<VkSemaphoreSubmitInfo, 2> waitInfos = { waitInfo1 , waitInfo2 };
@@ -307,6 +318,7 @@ void GravEngine::simGrav(double dt) {
 	if (firstFrame) {
 		submitInfo.waitSemaphoreInfoCount = 0;
 		submitInfo.pWaitSemaphoreInfos = nullptr;
+		firstFrame = false;
 	}
 
 	vkWaitForFences(device, 1, &gravFinishedFences[computeIndex], VK_TRUE, UINT64_MAX);
@@ -341,7 +353,7 @@ VkBuffer GravEngine::getInterleavedStorageBuffer() {
 	return storageBuffer;
 }
 
-void GravEngine::getMemoryRequirements(std::vector<VkMemoryRequirements>* mem, std::vector<uint16_t>* count) {
+void GravEngine::getMemoryRequirements(std::vector<MemoryDetails>* mem, std::vector<uint16_t>* count) {
 	mem->push_back(storageRequirements);
 	count->push_back(1);
 }
@@ -349,12 +361,16 @@ void GravEngine::getMemoryRequirements(std::vector<VkMemoryRequirements>* mem, s
 void GravEngine::createSyncObjects() {
 	VkSemaphoreCreateInfo semInfo{};
 	semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	
 
 	VkFenceCreateInfo fenInfo{};
 	fenInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
+	std::cout << "Grav Sync Objects" << std::endl;
+
 	for (size_t i = 0; i < COMPUTE_STEPS; i++) {
+		std::cout << 1;
 		if (
 			vkCreateSemaphore(device, &semInfo, nullptr, &gravFinishedSemaphores[i]) != VK_SUCCESS ||
 			vkCreateSemaphore(device, &semInfo, nullptr, &renderGravSemaphores[i]) != VK_SUCCESS ||

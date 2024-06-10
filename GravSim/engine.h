@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include <glm/glm.hpp>
 #include <atomic>
+#include <chrono>
 
 #include "window.h"
 #include "structs.h"
@@ -73,6 +74,13 @@ private:
 	std::array<VkSemaphore, FRAMES_IN_FLIGHT> renderGravSemaphores; //render wait for grav
 	std::array<VkSemaphore, FRAMES_IN_FLIGHT> gravRenderSemaphores;
 
+
+	std::vector<Vertex> vertices;
+	std::vector<uint16_t> indices;
+	std::vector<Particle> particles;
+	const uint32_t partCount = 16384;
+
+
 	VkCommandPool graphicsCommandPool;
 	VkCommandPool transferCommandPool;
 	VkCommandPool computeCommandPool;
@@ -96,10 +104,9 @@ private:
 	std::chrono::time_point<std::chrono::high_resolution_clock> ct = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double> dt;
 
-	std::vector<Vertex> vertices;
-	std::vector<uint16_t> indices;
-	std::vector<Particle> particles;
-	const uint32_t partCount = 16384;
+
+
+	bool firstFrame = true;
 
 	void createInstance();
 	void createSurface();
@@ -115,6 +122,7 @@ private:
 	void createFramebuffers();
 	void createDescriptorPool();
 	void createSyncObjects();
+	void createCommandBuffers();
 
 	void allocateMemory();
 	void initSubclassData();
@@ -137,7 +145,7 @@ private:
 	void endSingleTimeCommands(VkCommandBuffer);
 	void transitionImageLayout(VkImage, VkFormat, VkImageLayout, VkImageLayout);
 
-	uint32_t findMemoryType(VkMemoryRequirements);
+	uint32_t findMemoryType(MemoryDetails);
 	VkFormat findSupportedFormat(const std::vector<VkFormat>&, VkImageTiling, VkFormatFeatureFlags);
 	QueueFamilyIndices findGraphicsQueueFamilies(VkPhysicalDevice);
 	uint32_t findComputeQueueFamily(VkPhysicalDevice);

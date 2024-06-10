@@ -24,28 +24,29 @@ struct RastInit {
 
 class BaseRasterizer {
 public:
-	void initRast(RastInit);
+	void initRast_A(RastInit);
+	void initRast_B();
 
 	void initMemory(std::array<MemInit, 3>);
-	void initBufferData_A(VkMemoryRequirements*);
+	void initBufferData_A(MemoryDetails*);
 	void initBufferData_B(VkCommandBuffer, VkQueue, MemInit);
 
-	void getMemoryRequirements(std::vector<VkMemoryRequirements>*, std::vector<uint16_t>*);
+	void getMemoryRequirements(std::vector<MemoryDetails>*, std::vector<uint16_t>*);
 
-	VkMemoryRequirements vertexRequirements{};
-	VkMemoryRequirements indexRequirements{};
+	MemoryDetails vertexRequirements{};
+	MemoryDetails indexRequirements{};
 
-	VkMemoryRequirements uniformRequirements{};
+	MemoryDetails uniformRequirements{};
 	
 
 	void cleanup();
 
-	void drawObjects(VkCommandBuffer, uint32_t, CameraPushConstants*);
+	void drawObjects(VkCommandBuffer, uint32_t, UniformBufferObject);
 
 	static const uint32_t FRAMES_IN_FLIGHT = 3;
 
-	std::vector<std::string> shaderFiles = { "shaders/baseRasterizer/vert.spv", "shaders/baseRasterizer/frag.spv" };
-
+	std::vector<std::string> shaderFiles = { "shaders/baseRasterizer/01.spv", "shaders/baseRasterizer/02.spv" };
+	void storeGravStorageBuffer(VkBuffer);
 
 private:
 	VkDevice device;

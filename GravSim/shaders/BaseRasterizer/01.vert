@@ -13,13 +13,13 @@ layout(binding = 0) uniform UniformBufferObject {
     mat4 proj;
 } ubo;
 
-layout(std140, binding = 2) readonly buffer ParticleSSBOIn {
+layout(std140, binding = 1) readonly buffer ParticleSSBOIn {
    Particle particlesIn[ ];
 };
 
 layout(push_constant) uniform pc {
-layout(offset = 64) mat4 model;
-                    uint mode;
+    mat4 model;
+                    
 } constants;
 
 
@@ -62,18 +62,22 @@ vec3 HSVtoRGB(float hue, float sat, float val){
 
 
 
+
 void main() {
     Particle particleIn = particlesIn[gl_InstanceIndex];
     const float velMax = 5;
     const float velMin = 0;
 
-    if (constants.mode==0){
+
+    uint mode = 1;
+
+    if (mode==0){
         gl_Position = ubo.proj*ubo.view*constants.model*vec4(inPosition, 1.0);    
         fragPos = (constants.model*vec4(inPosition, 1.0)).xyz;
         fragColor = inColor;
         fragNormal = vec3(0.0, 0.0, 1.0);
     }
-    else if (constants.mode==1){
+    else if (mode==1){
     vec3 Color = {1.0f, 1.0f, 1.0f};
     float mass = particleIn.velocity.w;
         gl_Position = ubo.proj*ubo.view*constants.model*vec4((inPosition*mass+particleIn.position.xyz), 1.0);

@@ -17,6 +17,7 @@
 #include <optional>
 #include <set>
 #include <array>
+#include <bitset>
 #define GLM_FORCE_RADIANS
 #define GLFM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
@@ -43,12 +44,14 @@ void VulkanEngine::initEngine() {
     pickPhysicalDevice();
     createLogicalDevice();
     createSwapChain();
+    createImageViews();
     createRenderPass();
     createDescriptorPool();
     createCommandPools();
     createDepthResources();
     createFramebuffers();
     createSyncObjects();
+    createCommandBuffers();
 
     std::vector<Mesh> meshes;
     meshes.resize(1);
@@ -58,12 +61,12 @@ void VulkanEngine::initEngine() {
     sphere.vertices = meshes[0].vertices;
     sphere.indices = meshes[0].indices;
     
-    std::thread spheret(SphereGeometry::createSphereIcosphere, &sphere, 3);
+    std::thread spheret(&SphereGeometry::createSphereIcosphere, &sphere, 2);
 
     ParticleGeometry part{};
     part.particles = &particles;
 
-    std::thread partt(ParticleGeometry::createParticles, &part, partCount);
+    std::thread partt(&ParticleGeometry::createParticles, &part, partCount);
 
     std::vector<std::vector<char>> shaderCode;
     std::vector<std::string> shaderFiles;
@@ -72,6 +75,8 @@ void VulkanEngine::initEngine() {
     shaderFiles.insert(std::end(shaderFiles), std::begin(baseRasterizer.shaderFiles), std::end(baseRasterizer.shaderFiles));
 
     partt.join();
+
+    readFiles(shaderFiles, &shaderCode);
 
     GravInit grav{};
     grav.commandPool = computeCommandPool;
@@ -82,10 +87,22 @@ void VulkanEngine::initEngine() {
     grav.particles = &particles;
     grav.shaderCode = &shaderCode[0];
 
-    std::thread gravt(GravEngine::initGrav, &gravEngine, grav);
+    for (size_t i = 0; i < particles.size(); i += 256) {
+        std::cout << particles[i].mass << " " << particles[i].position.x << std::endl;
+    }
+
+    //std::thread gravt(&GravEngine::initGrav, &gravEngine, grav);
+    gravEngine.initGrav_A(grav);
 
     spheret.join();
-    gravt.join();
+
+    for (size_t i = 0; i < vertices.size(); i++) {
+        vertices[i].printVertex();
+    }
+
+    meshes[0].vertexCount = meshes[0].vertices->size();
+    meshes[0].indexCount = meshes[0].indices->size();
+    //gravt.join();
 
     RastInit rast{};
     rast.device = device;
@@ -97,14 +114,20 @@ void VulkanEngine::initEngine() {
     rast.shaderCode = { &shaderCode[1], &shaderCode[2] };
     rast.gravStorageBuffer = gravEngine.getInterleavedStorageBuffer();
 
-    std::thread rastt(BaseRasterizer::initRast, &baseRasterizer, rast);
-
+    //std::thread rastt(&BaseRasterizer::initRast, &baseRasterizer, rast);
+    baseRasterizer.initRast_A(rast);
     
-    rastt.join();
+    //rastt.join();
 
-    renderGravSemaphores = gravEngine.getInterleavedSemaphores(gravRenderSemaphores);
+
+    baseRasterizer.storeGravStorageBuffer(gravEngine.getInterleavedStorageBuffer());
 
     allocateMemory();
+
+    baseRasterizer.initRast_B();
+    gravEngine.initGrav_B();
+
+    renderGravSemaphores = gravEngine.getInterleavedSemaphores(gravRenderSemaphores);
 
     initSubclassData();
 
@@ -112,9 +135,11 @@ void VulkanEngine::initEngine() {
 }
 
 void VulkanEngine::readFiles(std::vector<std::string> files, std::vector<std::vector<char>>* code) {
+    code->resize(files.size());
     for (size_t i = 0; i < files.size(); i++) {
         std::ifstream file(files[i], std::ios::ate | std::ios::binary);
 
+        std::cout << files[i] << std::endl;
         if (!file.is_open()) {
             throw std::runtime_error("failed to open file");
         }
@@ -139,7 +164,6 @@ void VulkanEngine::startDraw() {
 }
 void VulkanEngine::runGraphics() {
     while (!glfwWindowShouldClose(winmanager.window)) {
-        executeCompute();
         executeGraphics();
     }
 }
@@ -147,7 +171,7 @@ void VulkanEngine::executeGraphics() {
     vkWaitForFences(device, 1, &flightFences[frameIndex], VK_TRUE, UINT64_MAX);
     vkResetFences(device, 1, &flightFences[frameIndex]);
     vkResetCommandBuffer(drawCommandBuffers[frameIndex], 0);
-
+    
     uint32_t imageIndex;
     VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex);
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -191,13 +215,21 @@ void VulkanEngine::executeGraphics() {
     scissor.extent = swapChainExtent;
     vkCmdSetScissor(drawCommandBuffers[frameIndex], 0, 1, &scissor);
 
-    CameraPushConstants camera{};
-    camera.cameraPos = glm::vec4(player->pos, 1.0);
-    camera.viewDirection = glm::vec4(player->viewDirection, 1.0f);
-    camera.lightColour = { 1.0f, 1.0f, 1.0f, 0.0f };
-    camera.lightPos = { 2.0f, 0.0f, 3.0f , 0.0f };
+    //CameraPushConstants camera{};
+    //camera.cameraPos = glm::vec4(player->pos, 1.0);
+    //camera.viewDirection = glm::vec4(player->viewDirection, 1.0f);
+    //camera.lightColour = { 1.0f, 1.0f, 1.0f, 0.0f };
+    //camera.lightPos = { 2.0f, 0.0f, 3.0f , 0.0f };
 
-    baseRasterizer.drawObjects(drawCommandBuffers[frameIndex], frameIndex, &camera);
+    player->updatePlayerMovement();
+    player->updateViewMat();
+    UniformBufferObject ubo{};
+    ubo.model = glm::mat4(1);
+    ubo.view = player->viewMat;
+    ubo.proj = glm::perspective(glm::radians(45.0f), (float)swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 1000.0f);
+    ubo.zeta = glm::mat4(1);
+
+    baseRasterizer.drawObjects(drawCommandBuffers[frameIndex], frameIndex, ubo);
 
     vkCmdEndRenderPass(drawCommandBuffers[frameIndex]);
 
@@ -206,6 +238,8 @@ void VulkanEngine::executeGraphics() {
     VkCommandBufferSubmitInfo commandBufferInfo{};
     commandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
     commandBufferInfo.commandBuffer = drawCommandBuffers[frameIndex];
+
+    
 
     VkSemaphoreSubmitInfo waitInfo1{};
     waitInfo1.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
@@ -240,6 +274,12 @@ void VulkanEngine::executeGraphics() {
     submitInfo2.pSignalSemaphoreInfos = signalInfos.data();
     //vkQueueSubmit2(graphicsQueue, 1, &submitInfo, nullptr);
 
+    if (firstFrame) {
+        submitInfo2.waitSemaphoreInfoCount = 1;
+        submitInfo2.pWaitSemaphoreInfos = &waitInfo1;
+        firstFrame = false;
+    }
+
     if (vkQueueSubmit2(graphicsQueue, 1, &submitInfo2, flightFences[frameIndex]) != VK_SUCCESS) { throw std::runtime_error("Failed to submit draw command buffer"); }
     
 
@@ -269,6 +309,8 @@ void VulkanEngine::executeGraphics() {
     pt = ct;
     gravEngine.simGrav(dt.count());
 
+    //std::cout << "FPS: " << 1.0 / dt.count() << std::endl;
+
     frameIndex = (frameIndex + 1) % FRAMES_IN_FLIGHT;
 }
 void VulkanEngine::runCompute() {
@@ -291,6 +333,8 @@ void VulkanEngine::createInstance() {
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.apiVersion = VK_API_VERSION_1_3;
 
+    /*
+
     VkInstanceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
@@ -300,6 +344,9 @@ void VulkanEngine::createInstance() {
     createInfo.enabledLayerCount = 0;
 
     VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
+
+
+
     if (enableValidationLayers) {
         createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
         createInfo.ppEnabledLayerNames = validationLayers.data();
@@ -315,7 +362,23 @@ void VulkanEngine::createInstance() {
 
     if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create Instance");
-    }
+    } */
+
+    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
+    populateDebugMessengerCreateInfo(debugCreateInfo);
+
+    VkInstanceCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    createInfo.pApplicationInfo = &appInfo;  
+    extensions = getRequiredExtensions();
+    createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+    createInfo.ppEnabledExtensionNames = extensions.data();;
+    createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+    createInfo.ppEnabledLayerNames = validationLayers.data();
+    createInfo.pNext = &debugCreateInfo;
+
+    std::cout << vkCreateInstance(&createInfo, nullptr, &instance) << std::endl;
+    std::cout << VK_SUCCESS << std::endl;
 }
 void VulkanEngine::createLogicalDevice() {
     QueueFamilyIndices indices = findGraphicsQueueFamilies(physicalDevice);
@@ -386,8 +449,12 @@ void VulkanEngine::createLogicalDevice() {
     }
     vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
     vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+    /*
     vkGetDeviceQueue(device, findComputeQueueFamily(physicalDevice), 0, &computeQueue);
     vkGetDeviceQueue(device, findTransferQueueFamily(physicalDevice), 0, &transferQueue);
+    */
+    vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &computeQueue);
+    vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &transferQueue);
 
     vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
 }
@@ -529,7 +596,7 @@ void VulkanEngine::createCommandPools() {
     if (vkCreateCommandPool(device, &poolInfo, nullptr, &graphicsCommandPool) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create command pool");
     }
-
+    /*
     VkCommandPoolCreateInfo computeInfo{};
     computeInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     computeInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
@@ -545,6 +612,9 @@ void VulkanEngine::createCommandPools() {
     if (vkCreateCommandPool(device, &transferInfo, nullptr, &transferCommandPool) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create command pool");
     }
+    */
+    transferCommandPool = graphicsCommandPool;
+    computeCommandPool = graphicsCommandPool;
 }
 void VulkanEngine::createDepthResources() {
     VkFormat depthFormat = findSupportedFormat({ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT }, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
@@ -615,15 +685,24 @@ void VulkanEngine::createSyncObjects() {
     }
 }
 
+void VulkanEngine::createCommandBuffers() {
+    VkCommandBufferAllocateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    createInfo.commandPool = graphicsCommandPool;
+    createInfo.commandBufferCount = FRAMES_IN_FLIGHT;
+    createInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    if (vkAllocateCommandBuffers(device, &createInfo, drawCommandBuffers.data()) != VK_SUCCESS) { throw std::runtime_error("Failed to allocate command buffers"); }
+}
 
 void VulkanEngine::allocateMemory() {
-    std::vector<VkMemoryRequirements> memRequirements;
+    std::vector<MemoryDetails> memRequirements;
     std::vector<uint16_t> counts;
     gravEngine.getMemoryRequirements(&memRequirements, &counts);
     baseRasterizer.getMemoryRequirements(&memRequirements, &counts);
 
+
     //now filter and check for duplicate memory types and alignments
-    std::vector<VkMemoryRequirements> orderedMemRequirements; //ordered vector of memory requirements
+    std::vector<MemoryDetails> orderedMemRequirements; //ordered vector of memory requirements
     std::vector<uint16_t> orderedMemCounts; //acts as an indexed list of the chunks of data
     std::vector<bool> orderedFlags = { false }; //vector of flags to see if current item has already been ordered, blocks duplicates
     std::vector<uint16_t> orderedMappings; //a map of ordered position -> unordered position used later;
@@ -637,8 +716,9 @@ void VulkanEngine::allocateMemory() {
             orderedMappings.push_back(i);
             orderedMemRequirements.push_back(memRequirements[i]);
             for (size_t j = 0; j < memRequirements.size(); j++) {
-                if (memRequirements[i].memoryTypeBits == memRequirements[j].memoryTypeBits &&
-                    memRequirements[i].alignment == memRequirements[j].alignment &&
+                if (memRequirements[i].requirements.memoryTypeBits == memRequirements[j].requirements.memoryTypeBits &&
+                    memRequirements[i].requirements.alignment == memRequirements[j].requirements.alignment &&
+                    memRequirements[i].flags == memRequirements[j].flags &&
                     i != j &&
                     orderedFlags[j] == false /*this one shouldn't be needed*/) {
                     orderedMappings.push_back(j);
@@ -653,13 +733,14 @@ void VulkanEngine::allocateMemory() {
     }
     //now that they are ordered merge them into single memory requirements
     size_t k = 0;
-    std::vector<VkMemoryRequirements> mergedMemRequirements;
+    std::vector<MemoryDetails> mergedMemRequirements;
     mergedMemRequirements.resize(orderedMemCounts.size());
     for (size_t i = 0; i < orderedMemCounts.size(); i++) {
         for (size_t j = k; j < orderedMemCounts[i] + k; j++) {
-            mergedMemRequirements[i].alignment = orderedMemRequirements[j].alignment;
-            mergedMemRequirements[i].memoryTypeBits = orderedMemRequirements[j].memoryTypeBits;
-            mergedMemRequirements[i].size += orderedMemRequirements[j].size;
+            mergedMemRequirements[i].requirements.alignment = orderedMemRequirements[j].requirements.alignment;
+            mergedMemRequirements[i].requirements.memoryTypeBits = orderedMemRequirements[j].requirements.memoryTypeBits;
+            mergedMemRequirements[i].requirements.size += orderedMemRequirements[j].requirements.size;
+            mergedMemRequirements[i].flags = orderedMemRequirements[j].flags;
         }
         k += orderedMemCounts[i];
     }
@@ -668,7 +749,8 @@ void VulkanEngine::allocateMemory() {
     VkMemoryAllocateInfo memoryInfo{};
     memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     for (size_t i = 0; i < mergedMemRequirements.size(); i++) {
-        memoryInfo.allocationSize = mergedMemRequirements[i].size;
+        std::cout << "Size: " << mergedMemRequirements[i].requirements.size << " Flags: " << mergedMemRequirements[i].flags << std::endl;
+        memoryInfo.allocationSize = mergedMemRequirements[i].requirements.size;
         memoryInfo.memoryTypeIndex = findMemoryType(mergedMemRequirements[i]);
         if (vkAllocateMemory(device, &memoryInfo, nullptr, &memory[i]) != VK_SUCCESS) { throw std::runtime_error("Failed to allocated memory"); }
 
@@ -680,11 +762,11 @@ void VulkanEngine::allocateMemory() {
     for (size_t i = 0; i < orderedMemCounts.size(); i++) {
         offsetCounter = 0;
         for (size_t j = k; j < orderedMemCounts[i] + k; j++) {
-            uint16_t mappedIndex = orderedMappings[k];
+            uint16_t mappedIndex = orderedMappings[j];
             memoryContainers[mappedIndex].memory = memory[i];
-            memoryContainers[mappedIndex].range = orderedMemRequirements[k].size;
+            memoryContainers[mappedIndex].range = orderedMemRequirements[j].requirements.size;
             memoryContainers[mappedIndex].offset = offsetCounter;
-            offsetCounter += orderedMemRequirements[k].size;
+            offsetCounter += orderedMemRequirements[j].requirements.size;
         }
         k += orderedMemCounts[i];
     }
@@ -697,14 +779,17 @@ void VulkanEngine::initSubclassData() {
 
     VkDeviceMemory stagingMemory;
 
-    std::array<VkMemoryRequirements,2> memRequirements;
+    std::array<MemoryDetails,2> memRequirements;
     baseRasterizer.initBufferData_A(&memRequirements[0]);
     gravEngine.syncBufferData_A(&memRequirements[1]);
+    //memRequirements[0].flags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
+    std::cout << "Vis: " << VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT << " Coh: " << VK_MEMORY_PROPERTY_HOST_COHERENT_BIT << " Cac: " << VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+    std::cout << " Flags: " << memRequirements[0].flags << std::endl;;
 
     VkMemoryAllocateInfo memoryInfo{};
     memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memoryInfo.allocationSize = memRequirements[0].size + memRequirements[1].size;
+    memoryInfo.allocationSize = memRequirements[0].requirements.size + memRequirements[1].requirements.size;
     memoryInfo.memoryTypeIndex = findMemoryType(memRequirements[0]);
     if (vkAllocateMemory(device, &memoryInfo, nullptr, &stagingMemory) != VK_SUCCESS) { throw std::runtime_error("Failed to allocated memory"); }
 
@@ -712,17 +797,18 @@ void VulkanEngine::initSubclassData() {
 
     memInitStructs[0].memory = stagingMemory;
     memInitStructs[0].offset = 0;
-    memInitStructs[0].range = memRequirements[0].size;
+    memInitStructs[0].range = memRequirements[0].requirements.size;
 
     memInitStructs[1].memory = stagingMemory;
     memInitStructs[1].offset = memInitStructs[0].offset + memInitStructs[0].range;
-    memInitStructs[1].range = memRequirements[1].size;
+    memInitStructs[1].range = memRequirements[1].requirements.size;
 
     VkCommandBufferAllocateInfo commandInfo{};
     commandInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     commandInfo.commandBufferCount = 1;
     commandInfo.commandPool = graphicsCommandPool;
     commandInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    
 
     VkCommandBuffer transferCommandBuffer;
 
@@ -732,7 +818,7 @@ void VulkanEngine::initSubclassData() {
     gravEngine.syncBufferData_B(true, memInitStructs[1]);
 
     
-    vkFreeMemory(device, stagingMemory, nullptr);
+    //vkFreeMemory(device, stagingMemory, nullptr);
     vkFreeCommandBuffers(device, graphicsCommandPool, 1, &transferCommandBuffer);
 }
 
@@ -782,7 +868,16 @@ QueueFamilyIndices VulkanEngine::findGraphicsQueueFamilies(VkPhysicalDevice devi
     //    //std::cout << "Queue Flags: " << queueFamily.queueFlags << std::endl;
     //}
 
+    std::bitset<32> g(VK_QUEUE_GRAPHICS_BIT);
+    std::bitset<32> c(VK_QUEUE_COMPUTE_BIT);
+    std::bitset<32> t(VK_QUEUE_TRANSFER_BIT);
+    std::cout << "GRAPHICS: " << g <<  " COMPUTE: " << c << " TRANSFER : " << t << std::endl;
+
+
+
     for (const auto& queueFamily : queueFamilies) {
+        std::bitset<32> flags(queueFamily.queueFlags);
+        std::cout << "Index: "<<i<<" Flags: "<<flags <<" Count: " << queueFamily.queueCount <<std::endl;
         VkBool32 presentSupport = false;
         vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
 
@@ -1020,7 +1115,10 @@ void VulkanEngine::createImage(uint32_t width, uint32_t height, VkFormat format,
     VkMemoryAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex = findMemoryType(memRequirements);
+    MemoryDetails memDetails{};
+    memDetails.requirements = memRequirements;
+    memDetails.flags = 0;
+    allocInfo.memoryTypeIndex = findMemoryType(memDetails);
 
     if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate image memory!");
@@ -1051,19 +1149,27 @@ std::vector<const char*> VulkanEngine::getRequiredExtensions() {
     extensions = { winmanager.glfwExtensions, winmanager.glfwExtensions + winmanager.glfwExtensionCount };
 
     if (enableValidationLayers) {
-        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        ;
     }
-
+    extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+   
     return extensions;
 }
-uint32_t VulkanEngine::findMemoryType(VkMemoryRequirements requirements) {
+uint32_t VulkanEngine::findMemoryType(MemoryDetails details) {
     VkPhysicalDeviceMemoryProperties memProperties;
     vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-        if (
-            memProperties.memoryTypes[i].propertyFlags == requirements.memoryTypeBits
-            )
-            return memProperties.memoryTypes[i].heapIndex;
+
+    uint32_t memoryCount = memProperties.memoryTypeCount;
+    for (uint32_t memoryIndex = 0; memoryIndex < memoryCount; ++memoryIndex) {
+        uint32_t memoryTypeBits = (1 << memoryIndex);
+        bool isRequiredMemoryType = details.requirements.memoryTypeBits & memoryTypeBits;
+
+        VkMemoryPropertyFlags properties = memProperties.memoryTypes[memoryIndex].propertyFlags;
+        bool hasRequiredProperties = (properties & details.flags) == details.flags;
+
+        if (isRequiredMemoryType && hasRequiredProperties) {
+            return static_cast<int32_t>(memoryIndex);
+        }
     }
     throw std::runtime_error("Failed to find suitable memory type");
 

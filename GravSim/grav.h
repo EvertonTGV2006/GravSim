@@ -28,21 +28,22 @@ class GravEngine {
 public:
 	static const uint32_t COMPUTE_STEPS = 3;
 
-	void initGrav(GravInit);
+	void initGrav_A(GravInit);
+	void initGrav_B();
 	void initMemory(MemInit);
 
 	std::vector<std::string> shaderFiles = { "shaders/GravEngine/01.spv" };
 
-	void syncBufferData_A(VkMemoryRequirements*);
+	void syncBufferData_A(MemoryDetails*);
 	void syncBufferData_B(bool, MemInit);
 
 	std::array<VkSemaphore, COMPUTE_STEPS> getInterleavedSemaphores(std::array < VkSemaphore, COMPUTE_STEPS>);
 
 	void simGrav(double);
 
-	void getMemoryRequirements(std::vector<VkMemoryRequirements>*, std::vector<uint16_t>*);
+	void getMemoryRequirements(std::vector<MemoryDetails>*, std::vector<uint16_t>*);
 
-	VkMemoryRequirements storageRequirements{};
+	MemoryDetails storageRequirements{};
 
 	VkBuffer getInterleavedStorageBuffer();
 
@@ -59,7 +60,7 @@ private:
 
 	
 	
-	bool firstFrame;
+	bool firstFrame = true;
 
 	uint32_t computeIndex = 0;
 

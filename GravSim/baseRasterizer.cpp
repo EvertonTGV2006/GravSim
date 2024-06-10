@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-void BaseRasterizer::initRast(RastInit details) {
+void BaseRasterizer::initRast_A(RastInit details) {
 	device = details.device;
 	descriptorPool = details.descriptorPool;
 	renderPass = details.renderPass;
@@ -16,6 +16,11 @@ void BaseRasterizer::initRast(RastInit details) {
 
 	gravStorageBuffer = details.gravStorageBuffer;
 
+	createBuffers();
+
+}
+void BaseRasterizer::initRast_B() {
+	createDescriptorSets();
 	createPipeline();
 }
 
@@ -32,6 +37,7 @@ void BaseRasterizer::createPipeline() {
 		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 		createInfo.codeSize = shaderCode[i]->size();
 		createInfo.pCode = reinterpret_cast<const uint32_t*>(shaderCode[i]->data());
+		createInfo.pNext = nullptr;
 
 		if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModules[i]) != VK_SUCCESS) { throw std::runtime_error("Failed to create BaseRasterizerShaderModule"); }
 
@@ -39,6 +45,8 @@ void BaseRasterizer::createPipeline() {
 		shaderStages[i].stage = flagBits[i];
 		shaderStages[i].module = shaderModules[i];
 		shaderStages[i].pName = "main";
+		shaderStages[i].pNext = nullptr;
+		shaderStages[i].pSpecializationInfo = nullptr;
 	}
 
 	auto bindingDescription = Vertex::getBindingDescription();
@@ -56,10 +64,12 @@ void BaseRasterizer::createPipeline() {
 	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	inputAssembly.primitiveRestartEnable = VK_FALSE;
 
+
 	VkPipelineViewportStateCreateInfo viewportState{};
 	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 	viewportState.viewportCount = 1;
 	viewportState.scissorCount = 1;
+
 
 	VkPipelineRasterizationStateCreateInfo rasterizer{};
 	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -112,8 +122,8 @@ void BaseRasterizer::createPipeline() {
 
 	VkPushConstantRange camera{};
 	camera.offset = 0;
-	camera.size = sizeof(CameraPushConstants);
-	camera.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT;
+	camera.size = sizeof(glm::mat4);
+	camera.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
 	VkPipelineLayoutCreateInfo layoutInfo{};
 	layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -125,6 +135,11 @@ void BaseRasterizer::createPipeline() {
 	if (vkCreatePipelineLayout(device, &layoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) { throw std::runtime_error("Failed to create BaseRasterizer pipelineLayout"); }
 
 	VkGraphicsPipelineCreateInfo createInfo{};
+
+
+	VkPipelineShaderStageCreateInfo shaderStages2[] = { shaderStages[0], shaderStages[1] };
+
+
 	createInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	createInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
 	createInfo.pStages = shaderStages.data();
@@ -175,7 +190,7 @@ void BaseRasterizer::createDescriptorSets() {
 	
 	//now allocate the descriptor sets
 
-	std::array<VkDescriptorSetLayout, FRAMES_IN_FLIGHT> layouts = { descriptorSetLayout, descriptorSetLayout };
+	std::array<VkDescriptorSetLayout, FRAMES_IN_FLIGHT> layouts = { descriptorSetLayout, descriptorSetLayout, descriptorSetLayout };
 
 	VkDescriptorSetAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -184,6 +199,8 @@ void BaseRasterizer::createDescriptorSets() {
 	allocInfo.pSetLayouts = layouts.data();
 
 	if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS) { throw std::runtime_error("Failed to allocate BaseRasterizer descriptor sets"); }
+
+	uint32_t storageSize = sizeof(Particle) * particleCount;
 
 	for (size_t i = 0; i < FRAMES_IN_FLIGHT; i++) {
 		VkDescriptorBufferInfo bufferInfo{};
@@ -257,21 +274,21 @@ void BaseRasterizer::createBuffers() {
 		vkGetBufferMemoryRequirements(device, indexBuffers[i], &indexMem);
 
 		if (i == 0) {
-			vertexRequirements = vertexMem;
-			indexRequirements = indexMem;
+			vertexRequirements.requirements = vertexMem;
+			indexRequirements.requirements = indexMem;
 			vertexOffsets[i] = 0;
 			indexOffsets[i] = 0;
 		}
 		else {
-			vertexOffsets[i] = vertexRequirements.size;
-			indexOffsets[i] = indexRequirements.size;
+			vertexOffsets[i] = vertexRequirements.requirements.size;
+			indexOffsets[i] = indexRequirements.requirements.size;
 
-			vertexRequirements.size += vertexMem.size;
-			indexRequirements.size += indexMem.size;
+			vertexRequirements.requirements.size += vertexMem.size;
+			indexRequirements.requirements.size += indexMem.size;
 		}
 	}
-	vertexOffsets.push_back(vertexRequirements.size);
-	indexOffsets.push_back(indexRequirements.size);
+	vertexOffsets.push_back(vertexRequirements.requirements.size);
+	indexOffsets.push_back(indexRequirements.requirements.size);
 
 	//now make uniform buffer
 	VkDeviceSize bufferSize = sizeof(UniformBufferObject) * FRAMES_IN_FLIGHT;
@@ -284,9 +301,11 @@ void BaseRasterizer::createBuffers() {
 	if (vkCreateBuffer(device, &bufferInfo, nullptr, &uniformBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create BaseRasterizer uniform buffers"); }
 
 	
-	vkGetBufferMemoryRequirements(device, uniformBuffer, &uniformRequirements);
+	vkGetBufferMemoryRequirements(device, uniformBuffer, &uniformRequirements.requirements);
 
-
+	vertexRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	indexRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	uniformRequirements.flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
 }
 
@@ -295,13 +314,36 @@ void BaseRasterizer::initMemory(std::array<MemInit, 3> details) {
 	indexMemory = details[1];
 	uniformBufferMemory = details[2];
 
+	
+	std::cout << vertexMemory.range << " | " << vertexRequirements.requirements.size << std::endl;
+	std::cout << indexMemory.range << " | " << indexRequirements.requirements.size << std::endl;
+	std::cout << uniformBufferMemory.range << " | " << uniformRequirements.requirements.size << std::endl;
+
 	for (size_t i = 0; i < meshes.size(); i++) {
 		vkBindBufferMemory(device, vertexBuffers[i], vertexMemory.memory, vertexMemory.offset + vertexOffsets[i]);
 		vkBindBufferMemory(device, indexBuffers[i], indexMemory.memory, indexMemory.offset + indexOffsets[i]);
 	}
+	vkBindBufferMemory(device, uniformBuffer, uniformBufferMemory.memory, uniformBufferMemory.offset);
+
+	void* data;
+
+	vkMapMemory(device, uniformBufferMemory.memory, uniformBufferMemory.offset, uniformBufferMemory.range, 0, &data);
+
+	std::cout << data << std::endl;
+
+
+	uniformBufferMapped = static_cast<char*>(data);
+
+	std::cout << static_cast<char*>(data) << std::endl;
+	std::cout << uniformBufferMapped << std::endl;
+	std::cout << uniformBufferMapped + sizeof(UniformBufferObject) << std::endl;
+
+	char* data2 = uniformBufferMapped + sizeof(UniformBufferObject);
+	std::cout << sizeof(UniformBufferObject) << std::endl;
+	std::cout << static_cast<void*>(data2) << std::endl;
 }
 
-void BaseRasterizer::initBufferData_A(VkMemoryRequirements* stagingRequirements) {
+void BaseRasterizer::initBufferData_A(MemoryDetails* stagingRequirements) {
 	VkBufferCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	createInfo.size = maxBufferSize;
@@ -310,9 +352,9 @@ void BaseRasterizer::initBufferData_A(VkMemoryRequirements* stagingRequirements)
 
 	if (vkCreateBuffer(device, &createInfo, nullptr, &stagingBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create baseRasterizer staging buffer"); }
 
-	vkGetBufferMemoryRequirements(device, stagingBuffer, stagingRequirements);
+	vkGetBufferMemoryRequirements(device, stagingBuffer, &(stagingRequirements->requirements));
 
-	(*stagingRequirements).memoryTypeBits |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+	stagingRequirements->flags = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 }
 void BaseRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer, VkQueue transferQueue, MemInit memory) {
 	stagingMemory = memory;
@@ -323,14 +365,14 @@ void BaseRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer, VkQ
 	VkFence transferFence;
 	VkFenceCreateInfo fenceInfo{};
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+	fenceInfo.flags = 0;
 
 	if (vkCreateFence(device, &fenceInfo, nullptr, &transferFence) != VK_SUCCESS) { throw std::runtime_error("Failed to create transfer fence for GravDataSync"); }
 
 	//record copy operation
 	VkCommandBufferBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
 	VkSubmitInfo submitInfo{};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -343,38 +385,105 @@ void BaseRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer, VkQ
 	for (size_t i = 0; i < meshes.size(); i++) {
 		//vertices
 		//step 1 copy data to to buffer
-		memcpy(data, meshes[i].vertices->data(), meshes[i].vertices->size());
+		memcpy(data, meshes[i].vertices->data(), meshes[i].vertices->size() * sizeof(Vertex));
+		std::vector<Vertex> newVert(meshes[i].vertices->size());
+		memcpy(newVert.data(), meshes[i].vertices->data(), meshes[i].vertices->size() * sizeof(Vertex));
+		for (auto& vert : newVert) {
+			vert.printVertex();
+		}
+		std::cout << *reinterpret_cast<float*>(data) << std::endl;
+		std::cout << *(reinterpret_cast<float*>(data) + 8) << std::endl;
 
-		vkBeginCommandBuffer(transferCommandBuffer, &beginInfo);
+		if(vkBeginCommandBuffer(transferCommandBuffer, &beginInfo) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to begin transfer command buffer");
+		};
 		VkBufferCopy copy{};
-		copy.size = meshes[i].vertices->size();
-		copy.srcOffset = 0;
-		copy.dstOffset = 0;
-		//step 2 perform copy
-		vkCmdCopyBuffer(transferCommandBuffer, stagingBuffer, vertexBuffers[i], 1, &copy);
-		vkEndCommandBuffer(transferCommandBuffer);
-		vkQueueSubmit(transferQueue, 1, &submitInfo, transferFence);
-		vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
-		vkResetCommandBuffer(transferCommandBuffer, 0);
-	}
-	for (size_t i = 0; i < meshes.size(); i++) {
-		//indices
-		//step 1 copy data to to buffer
-		memcpy(data, meshes[i].indices->data(), meshes[i].indices->size());
+		copy.size = meshes[i].vertices->size() * sizeof(Vertex);
+		copy.srcOffset = stagingMemory.offset;
+		copy.dstOffset = vertexOffsets[i];
 		
-		vkBeginCommandBuffer(transferCommandBuffer, &beginInfo);
-		VkBufferCopy copy{};
-		copy.size = meshes[i].indices->size();
-		copy.srcOffset = 0;
-		copy.dstOffset = 0;
 		//step 2 perform copy
-		vkCmdCopyBuffer(transferCommandBuffer, stagingBuffer, vertexBuffers[i], 1, &copy);
-		vkEndCommandBuffer(transferCommandBuffer);
-		vkQueueSubmit(transferQueue, 1, &submitInfo, transferFence);
-		vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
-		vkResetCommandBuffer(transferCommandBuffer, 0);
-	}
+		vkCmdCopyBuffer(transferCommandBuffer, stagingBuffer, (vertexBuffers[i]), 1, &copy);
+		if(vkEndCommandBuffer(transferCommandBuffer)!=VK_SUCCESS){
+		throw std::runtime_error("Failed to end transfer command buffer");
+	};
+		VkMappedMemoryRange memoryRange{};
+		memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+		memoryRange.memory = stagingMemory.memory;
+		memoryRange.offset = stagingMemory.offset;
+		memoryRange.size = stagingMemory.range;
 
+		std::cout << "Fence: " << vkGetFenceStatus(device, transferFence);
+		//vkFlushMappedMemoryRanges(device, 1, &memoryRange);
+		vkQueueSubmit(transferQueue, 1, &submitInfo, transferFence);
+		std::cout<<"Fence: "<<vkGetFenceStatus(device, transferFence);
+		vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
+		std::cout << "Fence: " << vkGetFenceStatus(device, transferFence);
+		vkResetFences(device, 1, &transferFence);
+		std::cout << "Fence: " << vkGetFenceStatus(device, transferFence);
+		vkResetCommandBuffer(transferCommandBuffer, 0);
+		std::cout << *(reinterpret_cast<float*>(data) + 8) << std::endl;
+	}
+	//for (size_t i = 0; i < meshes.size(); i++) {
+	//	//indices
+	//	//step 1 copy data to to buffer
+	//	memcpy(data, meshes[i].indices->data(), meshes[i].indices->size() * sizeof(uint16_t));
+	//	
+	//	vkBeginCommandBuffer(transferCommandBuffer, &beginInfo);
+	//	VkBufferCopy copy{};
+	//	copy.size = meshes[i].indices->size() * sizeof(uint16_t);
+	//	copy.srcOffset = 0;
+	//	copy.dstOffset = 0;
+	//	//step 2 perform copy
+	//	vkCmdCopyBuffer(transferCommandBuffer, stagingBuffer, vertexBuffers[i], 1, &copy);
+	//	vkEndCommandBuffer(transferCommandBuffer);
+	//	vkQueueSubmit(transferQueue, 1, &submitInfo, transferFence);
+	//	vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
+	//	vkResetCommandBuffer(transferCommandBuffer, 0);
+	//}
+
+	for (size_t i = 0; i < meshes.size(); i++) {
+		//vertices
+		//step 1 copy data to to buffer
+		memcpy(data, meshes[i].indices->data(), meshes[i].indices->size() * sizeof(uint16_t));
+		std::vector<uint16_t> newVert(meshes[i].indices->size());
+		memcpy(newVert.data(), meshes[i].indices->data(), meshes[i].indices->size() * sizeof(uint16_t));
+		for (auto& vert : newVert) {
+			std::cout << vert << std::endl;
+		}
+		std::cout << *reinterpret_cast<float*>(data) << std::endl;
+		std::cout << *(reinterpret_cast<float*>(data) + 8) << std::endl;
+
+		if (vkBeginCommandBuffer(transferCommandBuffer, &beginInfo) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to begin transfer command buffer");
+		};
+		VkBufferCopy copy{};
+		copy.size = meshes[i].indices->size() * sizeof(uint16_t);
+		copy.srcOffset = stagingMemory.offset;
+		copy.dstOffset = indexOffsets[i];
+
+		//step 2 perform copy
+		vkCmdCopyBuffer(transferCommandBuffer, stagingBuffer, (indexBuffers[i]), 1, &copy);
+		if (vkEndCommandBuffer(transferCommandBuffer) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to end transfer command buffer");
+		};
+		VkMappedMemoryRange memoryRange{};
+		memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+		memoryRange.memory = stagingMemory.memory;
+		memoryRange.offset = stagingMemory.offset;
+		memoryRange.size = stagingMemory.range;
+
+		std::cout << "Fence: " << vkGetFenceStatus(device, transferFence);
+		//vkFlushMappedMemoryRanges(device, 1, &memoryRange);
+		vkQueueSubmit(transferQueue, 1, &submitInfo, transferFence);
+		std::cout << "Fence: " << vkGetFenceStatus(device, transferFence);
+		vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
+		std::cout << "Fence: " << vkGetFenceStatus(device, transferFence);
+		vkResetFences(device, 1, &transferFence);
+		std::cout << "Fence: " << vkGetFenceStatus(device, transferFence);
+		vkResetCommandBuffer(transferCommandBuffer, 0);
+		std::cout << *(reinterpret_cast<float*>(data) + 8) << std::endl;
+	}
 	vkUnmapMemory(device, stagingMemory.memory);
 
 	stagingMemory = {};
@@ -386,17 +495,21 @@ void BaseRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer, VkQ
 
 	vkDestroyFence(device, transferFence, nullptr);
 
-	vkDestroyBuffer(device, stagingBuffer, nullptr);
+	//vkDestroyBuffer(device, stagingBuffer, nullptr);
 	
 }
-void BaseRasterizer::drawObjects(VkCommandBuffer commandBuffer, uint32_t frameIndex, CameraPushConstants* camera) {
-	
+void BaseRasterizer::drawObjects(VkCommandBuffer commandBuffer, uint32_t frameIndex, UniformBufferObject ubo) {
+	glm::mat4 model(1);
 
 	//render pass is already going so start by binding pipeline
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[frameIndex], 0, nullptr);
-	vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(CameraPushConstants), camera);
+	vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &model);
 
+	void* mappedAdress = uniformBufferMapped + (sizeof(UniformBufferObject) * frameIndex);
+
+	memcpy(mappedAdress, &ubo, sizeof(UniformBufferObject));
+	
 	//then for each model
 	VkDeviceSize offsets[] = { 0 };
 
@@ -410,11 +523,14 @@ void BaseRasterizer::drawObjects(VkCommandBuffer commandBuffer, uint32_t frameIn
 	}
 }	
 
-void BaseRasterizer::getMemoryRequirements(std::vector<VkMemoryRequirements>* mem, std::vector<uint16_t>* count) {
+void BaseRasterizer::getMemoryRequirements(std::vector<MemoryDetails>* mem, std::vector<uint16_t>* count) {
 	mem->push_back(vertexRequirements);
 	mem->push_back(indexRequirements);
 	mem->push_back(uniformRequirements);
 	count->push_back(3);
+}
+void BaseRasterizer::storeGravStorageBuffer(VkBuffer buffer) {
+	gravStorageBuffer = buffer;
 }
 
 void BaseRasterizer::cleanup() {
