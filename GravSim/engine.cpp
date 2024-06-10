@@ -87,18 +87,11 @@ void VulkanEngine::initEngine() {
     grav.particles = &particles;
     grav.shaderCode = &shaderCode[0];
 
-    for (size_t i = 0; i < particles.size(); i += 256) {
-        std::cout << particles[i].mass << " " << particles[i].position.x << std::endl;
-    }
 
     //std::thread gravt(&GravEngine::initGrav, &gravEngine, grav);
     gravEngine.initGrav_A(grav);
 
     spheret.join();
-
-    for (size_t i = 0; i < vertices.size(); i++) {
-        vertices[i].printVertex();
-    }
 
     meshes[0].vertexCount = meshes[0].vertices->size();
     meshes[0].indexCount = meshes[0].indices->size();
@@ -377,8 +370,10 @@ void VulkanEngine::createInstance() {
     createInfo.ppEnabledLayerNames = validationLayers.data();
     createInfo.pNext = &debugCreateInfo;
 
-    std::cout << vkCreateInstance(&createInfo, nullptr, &instance) << std::endl;
-    std::cout << VK_SUCCESS << std::endl;
+    if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create vulkan instance");
+    };
+
 }
 void VulkanEngine::createLogicalDevice() {
     QueueFamilyIndices indices = findGraphicsQueueFamilies(physicalDevice);
@@ -515,8 +510,6 @@ void VulkanEngine::createSwapChain() {
     vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
 
     swapChainImageFormat = surfaceFormat.format;
-    std::cout << swapChainImageFormat << std::endl;
-    VK_FORMAT_R8G8B8A8_SRGB;
     swapChainExtent = extent;
 }
 void VulkanEngine::createImageViews() {
@@ -571,7 +564,6 @@ void VulkanEngine::createRenderPass() {
     dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
     std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
-    std::cout << "Image Format: " << colorAttachment.format << std::endl;
     VkRenderPassCreateInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
@@ -783,9 +775,6 @@ void VulkanEngine::initSubclassData() {
     baseRasterizer.initBufferData_A(&memRequirements[0]);
     gravEngine.syncBufferData_A(&memRequirements[1]);
     //memRequirements[0].flags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-
-    std::cout << "Vis: " << VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT << " Coh: " << VK_MEMORY_PROPERTY_HOST_COHERENT_BIT << " Cac: " << VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-    std::cout << " Flags: " << memRequirements[0].flags << std::endl;;
 
     VkMemoryAllocateInfo memoryInfo{};
     memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;

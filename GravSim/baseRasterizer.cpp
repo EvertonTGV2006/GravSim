@@ -329,7 +329,6 @@ void BaseRasterizer::initMemory(std::array<MemInit, 3> details) {
 
 	vkMapMemory(device, uniformBufferMemory.memory, uniformBufferMemory.offset, uniformBufferMemory.range, 0, &data);
 
-	std::cout << data << std::endl;
 
 
 	uniformBufferMapped = static_cast<char*>(data);
@@ -388,9 +387,7 @@ void BaseRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer, VkQ
 		memcpy(data, meshes[i].vertices->data(), meshes[i].vertices->size() * sizeof(Vertex));
 		std::vector<Vertex> newVert(meshes[i].vertices->size());
 		memcpy(newVert.data(), meshes[i].vertices->data(), meshes[i].vertices->size() * sizeof(Vertex));
-		for (auto& vert : newVert) {
-			vert.printVertex();
-		}
+
 		std::cout << *reinterpret_cast<float*>(data) << std::endl;
 		std::cout << *(reinterpret_cast<float*>(data) + 8) << std::endl;
 
@@ -448,9 +445,7 @@ void BaseRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer, VkQ
 		memcpy(data, meshes[i].indices->data(), meshes[i].indices->size() * sizeof(uint16_t));
 		std::vector<uint16_t> newVert(meshes[i].indices->size());
 		memcpy(newVert.data(), meshes[i].indices->data(), meshes[i].indices->size() * sizeof(uint16_t));
-		for (auto& vert : newVert) {
-			std::cout << vert << std::endl;
-		}
+
 		std::cout << *reinterpret_cast<float*>(data) << std::endl;
 		std::cout << *(reinterpret_cast<float*>(data) + 8) << std::endl;
 

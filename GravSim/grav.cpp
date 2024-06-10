@@ -367,10 +367,8 @@ void GravEngine::createSyncObjects() {
 	fenInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-	std::cout << "Grav Sync Objects" << std::endl;
 
 	for (size_t i = 0; i < COMPUTE_STEPS; i++) {
-		std::cout << 1;
 		if (
 			vkCreateSemaphore(device, &semInfo, nullptr, &gravFinishedSemaphores[i]) != VK_SUCCESS ||
 			vkCreateSemaphore(device, &semInfo, nullptr, &renderGravSemaphores[i]) != VK_SUCCESS ||
