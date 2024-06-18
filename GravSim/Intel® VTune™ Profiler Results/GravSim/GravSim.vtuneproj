@@ -405,7 +405,7 @@
    </workloads>
   </target_settings>
   <analysis_type_settings>
-   <selected_analysis_type_path>C:\Program Files (x86)\Intel\oneAPI\vtune\2024.1\config\analysis_type\hotspots.cfg</selected_analysis_type_path>
+   <selected_analysis_type_path>C:\Program Files (x86)\Intel\oneAPI\vtune\2024.1\config\analysis_type\gpu_offload.cfg</selected_analysis_type_path>
    <localhost>
     <launch>
      <at_start_point>
@@ -610,7 +610,7 @@
        </contextValue>
        <contextValue>
         <id>gpuOpenCLCollection</id>
-        <value type="bool">true</value>
+        <value type="bool">false</value>
        </contextValue>
        <contextValue>
         <id>initialViewpoint</id>

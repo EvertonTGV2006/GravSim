@@ -1,0 +1,152 @@
+<?xml version='1.0' encoding='UTF-8'?>
+
+<bag>
+ <grouper name="dd_dma_queue_properties" axis="dd_gpu_node" recommendedStorage="container">
+  <entries>
+   <entry instanceTable="dma_queue_depth_data" correlationType="byPrimaryAxis">
+    <groupings>
+     <grouping path="attr"/>
+    </groupings>
+    <standardMetrics>
+     <metric>time</metric>
+     <metric>count</metric>
+     <metric>instanceCount</metric>
+    </standardMetrics>
+    <customMetrics/>
+   </entry>
+  </entries>
+ </grouper>
+ <grouper name="dd_gpu_node" axis="dd_gpu_node" recommendedStorage="container">
+  <entries>
+   <entry instanceTable="dma_packet_data" correlationType="byPrimaryAxis">
+    <groupings>
+     <grouping path="attr.perf_tag.tag_type"/>
+     <grouping path="attr.thread"/>
+    </groupings>
+    <standardMetrics>
+     <metric>time</metric>
+    </standardMetrics>
+    <customMetrics/>
+   </entry>
+   <entry instanceTable="dma_queue_data" correlationType="byPrimaryAxis">
+    <standardMetrics>
+     <metric>time</metric>
+    </standardMetrics>
+    <customMetrics/>
+   </entry>
+   <entry instanceTable="gpu_elapsed_time_data" correlationType="byPrimaryAxis" pathToAxis="attr">
+    <standardMetrics>
+     <metric>time</metric>
+    </standardMetrics>
+    <customMetrics/>
+   </entry>
+  </entries>
+ </grouper>
+ <grouper name="dd_thread" axis="dd_thread" recommendedStorage="container">
+  <entries>
+   <entry instanceTable="cpu_data" correlationType="byPrimaryAxis">
+    <groupings>
+     <grouping path="attr"/>
+    </groupings>
+    <standardMetrics>
+     <metric>time</metric>
+     <metric>count</metric>
+     <metric>instanceCount</metric>
+    </standardMetrics>
+    <customMetrics/>
+   </entry>
+   <entry instanceTable="cpu_usage_data" correlationType="global">
+    <groupings>
+     <grouping path="attr.utilization"/>
+    </groupings>
+   </entry>
+   <entry instanceTable="marker_global_data" correlationType="global">
+    <groupings>
+     <grouping path="attr"/>
+    </groupings>
+   </entry>
+  </entries>
+ </grouper>
+ <grouper name="dma_packet_duration" axis="dd_gpu_node" recommendedStorage="container">
+  <entries>
+   <entry instanceTable="dma_packet_data" correlationType="byPrimaryAxis">
+    <groupings>
+     <grouping path="attr.bin"/>
+    </groupings>
+    <standardMetrics>
+     <metric>instanceCount</metric>
+    </standardMetrics>
+    <customMetrics/>
+   </entry>
+  </entries>
+ </grouper>
+ <grouper name="global_data_grouper" recommendedStorage="container">
+  <entries>
+   <entry instanceTable="cpu_usage_data" correlationType="global">
+    <groupings>
+     <grouping path="attr"/>
+    </groupings>
+    <standardMetrics>
+     <metric>time</metric>
+     <metric>count</metric>
+     <metric>instanceCount</metric>
+    </standardMetrics>
+    <customMetrics/>
+   </entry>
+  </entries>
+ </grouper>
+ <grouper name="global_time_interval_metrics" recommendedStorage="container">
+  <entries>
+   <entry instanceTable="cpu_data" correlationType="global">
+    <standardMetrics>
+     <metric>time</metric>
+     <metric>count</metric>
+     <metric>instanceCount</metric>
+    </standardMetrics>
+    <customMetrics/>
+   </entry>
+   <entry instanceTable="global_elapsed_time_data" correlationType="global">
+    <standardMetrics>
+     <metric>time</metric>
+    </standardMetrics>
+    <customMetrics/>
+   </entry>
+  </entries>
+ </grouper>
+ <grouper name="gpu_gap" axis="dd_gpu_node" recommendedStorage="container">
+  <entries>
+   <entry instanceTable="dma_packet_data" correlationType="byPrimaryAxis">
+    <standardMetrics>
+     <metric>time</metric>
+    </standardMetrics>
+    <customMetrics/>
+   </entry>
+   <entry instanceTable="gpu_node_elapsed_time_data" correlationType="byPrimaryAxis" pathToAxis="attr">
+    <standardMetrics>
+     <metric>time</metric>
+    </standardMetrics>
+    <customMetrics/>
+   </entry>
+  </entries>
+ </grouper>
+ <grouper name="sched_and_counter_metrics" axis="dd_thread" recommendedStorage="container">
+  <entries>
+   <entry instanceTable="counter_data" correlationType="byPrimaryAxis">
+    <groupings>
+     <grouping path="attr"/>
+    </groupings>
+    <standardMetrics>
+     <metric>time</metric>
+     <metric>count</metric>
+     <metric>instanceCount</metric>
+    </standardMetrics>
+    <customMetrics/>
+   </entry>
+   <entry instanceTable="cpu_usage_data" correlationType="global">
+    <groupings>
+     <grouping path="attr.utilization"/>
+    </groupings>
+   </entry>
+  </entries>
+ </grouper>
+</bag>

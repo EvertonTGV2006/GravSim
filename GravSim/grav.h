@@ -15,7 +15,7 @@ struct GravInit {
 
 	VkPhysicalDeviceMemoryProperties memProperties;
 
-	std::vector<char>* shaderCode;
+	std::array<std::vector<char>*, 4> shaderCode;
 	std::vector<Particle>* particles;
 };
 
@@ -27,12 +27,14 @@ struct GravPushConstants {
 class GravEngine {
 public:
 	static const uint32_t COMPUTE_STEPS = 3;
+	static const uint32_t GRID_CELL_COUNT = 16 * 16 * 16;
 
 	void initGrav_A(GravInit);
 	void initGrav_B();
-	void initMemory(MemInit);
+	void initMemory(std::array<MemInit, 4>);
 
-	std::vector<std::string> shaderFiles = { "shaders/GravEngine/01.spv" };
+	std::vector<std::string> shaderFiles = { "shaders/GravEngine/01.spv" , "shaders/GravEngine/SortShaders/01.spv", "shaders/GravEngine/SortShaders/02.spv", "shaders/GravEngine/SortShaders/03.spv" };
+	//std::vector<std::string> shaderFiles = { "shaders/GravEngine/01.spv" };
 
 	void syncBufferData_A(MemoryDetails*);
 	void syncBufferData_B(bool, MemInit);
@@ -44,10 +46,17 @@ public:
 	void getMemoryRequirements(std::vector<MemoryDetails>*, std::vector<uint16_t>*);
 
 	MemoryDetails storageRequirements{};
+	MemoryDetails deltaRequirements{};
+	MemoryDetails offsetRequirements{};
+	MemoryDetails scanRequirements{};
 
 	VkBuffer getInterleavedStorageBuffer();
 
 	void cleanup();
+
+	void createRandomData();
+
+	void runCommands();
 
 private:
 	VkDevice device;
@@ -56,7 +65,7 @@ private:
 
 	VkPhysicalDeviceMemoryProperties memProperties;
 
-	std::vector<char>* shaderCode;
+	std::array<std::vector<char>*, 4> shaderCode;
 
 	
 	
@@ -83,11 +92,22 @@ private:
 
 	VkBuffer stagingBuffer;
 
+	VkBuffer deltaBuffer; //size no of cells / 2
+	VkBuffer offsetBuffer; //size no of cells
+	VkBuffer scanBuffer; //size no of cells / 1024
+
+	MemInit deltaMem;
+	MemInit offsetMem;
+	MemInit scanMem;
+
 	VkPipeline gravPipeline;
 	VkPipelineLayout gravPipelineLayout;
 	VkDescriptorSetLayout gravDescriptorSetLayout;
 	
-
+	std::array<VkPipeline, 3>sortPipelines;
+	VkPipelineLayout sortPipelineLayout;
+	VkDescriptorSetLayout sortDescriptorSetLayout;
+	std::array<VkDescriptorSet, COMPUTE_STEPS> sortDescriptorSets;
 	
 
 	void createPipeline();
@@ -95,6 +115,11 @@ private:
 	void createCommandBuffers();
 	void createStorageBuffers();
 	void createSyncObjects();
+	void createSortDescriptorSets();
 
-	
+
+	std::vector<uint32_t> deltaOffsets{};
+	std::vector<uint32_t> offsets{};
+	std::vector<uint32_t> newOffsets{};
+
 };

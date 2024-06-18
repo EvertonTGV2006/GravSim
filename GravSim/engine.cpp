@@ -53,6 +53,9 @@ void VulkanEngine::initEngine() {
     createSyncObjects();
     createCommandBuffers();
 
+    VkPhysicalDeviceProperties properties{};
+    vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+
     std::vector<Mesh> meshes;
     meshes.resize(1);
     meshes[0].vertices = &vertices;
@@ -85,7 +88,7 @@ void VulkanEngine::initEngine() {
     grav.gravQueue = computeQueue;
     grav.memProperties = memProperties;
     grav.particles = &particles;
-    grav.shaderCode = &shaderCode[0];
+    grav.shaderCode = { &shaderCode[0], &shaderCode[1], &shaderCode[2], &shaderCode[3]};
 
 
     //std::thread gravt(&GravEngine::initGrav, &gravEngine, grav);
@@ -104,7 +107,7 @@ void VulkanEngine::initEngine() {
     rast.memProperties = memProperties;
     rast.meshes = meshes;
     rast.particleCount = partCount;
-    rast.shaderCode = { &shaderCode[1], &shaderCode[2] };
+    rast.shaderCode = { &shaderCode[4], &shaderCode[5] };
     rast.gravStorageBuffer = gravEngine.getInterleavedStorageBuffer();
 
     //std::thread rastt(&BaseRasterizer::initRast, &baseRasterizer, rast);
@@ -124,7 +127,7 @@ void VulkanEngine::initEngine() {
 
     initSubclassData();
 
-    
+    gravEngine.createRandomData();
 }
 
 void VulkanEngine::readFiles(std::vector<std::string> files, std::vector<std::vector<char>>* code) {
@@ -651,7 +654,7 @@ void VulkanEngine::createDescriptorPool() {
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
     poolInfo.pPoolSizes = poolSizes.data();
-    poolInfo.maxSets = static_cast<uint32_t>(FRAMES_IN_FLIGHT + COMPUTE_STEPS);
+    poolInfo.maxSets = static_cast<uint32_t>(FRAMES_IN_FLIGHT +2* COMPUTE_STEPS);
 
     if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool!");
@@ -763,8 +766,8 @@ void VulkanEngine::allocateMemory() {
         k += orderedMemCounts[i];
     }
     //now finally dispatch all the MemInit structs to subclasses
-    gravEngine.initMemory(memoryContainers[0]);
-    baseRasterizer.initMemory({ memoryContainers[1],memoryContainers[2],memoryContainers[3]});
+    gravEngine.initMemory({ memoryContainers[0], memoryContainers[1],memoryContainers[2],memoryContainers[3] });
+    baseRasterizer.initMemory({ memoryContainers[4],memoryContainers[5],memoryContainers[6]});
 
 }
 void VulkanEngine::initSubclassData() {

@@ -1,0 +1,116 @@
+#version 450
+
+#extension GL_KHR_shader_subgroup_basic : enable
+#extension GL_KHR_shader_subgroup_arithmetic : enable
+#extension GL_KHR_shader_subgroup_ballot : enable
+
+const uint WORKSIZE =  1024;
+const uint SUBSIZE = 32;
+const uint ADD_PER_THREAD = 1;
+const uint SEGMENTSIZE = 256;
+const uint SEGMENTBITS = 8;
+
+
+
+//this shader performs the preliminary scan involving deltas
+
+layout (std140, binding = 0) buffer SSBOstageOutput{
+    int scanOut[ ]; //size of workgroups
+};
+layout (std140, binding = 1) buffer SSBOOutput{
+    uint offsetsOut[ ]; //size of cells
+};
+layout (std140, binding = 2) buffer SSBOInput2{
+    uint offsetsIn[ ]; //sizeof cells
+};
+layout (std140, binding = 3) buffer SSBOInput{
+    uint deltaOffsets[ ]; //size of cells / (32 / SEGMENTBITS);
+};
+
+
+shared int subTotals[WORKSIZE / SUBSIZE];
+
+layout(local_size_x = WORKSIZE, local_size_y = 1, local_size_z = 1) in;
+//data in is in format of uints so xxxxxxxx bits add xxxxxxxx bits subtract x 2;
+//add --- sub -- add --- sub;
+
+int sumSegmentedData(uint dataIn){
+    uint dataMask = (2 * SEGMENTSIZE) - 1;
+    int segmentSum = 0;
+    for (uint i =0; i < (32/2) / SEGMENTBITS; i++){
+        //1st subtract
+        segmentSum -= int(dataIn & dataMask);
+        dataIn >>= SEGMENTBITS;
+        //then add
+        segmentSum += int(dataIn & dataMask);
+        dataIn >>= SEGMENTBITS;
+    }
+
+    return segmentSum;
+}
+
+//to do: refactor to use two deltaoffset values; one + and one -;
+
+void main(){
+    uint gID = gl_GlobalInvocationID.x;
+    uint lID = gl_LocalInvocationID.x;
+    uint wID = gl_WorkGroupID.x;
+    uint sID = lID >> 5;
+
+    int threadSum = 0;
+    for (uint i = 0; i < ADD_PER_THREAD; i++){
+        threadSum += sumSegmentedData(deltaOffsets[gID * ADD_PER_THREAD + i]);
+    }
+    int subSum = subgroupExclusiveAdd(threadSum);
+    int subgroupScanOut = 0;
+
+    if ((lID & (SUBSIZE - 1)) == SUBSIZE - 1){ //select the 31 thread of the subgroup as that will have the highest subSum
+        subTotals[sID] = subSum + threadSum;
+        barrier();
+        for (uint i = 1; i < WORKSIZE / SUBSIZE; i<=1){ //reduce upsweep
+            if((sID & i) == 0){//if the selected bit for the sID is 0, break out the loop
+                break;
+            }
+            else {
+                subTotals[sID] += subTotals[sID - i]; //if selected bit = 1, then add the value of the pair who's bit is 0
+                barrier();
+            }
+        } //write out total
+        barrier();
+        if (lID == WORKSIZE - 1){
+            scanOut[wID] = subTotals[sID]; //write the workgroup scan output to the stage output buffer for the next shader stage to process
+            subTotals[sID] = 0;
+        }
+        //scan downsweep
+        for (uint i = (WORKSIZE / SUBSIZE) - 1; i > 0; i>>=1){
+            if ((sID & i) == i){
+                int swapDown = subTotals[sID];
+                int addDown = subTotals[sID] + subTotals[sID - i - 1];
+                subTotals[sID - i - 1] = swapDown;
+                subTotals[sID] = addDown;
+            }
+            barrier();
+        }
+        //now that downsweep is complete and subTotals[ ] contains a complete scan;
+        //we can add that to the offsets;
+        subgroupScanOut = subTotals[sID];
+    }
+
+    uint dataMask = (2*SEGMENTSIZE )- 1;
+
+
+    //every thread can participate
+    subgroupScanOut = subgroupBroadcast(subgroupScanOut, SUBSIZE - 1);
+    subSum += subgroupScanOut;
+    for (uint i = 0; i < ADD_PER_THREAD; i++){
+        for (uint j = 0; j < (32/2) / SEGMENTBITS; j++){
+            uint offsetIndex = gID * ADD_PER_THREAD * ((32/2) / SEGMENTBITS) + i * SEGMENTBITS + j;
+            uint deltaIndex = gID * ADD_PER_THREAD + i;
+            uint deltaValueSub = (deltaOffsets[deltaIndex] >> (2* j)*SEGMENTBITS) & dataMask;
+            uint deltaValueAdd = (deltaOffsets[deltaIndex] >> ((2*j)+1)*SEGMENTBITS) & dataMask;
+            offsetsOut[offsetIndex] = offsetsIn[offsetIndex] + subSum;
+            subSum += int(deltaValueAdd);
+            subSum -= int(deltaValueSub);
+        }
+    }
+}
