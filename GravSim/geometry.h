@@ -37,7 +37,13 @@ private:
 
 class ParticleGeometry {
 public:
+	static const uint32_t GRID_CELL_COUNT;
+	glm::ivec3 GRID_DIMENSIONS = { 16, 16, 16 };
+	glm::vec3 DOMAIN_DIMENSIONS = { 10, 10, 10 };
+
+
 	std::vector<Particle> *particles;
+	std::vector<uint32_t>* offsets;
 
 	void createParticles(uint32_t);
 

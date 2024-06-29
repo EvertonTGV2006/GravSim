@@ -3,6 +3,8 @@
 struct Particle {
 	vec4 position;
 	vec4 velocity;
+    uint cell;
+    uint newIndex;
 };
 
 

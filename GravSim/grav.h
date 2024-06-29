@@ -15,8 +15,9 @@ struct GravInit {
 
 	VkPhysicalDeviceMemoryProperties memProperties;
 
-	std::array<std::vector<char>*, 4> shaderCode;
+	std::array<std::vector<char>*, 6> shaderCode;
 	std::vector<Particle>* particles;
+	std::vector<uint32_t>* offsets;
 };
 
 
@@ -27,13 +28,13 @@ struct GravPushConstants {
 class GravEngine {
 public:
 	static const uint32_t COMPUTE_STEPS = 3;
-	static const uint32_t GRID_CELL_COUNT = 16 * 16 * 16;
+	static const uint32_t GRID_CELL_COUNT = 4096;
 
 	void initGrav_A(GravInit);
 	void initGrav_B();
 	void initMemory(std::array<MemInit, 4>);
 
-	std::vector<std::string> shaderFiles = { "shaders/GravEngine/01.spv" , "shaders/GravEngine/SortShaders/01.spv", "shaders/GravEngine/SortShaders/02.spv", "shaders/GravEngine/SortShaders/03.spv" };
+	std::vector<std::string> shaderFiles = { "shaders/GravEngine/01.spv" , "shaders/GravEngine/SortShaders/01.spv", "shaders/GravEngine/SortShaders/02.spv", "shaders/GravEngine/SortShaders/03.spv", "shaders/GravEngine/SortShaders/04.spv", "shaders/GravEngine/SortShaders/05.spv" };
 	//std::vector<std::string> shaderFiles = { "shaders/GravEngine/01.spv" };
 
 	void syncBufferData_A(MemoryDetails*);
@@ -58,6 +59,8 @@ public:
 
 	void runCommands();
 
+	bool OLD_EX = false;
+
 private:
 	VkDevice device;
 	VkCommandPool commandPool;
@@ -65,9 +68,11 @@ private:
 
 	VkPhysicalDeviceMemoryProperties memProperties;
 
-	std::array<std::vector<char>*, 4> shaderCode;
+	std::array<std::vector<char>*, 6> shaderCode;
 
 	
+
+	const uint32_t WORKSIZE = 1024;
 	
 	bool firstFrame = true;
 
@@ -76,6 +81,7 @@ private:
 	VkQueue gravQueue;
 
 	std::vector<Particle>* particles;
+	std::vector<uint32_t>* pOffsets;
 
 	VkCommandBuffer transferCommandBuffer;
 
@@ -104,11 +110,13 @@ private:
 	VkPipelineLayout gravPipelineLayout;
 	VkDescriptorSetLayout gravDescriptorSetLayout;
 	
-	std::array<VkPipeline, 3>sortPipelines;
+	std::array<VkPipeline, 5>sortPipelines;
+	std::array<std::array<VkEvent, 4>, COMPUTE_STEPS>sortEvents;
 	VkPipelineLayout sortPipelineLayout;
 	VkDescriptorSetLayout sortDescriptorSetLayout;
 	std::array<VkDescriptorSet, COMPUTE_STEPS> sortDescriptorSets;
 	
+	std::array<std::array<VkBufferMemoryBarrier2, 6>, COMPUTE_STEPS> memoryBarriers;
 
 	void createPipeline();
 	void createDescriptorSets();
@@ -121,5 +129,9 @@ private:
 	std::vector<uint32_t> deltaOffsets{};
 	std::vector<uint32_t> offsets{};
 	std::vector<uint32_t> newOffsets{};
+
+	uint32_t frameIndex;
+
+
 
 };

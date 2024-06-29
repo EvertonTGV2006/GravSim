@@ -2,10 +2,13 @@
 #include <iostream>
 #include <vector>
 #include <chrono>
+#include <algorithm>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
 #include <glm/gtc/random.hpp>
+
+
 
 #include "structs.h"
 #include "geometry.h"
@@ -788,12 +791,12 @@ void ParticleGeometry::createParticles(uint32_t size) {
 	for (size_t i = 0; i < size; i++) {
 		Particle part{};
 		glm::vec3 up = { 0.0f, 0.0f, 1.0f };
-		part.position = { glm::gaussRand<float>(0.0f, 2.3f), glm::gaussRand<float>(0.0f, 2.3f), glm::gaussRand<float>(0.0f, 2.3f) };
+		part.position = { glm::gaussRand<float>(5.0f, 1.3f), glm::gaussRand<float>(5.0f, 1.3f), glm::gaussRand<float>(5.0f, 1.3f) };
 		part.velocity = { glm::gaussRand<float>(0.0f, 0.3f), glm::gaussRand<float>(0.0f, 0.3f), glm::gaussRand<float>(0.0f, 0.3f) };
 
-		part.position.z *= 0.1f;
-		part.position.x *= 0.6f;
-		part.position.y *= 0.6f;
+		//part.position.z *= 0.1f;
+		//part.position.x *= 0.6f;
+		//part.position.y *= 0.6f;
 		part.velocity = 0.2f * glm::cross(part.position, up);
 		part.velocity = glm::normalize(part.velocity);
 		part.velocity /= glm::pow(glm::dot(part.position, part.position), 0.25f);
@@ -812,12 +815,52 @@ void ParticleGeometry::createParticles(uint32_t size) {
 		//part.velocity = { 0,0,0 };
 		//std::cout << "Position: " << part.position.x << " | " << part.position.y << " | " << part.position.z << " | " << glm::sqrt(glm::dot(part.position, part.position)) << std::endl;
 		//std::cout << "Velocity: " << part.velocity.x << " | " << part.velocity.y << " | " << part.velocity.z << " | " << glm::sqrt(glm::dot(part.velocity, part.velocity)) << std::endl;
-		
+		if (part.position.x < 0 || part.position.y < 0 || part.position.z < 0 || part.position.x >= DOMAIN_DIMENSIONS.x || part.position.y >= DOMAIN_DIMENSIONS.y || part.position.z >= DOMAIN_DIMENSIONS.z) {
+			part.position = { 1, 1, 1 };
+		}
+
+		part.newIndex = 0;
+		glm::ivec3 cellPos;
+		cellPos.x = floor(part.position.x * GRID_DIMENSIONS.x / DOMAIN_DIMENSIONS.x);
+		cellPos.y = floor(part.position.y * GRID_DIMENSIONS.y / DOMAIN_DIMENSIONS.y);
+		cellPos.z = floor(part.position.z * GRID_DIMENSIONS.z / DOMAIN_DIMENSIONS.z);
+		part.cell = cellPos.x + GRID_DIMENSIONS.x * cellPos.y + GRID_DIMENSIONS.x * GRID_DIMENSIONS.y * cellPos.z;
 
 		//part.mass = glm::gaussRand<float>(500.0f, 60.0f);
 		particles->push_back(part);
 	}
 	std::cout << particles->size();
+	
+	std::sort(particles->begin(), particles->end(), [](Particle a, Particle b) {return a.cell < b.cell; });
 
+	uint32_t currentCell = 0;
+	uint32_t currentOffset = 0;
 
+	offsets->resize(GRID_DIMENSIONS.x * GRID_DIMENSIONS.y * GRID_DIMENSIONS.z);
+
+	
+
+	for (size_t i = 0; i < particles->size(); i++) {
+		if ((*particles)[i].cell != currentCell) {
+			if (currentCell + 1 == offsets->size()) {
+				break;
+			}
+			(*offsets)[currentCell+1] = currentOffset;
+			currentCell++;
+			i--;
+		}
+		else {
+			currentOffset++;
+		}
+	}
+	bool flag = false;
+	for (size_t i = 0; i < offsets->size(); i++) {
+		if (flag == false && (*offsets)[i] > 0) {
+			flag = true;
+		}
+		else if (flag == true && (*offsets)[i] == 0) {
+			(*offsets)[i] = (*offsets)[i - 1];
+		}
+	}
+	
 }

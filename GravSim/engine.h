@@ -78,7 +78,8 @@ private:
 	std::vector<Vertex> vertices;
 	std::vector<uint16_t> indices;
 	std::vector<Particle> particles;
-	const uint32_t partCount = 16384;
+	std::vector<uint32_t> offsets;
+	const uint32_t partCount = 4096;
 
 
 	VkCommandPool graphicsCommandPool;

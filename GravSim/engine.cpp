@@ -68,6 +68,7 @@ void VulkanEngine::initEngine() {
 
     ParticleGeometry part{};
     part.particles = &particles;
+    part.offsets = &offsets;
 
     std::thread partt(&ParticleGeometry::createParticles, &part, partCount);
 
@@ -88,7 +89,8 @@ void VulkanEngine::initEngine() {
     grav.gravQueue = computeQueue;
     grav.memProperties = memProperties;
     grav.particles = &particles;
-    grav.shaderCode = { &shaderCode[0], &shaderCode[1], &shaderCode[2], &shaderCode[3]};
+    grav.offsets = &offsets;
+    grav.shaderCode = { &shaderCode[0], &shaderCode[1], &shaderCode[2], &shaderCode[3], &shaderCode[4], &shaderCode[5]};
 
 
     //std::thread gravt(&GravEngine::initGrav, &gravEngine, grav);
@@ -107,7 +109,7 @@ void VulkanEngine::initEngine() {
     rast.memProperties = memProperties;
     rast.meshes = meshes;
     rast.particleCount = partCount;
-    rast.shaderCode = { &shaderCode[4], &shaderCode[5] };
+    rast.shaderCode = { &shaderCode[6], &shaderCode[7] };
     rast.gravStorageBuffer = gravEngine.getInterleavedStorageBuffer();
 
     //std::thread rastt(&BaseRasterizer::initRast, &baseRasterizer, rast);
@@ -127,7 +129,7 @@ void VulkanEngine::initEngine() {
 
     initSubclassData();
 
-    gravEngine.createRandomData();
+    //gravEngine.createRandomData();
 }
 
 void VulkanEngine::readFiles(std::vector<std::string> files, std::vector<std::vector<char>>* code) {
@@ -304,6 +306,7 @@ void VulkanEngine::executeGraphics() {
     dt = std::chrono::duration<double>(ct - pt);
     pt = ct;
     gravEngine.simGrav(dt.count());
+    //gravEngine.createRandomData();
 
     //std::cout << "FPS: " << 1.0 / dt.count() << std::endl;
 

@@ -84,6 +84,10 @@ struct Particle {
     alignas(16)glm::vec3 position;
     alignas(16)glm::vec3 velocity;
     float mass;
+    uint32_t cell;
+    uint32_t newIndex;
+
+
 };
 
 struct ComputeConstants {

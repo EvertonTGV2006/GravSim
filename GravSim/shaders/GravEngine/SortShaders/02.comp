@@ -1,4 +1,4 @@
-#version 450
+#version 460
 
 #extension GL_KHR_shader_subgroup_basic : enable
 #extension GL_KHR_shader_subgroup_arithmetic : enable
@@ -11,54 +11,146 @@ const uint SEGMENTSIZE = 256;
 const uint SEGMENTBITS = 8;
 
 
-//this shader performs the final reduced scan
 
-layout(std140, binding  = 0) buffer SSBOstageInput {
-    int scanIn[ ];
+//this shader performs the preliminary scan involving deltas
+
+layout (std430, binding = 0) buffer SSBOstageOutput{
+    int scanOut[ ]; //size of workgroups
 };
+layout (std430, binding = 1) buffer SSBOOutput{
+    uint newOffsets[ ]; //size of cells
+};
+layout (std430, binding = 2) readonly buffer SSBOInput2{
+    uint oldOffsets[ ]; //sizeof cells
+};
+layout (std430, binding = 3) readonly buffer SSBOInput{
+    uint deltaOffsets[ ]; //size of cells / (16 / SEGMENTBITS);
+};
+
 
 shared int subTotals[WORKSIZE / SUBSIZE];
 
 layout(local_size_x = WORKSIZE, local_size_y = 1, local_size_z = 1) in;
+//data in is in format of uints so xxxxxxxx bits add xxxxxxxx bits subtract x 2;
+//add --- sub -- add --- sub;
+
+void sumSegmentedData(in uint dataIn, out int threadSum, out int threadExlusiveSum[2]){
+    uint dataMask = (1 * SEGMENTSIZE) - 1;
+    int segmentSum = 0;
+    
+    for (uint i =0; i < (32/2) / SEGMENTBITS; i++){
+        //1st subtract
+        threadExlusiveSum[i] = segmentSum;
+        segmentSum -= int(dataIn & dataMask);
+        dataIn >>= SEGMENTBITS;
+        //then add
+        segmentSum += int(dataIn & dataMask);
+        dataIn >>= SEGMENTBITS;
+    }
+    threadSum = segmentSum;
+    //return 1;
+
+}
+
+//to do: refactor to use two deltaoffset values; one + and one -;
 
 void main(){
     uint gID = gl_GlobalInvocationID.x;
     uint lID = gl_LocalInvocationID.x;
+    uint wID = gl_WorkGroupID.x;
     uint sID = lID >> 5;
 
-    int threadSum = scanIn[gID];
+    int threadExlusiveSum[2];
+    int threadSum = 0;
+    sumSegmentedData(deltaOffsets[gID], threadSum, threadExlusiveSum);
     int subSum = subgroupExclusiveAdd(threadSum);
     int subgroupScanOut = 0;
 
     if ((lID & (SUBSIZE - 1)) == SUBSIZE - 1){ //select the 31 thread of the subgroup as that will have the highest subSum
         subTotals[sID] = subSum + threadSum;
-        barrier();
-        for (uint i = 1; i < WORKSIZE / SUBSIZE; i<=1){ //reduce upsweep
-            if((sID & i) == 0){//if the selected bit for the sID is 0, break out the loop
-                break;
-            }
-            else {
-                subTotals[sID] += subTotals[sID - i]; //if selected bit = 1, then add the value of the pair who's bit is 0
-                barrier();
-            }
-        } 
-        barrier();
-        //scan downsweep
-        for (uint i = (WORKSIZE / SUBSIZE) - 1; i > 0; i>>=1){
-            if ((sID & i) == i){
-                int swapDown = subTotals[sID];
-                int addDown = subTotals[sID] + subTotals[sID - i - 1];
-                subTotals[sID - i - 1] = swapDown;
-                subTotals[sID] = addDown;
-            }
-            barrier();
-        }
-        //now that downsweep is complete and subTotals[ ] contains a complete scan;
-        //we can add that to the offsets;
-        subgroupScanOut = subTotals[sID];
     }
 
-    subgroupScanOut = subgroupBroadcast(subgroupScanOut, SUBSIZE - 1);
-    subSum += subgroupScanOut;
-    scanIn[gID] = subSum;
+    barrier();
+    uint breakStage = 0;
+    bool flag = false;
+    for (uint i = 1; i < WORKSIZE / SUBSIZE; i=i<<1){ //reduce upsweep
+        if(((sID & i) == 0 )|| (flag == true)){//if the selected bit for the sID is 0, stop execution in subsequent branches, cant use break becuase of barrier();
+            flag = true;
+        }
+        else {
+            subTotals[sID] += subTotals[sID - i]; //if selected bit = 1, then add the value of the pair who's bit is 0
+            breakStage = i;
+        }
+        barrier();
+    } 
+    //write out total
+    if (lID == WORKSIZE - 1){
+        scanOut[wID] = subTotals[sID]; //write the workgroup scan output to the stage output buffer for the next shader stage to process
+        subTotals[sID] = 0;
+    }
+    barrier();
+    // if ((lID & (SUBSIZE - 1)) == SUBSIZE - 1){newOffsets[sID+32] = subTotals[sID];}
+    for (uint i = WORKSIZE / SUBSIZE - 1; i > 0; i = i>>1){
+        if (i<=breakStage * 2){
+            uint ri = sID;
+            uint ai = sID - (i>>1) - 1;
+            //newOffsets[sID + 32 * 0  + 32 * k] = ri;
+            //newOffsets[sID + 32 * 5  + 32 * k] = ai;
+            int sd = subTotals[ri];
+            int ad = subTotals[ri] + subTotals[ai];
+
+
+            //newOffsets[sID + 32 * 10 + 32 * k] = ad;
+            //newOffsets[sID + 32 * 15 + 32 * k] = sd;
+            //newOffsets[sID + 32 * 20 + 32 * k] = i;
+            //newOffsets[sID + 32*k] = sID;
+            subTotals[ri] = ad;
+            subTotals[ai] = sd;
+        }
+        barrier();
+        //newOffsets[sID + 32 * 15 + 32 * k] = subTotals[sID];
+    }
+    if ((lID & (SUBSIZE - 1)) == SUBSIZE - 1){
+        subgroupScanOut = subTotals[sID];
+       // newOffsets[sID] = breakStage;
+       //newOffsets[sID] = subTotals[sID];
+    }
+
+
+
+    uint dataMask = (1*SEGMENTSIZE )- 1;
+
+    barrier();
+    //every thread can participate
+
+    int subgroupScanResult = subgroupBroadcast(subgroupScanOut, SUBSIZE - 1);
+    subSum += subgroupScanResult;
+    barrier();
+    for (uint i = 0; i <2 *  ADD_PER_THREAD; i++){
+
+        //uint offsetIndex = gID * ADD_PER_THREAD * ((32/2) / SEGMENTBITS) + i * ((32/2) / SEGMENTBITS) + j;
+        // uint deltaIndex = gID * ADD_PER_THREAD + i;
+        // uint deltaValueSub = (deltaOffsets[deltaIndex] >> (2* j)*SEGMENTBITS) & dataMask;
+        // uint deltaValueAdd = (deltaOffsets[deltaIndex] >> ((2*j)+1)*SEGMENTBITS) & dataMask;
+
+        //newOffsets[2 * ADD_PER_THREAD * gID + i] = uint(int(oldOffsets[2 * ADD_PER_THREAD * gID + i]) + subSum);
+        uint newSum = 0;
+        uint newSum2 = 0;
+        uint oldOffset = oldOffsets[2 * ADD_PER_THREAD * gID + i];
+        if (subSum < 0){
+            newSum = uint (subSum * -1);
+            newSum2 = oldOffset - newSum;
+
+        }
+        else {
+            newSum = subSum;
+            newSum2 = oldOffset + newSum;
+        }
+        
+        newOffsets[2 * ADD_PER_THREAD * gID + i] = newSum;
+        // subSum += int(deltaValueAdd);
+        // subSum -= int(deltaValueSub);
+        subSum += threadExlusiveSum[i];
+
+    }
 }
