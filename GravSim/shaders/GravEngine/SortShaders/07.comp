@@ -1,0 +1,138 @@
+#version 460
+
+#extension GL_KHR_shader_subgroup_basic : enable
+#extension GL_KHR_shader_subgroup_arithmetic : enable
+#extension GL_KHR_shader_subgroup_ballot : enable
+
+const int WORKSIZE =  1024;
+const int SUBSIZE = 32;
+const int SEGMENTSIZE = 16384;
+const uint DATA_MASK = 16383;
+const int SEGMENTBITS = 16;
+const int CELL_COUNT = 32768;
+const ivec3 GRID_DIMENSIONS = ivec3(32, 32, 32);
+const vec3 DOMAIN_DIMENSIONS = vec3(16, 16, 16);
+const int SEARCH_SIZE = 1;
+const uint SEARCH_CELLS = 9; //pow(2*SEARCH_SIZE + 1, 3);
+const float CONSTANT_G = 0.00001;
+const float dt = 0.05;
+
+struct Particle{
+    vec4 pos; //mass packed as w
+    vec4 vel;   //unused packed as w
+    int cell;
+    int newIndex;
+};
+struct UParticle{
+    vec3 pos;
+    vec3 vel;
+    float unused;
+    float mass;
+    int cell;
+    int newIndex;
+};
+
+layout (std430, binding = 0) buffer SSBOstageOutput{
+    int wScan[ ]; //size of workgroups
+};
+layout (std430, binding = 1) buffer SSBOInput{
+    int offA[ ]; //size of cells
+};
+layout (std430, binding = 2) buffer SSBOInput2{
+    int offB[ ];
+};
+layout (std430, binding = 3) buffer SSBOInput3{
+    uint dOff[ ];
+};
+layout (std430, binding = 4) buffer PartInput{
+    Particle pIn[ ];
+};
+layout (std430, binding = 5) buffer PartOutput{
+    Particle pOut[ ];
+};
+layout (local_size_x = WORKSIZE) in;
+
+shared int sData[WORKSIZE / SUBSIZE];
+
+uint gID = gl_GlobalInvocationID.x;
+uint lID = gl_LocalInvocationID.x;
+uint wID = gl_WorkGroupID.x;
+uint sID = lID >> 5;
+
+void parrallelScanA(in int vI, in bool mode, out int vO){
+    bool sFlag = ((lID & (SUBSIZE - 1)) == SUBSIZE - 1) ? true : false;
+    int sv = subgroupExclusiveAdd(vI);
+    if (sFlag){
+        sData[sID] = sv + vI;
+        //if (wID == 0){offB[sID] = sData[sID];}
+    }
+    barrier();
+    
+    uint bVal = 0;
+    uint maskBit = 0;
+    uint rdInd = 0;
+    for (uint i = 0; i<= 6; i++){
+        if(sFlag){
+            if (bVal == 0){
+                maskBit = 1 << i;
+                if ((sID & maskBit) != 0){
+                    rdInd = sID & (~maskBit);
+                    sData[sID] = sData[sID] + sData[rdInd];
+                    //if (wID == 0){offB[sID + 32 * (i+2)] = sData[sID];}
+                }
+                else{
+                    bVal = i+1;
+                }
+            }
+        }
+        barrier();
+    }
+    if (lID == WORKSIZE - 1){
+        if(mode){
+            wScan[wID] = sData[sID];
+        }
+        sData[sID] = 0;
+    }
+    barrier();
+    int sd;
+    int ad;
+    int k = 2;
+    for (int i = 4; i>=0; i--){
+        if(sFlag){
+            if (bVal >= uint(i+2)){
+                maskBit = 1 <<uint(i);
+                rdInd = sID & (~maskBit);
+                sd = sData[sID];
+                ad = sData[sID] + sData[rdInd];
+                sData[sID] = ad;
+                sData[rdInd] = sd;
+                //if (wID == 0){offB[sID + 32 * (7+4-i)] = sData[sID]; offB[rdInd + 32 * (7+4-i)] = sData[rdInd];}
+                
+            }
+            
+        }
+        barrier();
+    }
+    int sr = 0;
+    if ((lID & (SUBSIZE - 1)) == SUBSIZE - 1){
+        sr = sData[sID];
+    }
+    //if ((lID & (SUBSIZE - 1)) == SUBSIZE - 1){
+    //    if (wID == 0){
+    //        offB[sID+32] = sData[sID];
+    //    }
+    //}
+    sr = subgroupBroadcast(sr, SUBSIZE - 1);
+    vO = sv + sr;
+    //vO = sr;
+}
+
+void main(){
+    int dInSub = int(dOff[gID] >> SEGMENTBITS);
+    int dInAdd = int(dOff[gID] & DATA_MASK);
+    int dInDelta = dInAdd - dInSub;
+    int dOut = 0;
+    parrallelScanA(dInDelta, true, dOut);
+    offB[gID] = offA[gID] + dOut;
+    //offB[gID] = dOut;
+}

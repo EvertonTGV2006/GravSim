@@ -7,8 +7,8 @@
 const uint WORKSIZE =  1024;
 const uint SUBSIZE = 32;
 const uint ADD_PER_THREAD = 1;
-const uint SEGMENTSIZE = 256;
-const uint SEGMENTBITS = 8;
+const uint SEGMENTSIZE = 16384;
+const uint SEGMENTBITS = 16;
 
 
 

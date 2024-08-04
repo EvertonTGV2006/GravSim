@@ -29,28 +29,35 @@ const bool enableValidationLayers = true;
 
 
 int main() {
-	try {
-		uint32_t cID = 63;
-		glm::uvec3 GRID_DIMENSIONS = { 4, 4, 4 };
-		glm::uvec3 cellPos;
-		cellPos.x = cID % GRID_DIMENSIONS.x;
-		cellPos.y = ((cID - cellPos.x) / GRID_DIMENSIONS.x) % GRID_DIMENSIONS.y;
-		cellPos.z = ((((cID - cellPos.x) / GRID_DIMENSIONS.x) - cellPos.y) / GRID_DIMENSIONS.y) % GRID_DIMENSIONS.z;
-		std::cout << cellPos.x << " " << cellPos.y << " " << cellPos.z << std::endl;
+	std::ofstream file;
+	file.open("data.csv");
+	file << "\n";
+	file.close();
+	for (uint32_t i = 0; i < 1; i++) {
+		try {
+			//uint32_t cID = 63;
+			//glm::uvec3 GRID_DIMENSIONS = { 4, 4, 4 };
+			//glm::uvec3 cellPos;
+			//cellPos.x = cID % GRID_DIMENSIONS.x;
+			//cellPos.y = ((cID - cellPos.x) / GRID_DIMENSIONS.x) % GRID_DIMENSIONS.y;
+			//cellPos.z = ((((cID - cellPos.x) / GRID_DIMENSIONS.x) - cellPos.y) / GRID_DIMENSIONS.y) % GRID_DIMENSIONS.z;
+			//std::cout << cellPos.x << " " << cellPos.y << " " << cellPos.z << std::endl;
 
 
 
-		PlayerObject player;
-		VulkanEngine engine;
-		engine.player = &player;
-		engine.initEngine();
-		engine.startDraw();
-		engine.cleanup();
+			PlayerObject player;
+			VulkanEngine engine;
+			engine.player = &player;
+			engine.runNumber = i;
+			engine.initEngine();
+			engine.startDraw();
+			engine.cleanup();
 
-	}
-	catch (const std::exception& e) {
-		std::cerr << e.what() << std::endl;
-		return EXIT_FAILURE;
+		}
+		catch (const std::exception& e) {
+			std::cerr << e.what() << std::endl;
+			return EXIT_FAILURE;
+		}
 	}
 }
 

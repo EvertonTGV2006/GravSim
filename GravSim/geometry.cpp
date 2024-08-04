@@ -3,6 +3,7 @@
 #include <vector>
 #include <chrono>
 #include <algorithm>
+#include <numeric>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
@@ -809,6 +810,8 @@ void ParticleGeometry::createParticles(uint32_t size) {
 		// 
 		float angle = (glm::two_pi<float>() / size) * i;
 
+		//part.position.y *= 0.1;
+
 		//part.position = { 10*glm::sin(angle), 10*glm::cos(angle), 0 };
 		
 		//part.velocity = { 1,1,1 };
@@ -837,30 +840,35 @@ void ParticleGeometry::createParticles(uint32_t size) {
 	uint32_t currentOffset = 0;
 
 	offsets->resize(GRID_DIMENSIONS.x * GRID_DIMENSIONS.y * GRID_DIMENSIONS.z);
-
+	std::vector<uint32_t> tOffsets(GRID_DIMENSIONS.x * GRID_DIMENSIONS.y * GRID_DIMENSIONS.z);
 	
 
+	//for (size_t i = 0; i < particles->size(); i++) {
+	//	if ((*particles)[i].cell != currentCell) {
+	//		if (currentCell == offsets->size()) {
+	//			break;
+	//		}
+	//		(*offsets)[currentCell+1] = currentOffset;
+	//		currentCell++;
+	//		i--;
+	//	}
+	//	else {
+	//		currentOffset++;
+	//	}
+	//}
+	//bool flag = false;
+	//for (size_t i = 0; i < offsets->size(); i++) {
+	//	if (flag == false && (*offsets)[i] > 0) {
+	//		flag = true;
+	//	}
+	//	else if (flag == true && (*offsets)[i] == 0) {
+	//		(*offsets)[i] = (*offsets)[i - 1];
+	//	}
+	//}
+
 	for (size_t i = 0; i < particles->size(); i++) {
-		if ((*particles)[i].cell != currentCell) {
-			if (currentCell + 1 == offsets->size()) {
-				break;
-			}
-			(*offsets)[currentCell+1] = currentOffset;
-			currentCell++;
-			i--;
-		}
-		else {
-			currentOffset++;
-		}
+		tOffsets[(*particles)[i].cell]++;
 	}
-	bool flag = false;
-	for (size_t i = 0; i < offsets->size(); i++) {
-		if (flag == false && (*offsets)[i] > 0) {
-			flag = true;
-		}
-		else if (flag == true && (*offsets)[i] == 0) {
-			(*offsets)[i] = (*offsets)[i - 1];
-		}
-	}
+	std::exclusive_scan(tOffsets.begin(), tOffsets.end(), offsets->data() , 0);
 	
 }

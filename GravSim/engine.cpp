@@ -64,7 +64,7 @@ void VulkanEngine::initEngine() {
     sphere.vertices = meshes[0].vertices;
     sphere.indices = meshes[0].indices;
     
-    std::thread spheret(&SphereGeometry::createSphereIcosphere, &sphere, 2);
+    std::thread spheret(&SphereGeometry::createSphereIcosphere, &sphere, 0);
 
     ParticleGeometry part{};
     part.particles = &particles;
@@ -130,6 +130,8 @@ void VulkanEngine::initEngine() {
     initSubclassData();
 
     //gravEngine.createRandomData();
+
+    frameTimes.reserve(1000);
 }
 
 void VulkanEngine::readFiles(std::vector<std::string> files, std::vector<std::vector<char>>* code) {
@@ -166,6 +168,9 @@ void VulkanEngine::runGraphics() {
     }
 }
 void VulkanEngine::executeGraphics() {
+
+
+
     vkWaitForFences(device, 1, &flightFences[frameIndex], VK_TRUE, UINT64_MAX);
     vkResetFences(device, 1, &flightFences[frameIndex]);
     vkResetCommandBuffer(drawCommandBuffers[frameIndex], 0);
@@ -306,6 +311,20 @@ void VulkanEngine::executeGraphics() {
     dt = std::chrono::duration<double>(ct - pt);
     pt = ct;
     gravEngine.simGrav(dt.count());
+
+    frameTimes.push_back(dt);
+
+    if (frameTimes.size() % 200 == 0) {
+        std::cout << "Player Pos: ";
+        glm::vec3 v = player->pos;
+        std::cout << v.x << ", " << v.y << ", " << v.z;
+        std::cout << std::endl;
+    }
+
+    if (gravEngine.endTrigger) {
+        glfwSetWindowShouldClose(winmanager.window, GLFW_TRUE);
+    }
+
     //gravEngine.createRandomData();
 
     //std::cout << "FPS: " << 1.0 / dt.count() << std::endl;
@@ -812,8 +831,8 @@ void VulkanEngine::initSubclassData() {
     baseRasterizer.initBufferData_B(transferCommandBuffer, graphicsQueue, memInitStructs[0]);
     gravEngine.syncBufferData_B(true, memInitStructs[1]);
 
-    
-    //vkFreeMemory(device, stagingMemory, nullptr);
+
+    vkFreeMemory(device, stagingMemory, nullptr);
     vkFreeCommandBuffers(device, graphicsCommandPool, 1, &transferCommandBuffer);
 }
 
@@ -1354,7 +1373,19 @@ void VulkanEngine::recreateSwapChain() {
 }
 
 
-
+void VulkanEngine::writeOutSampleData() {
+    std::ofstream dataOut;
+    dataOut.open("data.csv", std::ios::app);
+    if (!dataOut.is_open()) {
+        throw std::runtime_error("Failed to open file for writing");
+    }
+    dataOut << runNumber << ", ";
+    for (size_t i = 1; i < frameTimes.size(); i++) {
+        dataOut << frameTimes[i].count() << ", ";
+    }
+    dataOut << "\n";
+    dataOut.close();
+}
 
 //cleanup
 void VulkanEngine::cleanupSwapChain() {
@@ -1374,8 +1405,11 @@ void VulkanEngine::cleanup() {
     baseRasterizer.cleanup();
     gravEngine.cleanup();
 
+    writeOutSampleData();
 
     cleanupSwapChain();
+
+
 
 
     vkDestroyDescriptorPool(device, descriptorPool, nullptr);
@@ -1396,8 +1430,8 @@ void VulkanEngine::cleanup() {
 
 
     vkDestroyCommandPool(device, graphicsCommandPool, nullptr);
-    vkDestroyCommandPool(device, computeCommandPool, nullptr);
-    vkDestroyCommandPool(device, transferCommandPool, nullptr);
+    //vkDestroyCommandPool(device, computeCommandPool, nullptr);
+    //vkDestroyCommandPool(device, transferCommandPool, nullptr);
 
 
     vkDestroyRenderPass(device, renderPass, nullptr);
@@ -1410,4 +1444,5 @@ void VulkanEngine::cleanup() {
     }
     vkDestroySurfaceKHR(instance, surface, nullptr);
     vkDestroyInstance(instance, nullptr);
+    winmanager.cleanup();
 }

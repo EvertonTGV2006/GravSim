@@ -19,7 +19,7 @@ public:
 	std::vector<uint16_t> edgeIndices;
 	std::map<uint16_t, uint16_t> LODoffsets;
 	uint16_t mode = 0;
-	float scale = 0.02f;
+	float scale = 0.01f;
 	void createSphereLongLat(uint16_t);
 	void createSphereIcosphere(uint16_t);
 	void createIcosahedron(bool);
@@ -37,9 +37,9 @@ private:
 
 class ParticleGeometry {
 public:
-	static const uint32_t GRID_CELL_COUNT;
-	glm::ivec3 GRID_DIMENSIONS = { 16, 16, 16 };
-	glm::vec3 DOMAIN_DIMENSIONS = { 10, 10, 10 };
+	static const uint32_t GRID_CELL_COUNT = 32 * 32 * 32;
+	glm::ivec3 GRID_DIMENSIONS = { 32, 32, 32 };
+	glm::vec3 DOMAIN_DIMENSIONS = { 16, 16, 16 };
 
 
 	std::vector<Particle> *particles;

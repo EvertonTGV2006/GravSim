@@ -48,7 +48,7 @@ struct OptionalSettings {
         if (Anisotropy) {
             features->samplerAnisotropy = VK_TRUE;
         }
-        features->shaderFloat64 = VK_TRUE;
+        features->shaderFloat64 = VK_FALSE;
     }
 };
 struct LightingPushConstants {

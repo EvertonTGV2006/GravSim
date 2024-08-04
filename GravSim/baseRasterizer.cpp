@@ -215,6 +215,8 @@ void BaseRasterizer::createDescriptorSets() {
 		ssboInfo.offset = storageSize * ((i + 2) % FRAMES_IN_FLIGHT);
 		ssboInfo.range = storageSize;
 
+
+
 		std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
 
 		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -535,8 +537,9 @@ void BaseRasterizer::cleanup() {
 	}
 	vkUnmapMemory(device, uniformBufferMemory.memory);
 	vkDestroyBuffer(device, uniformBuffer, nullptr);
+	vkDestroyBuffer(device, stagingBuffer, nullptr);
 
-	vkFreeDescriptorSets(device, descriptorPool, descriptorSets.size(), descriptorSets.data());
+	//vkFreeDescriptorSets(device, descriptorPool, descriptorSets.size(), descriptorSets.data());
 
 
 	vkDestroyPipeline(device, pipeline, nullptr);

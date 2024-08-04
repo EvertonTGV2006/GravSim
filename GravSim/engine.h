@@ -43,6 +43,8 @@ public:
 	static const int FRAMES_IN_FLIGHT = 3;
 	static const int COMPUTE_STEPS = 3;
 
+	uint32_t runNumber;
+
 
 private:
 	VkInstance instance;
@@ -79,8 +81,9 @@ private:
 	std::vector<uint16_t> indices;
 	std::vector<Particle> particles;
 	std::vector<uint32_t> offsets;
-	const uint32_t partCount = 4096;
+	const uint32_t partCount = 65536 * 4;
 
+	std::vector<std::chrono::duration<double>> frameTimes;
 
 	VkCommandPool graphicsCommandPool;
 	VkCommandPool transferCommandPool;
@@ -100,6 +103,7 @@ private:
 	VkPhysicalDeviceMemoryProperties memProperties{};
 
 	uint32_t frameIndex = 0;
+	
 
 	std::chrono::time_point<std::chrono::high_resolution_clock> pt = std::chrono::high_resolution_clock::now();
 	std::chrono::time_point<std::chrono::high_resolution_clock> ct = std::chrono::high_resolution_clock::now();
@@ -137,6 +141,8 @@ private:
 
 	void recreateSwapChain();
 	void cleanupSwapChain();
+
+	void writeOutSampleData();
 
 	void readFiles(std::vector<std::string>, std::vector<std::vector<char>>*);
 

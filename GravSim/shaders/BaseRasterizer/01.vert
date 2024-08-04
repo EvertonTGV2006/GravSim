@@ -67,7 +67,7 @@ vec3 HSVtoRGB(float hue, float sat, float val){
 
 void main() {
     Particle particleIn = particlesIn[gl_InstanceIndex];
-    const float velMax = 5;
+    const float velMax = 15;
     const float velMin = 0;
 
 
@@ -82,8 +82,8 @@ void main() {
     else if (mode==1){
     vec3 Color = {1.0f, 1.0f, 1.0f};
     float mass = particleIn.velocity.w;
-        gl_Position = ubo.proj*ubo.view*constants.model*vec4((inPosition*mass+particleIn.position.xyz), 1.0);
-        fragPos = (constants.model*vec4(inPosition+vec3(particleIn.position.xyz), 1.0)).xyz;
+        gl_Position = ubo.proj*ubo.view*constants.model*vec4((inPosition*mass+particleIn.position.xzy), 1.0);
+        fragPos = (constants.model*vec4(inPosition+vec3(particleIn.position.xzy), 1.0)).xyz;
         float velMod = length(particleIn.velocity.xyz);
         velMod = clamp(velMod, velMin, velMax);
         float velModAdj = (velMod - velMin) * 360 / (velMax - velMin); 

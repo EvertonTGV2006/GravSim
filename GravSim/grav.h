@@ -28,7 +28,9 @@ struct GravPushConstants {
 class GravEngine {
 public:
 	static const uint32_t COMPUTE_STEPS = 3;
-	static const uint32_t GRID_CELL_COUNT = 4096;
+	static const uint32_t GRID_CELL_COUNT = 32768;
+	const uint32_t WORKSIZE = 1024;
+	std::atomic_bool endTrigger = false;
 
 	void initGrav_A(GravInit);
 	void initGrav_B();
@@ -72,7 +74,7 @@ private:
 
 	
 
-	const uint32_t WORKSIZE = 1024;
+	
 	
 	bool firstFrame = true;
 
@@ -111,7 +113,6 @@ private:
 	VkDescriptorSetLayout gravDescriptorSetLayout;
 	
 	std::array<VkPipeline, 5>sortPipelines;
-	std::array<std::array<VkEvent, 4>, COMPUTE_STEPS>sortEvents;
 	VkPipelineLayout sortPipelineLayout;
 	VkDescriptorSetLayout sortDescriptorSetLayout;
 	std::array<VkDescriptorSet, COMPUTE_STEPS> sortDescriptorSets;
@@ -132,6 +133,17 @@ private:
 
 	uint32_t frameIndex;
 
+	void* mappedMem;
+	void* mappedMem2;
+	uint32_t* dOffMapped;
+	uint32_t* offMapped;
+	uint32_t* scanMapped;
+	Particle* particlesMapped;
 
+	std::vector<uint32_t> nullDOffData;
+
+	std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
+	std::chrono::time_point<std::chrono::high_resolution_clock> endTime;
+	std::chrono::duration<double> renderDuration;
 
 };
