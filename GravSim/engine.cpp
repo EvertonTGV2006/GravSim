@@ -402,31 +402,47 @@ void VulkanEngine::createInstance() {
 }
 void VulkanEngine::createLogicalDevice() {
     QueueFamilyIndices indices = findGraphicsQueueFamilies(physicalDevice);
+    uint32_t queueFamilyCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+    lowPerformanceSetting = (queueFamilyCount > 1) ? false : true;
+
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
     std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
 
     float queuePriority = 1.0f;
-    for (uint32_t queueFamily : uniqueQueueFamilies) {
-        VkDeviceQueueCreateInfo queueCreateInfo{};
+    VkDeviceQueueCreateInfo queueCreateInfo{};
+    if (lowPerformanceSetting) {
+  
         queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCreateInfo.queueFamilyIndex = queueFamily;
+        queueCreateInfo.queueFamilyIndex = 0;
         queueCreateInfo.queueCount = 1;
         queueCreateInfo.pQueuePriorities = &queuePriority;
         queueCreateInfos.push_back(queueCreateInfo);
     }
-    settings.configureDeviceFeatures(&requiredDeviceFeatures);
-    VkDeviceQueueCreateInfo queueCreateInfo{};
-    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queueCreateInfo.queueFamilyIndex = findComputeQueueFamily(physicalDevice);
-    queueCreateInfo.queueCount = 1;
-    queueCreateInfo.pQueuePriorities = &queuePriority;
-    queueCreateInfos.push_back(queueCreateInfo);
-    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queueCreateInfo.queueFamilyIndex = findTransferQueueFamily(physicalDevice);
-    queueCreateInfo.queueCount = 1;
-    queueCreateInfo.pQueuePriorities = &queuePriority;
-    queueCreateInfos.push_back(queueCreateInfo);
+    else {
+        for (uint32_t queueFamily : uniqueQueueFamilies) {
+            queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueCreateInfo.queueFamilyIndex = queueFamily;
+            queueCreateInfo.queueCount = 1;
+            queueCreateInfo.pQueuePriorities = &queuePriority;
+            queueCreateInfos.push_back(queueCreateInfo);
+        }
+        settings.configureDeviceFeatures(&requiredDeviceFeatures);
+
+        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfo.queueFamilyIndex = findComputeQueueFamily(physicalDevice);
+        queueCreateInfo.queueCount = 1;
+        queueCreateInfo.pQueuePriorities = &queuePriority;
+        queueCreateInfos.push_back(queueCreateInfo);
+        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfo.queueFamilyIndex = findTransferQueueFamily(physicalDevice);
+        queueCreateInfo.queueCount = 1;
+        queueCreateInfo.pQueuePriorities = &queuePriority;
+        queueCreateInfos.push_back(queueCreateInfo);
+    }
+
+
 
     VkPhysicalDeviceSynchronization2Features extraFeatures{};
     extraFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
@@ -467,14 +483,22 @@ void VulkanEngine::createLogicalDevice() {
     if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS) {
         throw std::runtime_error("failed to create logical device!");
     }
-    vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
-    vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
-    /*
-    vkGetDeviceQueue(device, findComputeQueueFamily(physicalDevice), 0, &computeQueue);
-    vkGetDeviceQueue(device, findTransferQueueFamily(physicalDevice), 0, &transferQueue);
-    */
-    vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &computeQueue);
-    vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &transferQueue);
+    if (lowPerformanceSetting) {
+        vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+        presentQueue = graphicsQueue;
+        computeQueue = graphicsQueue;
+        transferQueue = graphicsQueue;
+    }
+    else {
+        vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+        vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+        /*
+        vkGetDeviceQueue(device, findComputeQueueFamily(physicalDevice), 0, &computeQueue);
+        vkGetDeviceQueue(device, findTransferQueueFamily(physicalDevice), 0, &transferQueue);
+        */
+        vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &computeQueue);
+        vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &transferQueue);
+    }
 
     vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
 }

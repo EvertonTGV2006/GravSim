@@ -45,6 +45,7 @@ public:
 
 	uint32_t runNumber;
 
+	bool lowPerformanceSetting;
 
 private:
 	VkInstance instance;
