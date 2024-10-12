@@ -404,6 +404,16 @@ void VulkanEngine::createLogicalDevice() {
     QueueFamilyIndices indices = findGraphicsQueueFamilies(physicalDevice);
     uint32_t queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+    std::vector<VkQueueFamilyProperties> queueProperties;
+    queueProperties.resize(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueProperties.data());
+    queueFamilyCount = 0;
+    for (VkQueueFamilyProperties queueProperty : queueProperties) {
+        uint32_t flags = queueProperty.queueFlags;
+        if ((flags & VK_QUEUE_COMPUTE_BIT)) {
+            queueFamilyCount++;
+        }
+    }
     lowPerformanceSetting = (queueFamilyCount > 1) ? false : true;
 
 
@@ -693,7 +703,7 @@ void VulkanEngine::createDescriptorPool() {
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     poolSizes[1].descriptorCount = static_cast<uint32_t>(FRAMES_IN_FLIGHT);
     poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    poolSizes[2].descriptorCount = static_cast<uint32_t>(FRAMES_IN_FLIGHT + COMPUTE_STEPS);
+    poolSizes[2].descriptorCount = static_cast<uint32_t>(FRAMES_IN_FLIGHT + 6*COMPUTE_STEPS);
 
 
     VkDescriptorPoolCreateInfo poolInfo{};
