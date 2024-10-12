@@ -47,6 +47,7 @@ void BaseRasterizer::createPipeline() {
 		shaderStages[i].pName = "main";
 		shaderStages[i].pNext = nullptr;
 		shaderStages[i].pSpecializationInfo = nullptr;
+		shaderStages[i].flags = 0;
 	}
 
 	auto bindingDescription = Vertex::getBindingDescription();
