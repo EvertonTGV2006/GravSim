@@ -145,53 +145,46 @@ void GravEngine::createDescriptorSets() {
 	allocInfo.descriptorSetCount = static_cast<uint32_t>(COMPUTE_STEPS);
 	allocInfo.pSetLayouts = layouts.data();
 
-	allocInfo.descriptorSetCount = 1;
+	if (vkAllocateDescriptorSets(device, &allocInfo, gravDescriptorSets.data()) != VK_SUCCESS) { throw std::runtime_error("Failed to allocate GravDescriptorSets"); }
 
-	/*if (vkAllocateDescriptorSets(device, &allocInfo, gravDescriptorSets.data()) != VK_SUCCESS) { throw std::runtime_error("Failed to allocate GravDescriptorSets"); }*/
-	if (OLD_EX) {
-		if (vkAllocateDescriptorSets(device, &allocInfo, &gravDescriptorSets[0]) != VK_SUCCESS) { throw std::runtime_error("Failed to allocate GravDescriptorSets0"); }
-		if (vkAllocateDescriptorSets(device, &allocInfo, &gravDescriptorSets[1]) != VK_SUCCESS) { throw std::runtime_error("Failed to allocate GravDescriptorSets1"); }
-		if (vkAllocateDescriptorSets(device, &allocInfo, &gravDescriptorSets[2]) != VK_SUCCESS) { throw std::runtime_error("Failed to allocate GravDescriptorSets2"); }
+	//then update them with relevant accesses to the storage buffers
+	for (size_t i = 0; i < COMPUTE_STEPS; i++) {
+		uint32_t readIndex = i;
+		uint32_t writeIndex = (i + 1) % COMPUTE_STEPS;
 
-		//then update them with relevant accesses to the storage buffers
-		for (size_t i = 0; i < COMPUTE_STEPS; i++) {
-			uint32_t readIndex = i;
-			uint32_t writeIndex = (i + 1) % COMPUTE_STEPS;
+		uint32_t range = static_cast<uint32_t>(particles->size()) * sizeof(Particle);
 
-			uint32_t range = static_cast<uint32_t>(particles->size()) * sizeof(Particle);
+		uint32_t readOffset = readIndex * range;
+		uint32_t writeOffset = writeIndex * range;
 
-			uint32_t readOffset = readIndex * range;
-			uint32_t writeOffset = writeIndex * range;
+		VkDescriptorBufferInfo readBuffer{};
+		readBuffer.buffer = storageBuffer;
+		readBuffer.offset = readOffset;
+		readBuffer.range = range;
 
-			VkDescriptorBufferInfo readBuffer{};
-			readBuffer.buffer = storageBuffer;
-			readBuffer.offset = readOffset;
-			readBuffer.range = range;
+		VkDescriptorBufferInfo writeBuffer{};
+		writeBuffer.buffer = storageBuffer;
+		writeBuffer.offset = writeOffset;
+		writeBuffer.range = range;
 
-			VkDescriptorBufferInfo writeBuffer{};
-			writeBuffer.buffer = storageBuffer;
-			writeBuffer.offset = writeOffset;
-			writeBuffer.range = range;
+		std::array<VkWriteDescriptorSet, 2> writes{};
+		writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writes[0].dstSet = gravDescriptorSets[i];
+		writes[0].dstBinding = 0;
+		writes[0].dstArrayElement = 0;
+		writes[0].descriptorCount = 1;
+		writes[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		writes[0].pBufferInfo = &readBuffer;
 
-			std::array<VkWriteDescriptorSet, 2> writes{};
-			writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			writes[0].dstSet = gravDescriptorSets[i];
-			writes[0].dstBinding = 0;
-			writes[0].dstArrayElement = 0;
-			writes[0].descriptorCount = 1;
-			writes[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			writes[0].pBufferInfo = &readBuffer;
+		writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writes[1].dstSet = gravDescriptorSets[i];
+		writes[1].dstBinding = 1;
+		writes[1].dstArrayElement = 0;
+		writes[1].descriptorCount = 1;
+		writes[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		writes[1].pBufferInfo = &writeBuffer;
 
-			writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			writes[1].dstSet = gravDescriptorSets[i];
-			writes[1].dstBinding = 1;
-			writes[1].dstArrayElement = 0;
-			writes[1].descriptorCount = 1;
-			writes[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			writes[1].pBufferInfo = &writeBuffer;
-
-			vkUpdateDescriptorSets(device, 2, writes.data(), 0, nullptr);
-		}
+		vkUpdateDescriptorSets(device, 2, writes.data(), 0, nullptr);
 	}
 	createSortDescriptorSets();
 }
@@ -250,10 +243,7 @@ void GravEngine::createSortDescriptorSets() {
 	allocInfo.descriptorSetCount = static_cast<uint32_t>(COMPUTE_STEPS);
 	allocInfo.pSetLayouts = layouts.data();
 
-	if (vkAllocateDescriptorSets(device, &allocInfo, sortDescriptorSets.data()) != VK_SUCCESS) {
-		auto error = (vkAllocateDescriptorSets(device, &allocInfo, sortDescriptorSets.data()));
-		throw std::runtime_error("Failed to allocate GravDescriptorSets"); 
-	}
+	if (vkAllocateDescriptorSets(device, &allocInfo, sortDescriptorSets.data()) != VK_SUCCESS) { throw std::runtime_error("Failed to allocate GravDescriptorSets"); }
 
 	for (size_t i = 0; i < COMPUTE_STEPS; i++) {
 		VkWriteDescriptorSet baseWrite{};
