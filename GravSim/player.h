@@ -32,8 +32,8 @@ public:
 
 	std::atomic_bool windowShouldClose;
 
-	glm::vec3 pos = { 10,10,10 };
-	glm::vec3 viewDirection = { -2, -2, -2 };
+	glm::vec3 pos = { -4,27,0 };
+	glm::vec3 viewDirection = {4, -27, 0 };
 	glm::vec3 viewFocus = { 0, 0, 0 };
 	glm::vec3 viewUp = { 0,0,1 };
 	float viewZoom = 1;
