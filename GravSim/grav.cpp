@@ -824,7 +824,7 @@ void GravEngine::cleanup() {
 	vkDestroyBuffer(device, offsetBuffer, nullptr);
 	vkDestroyBuffer(device, deltaBuffer, nullptr);
 	vkDestroyBuffer(device, scanBuffer, nullptr);
-	vkDestroyBuffer(device, stagingBuffer, nullptr);
+	//vkDestroyBuffer(device, stagingBuffer, nullptr);
 
 	for (size_t i = 0; i < sortPipelines.size(); i++) {
 		vkDestroyPipeline(device, sortPipelines[i], nullptr);

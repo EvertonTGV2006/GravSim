@@ -1,4 +1,4 @@
-#version 450
+#version 460
 
 struct Particle {
 	vec4 position;
