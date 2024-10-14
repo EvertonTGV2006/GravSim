@@ -92,6 +92,9 @@ struct Particle {
         std::cout << "Velocity: " << velocity.x << ", " << velocity.y << ", " << velocity.z << std::endl;
         std::cout << "Mass: " << mass << " | Cell: " << cell << " | newIndex: " << newIndex << std::endl;
     }
+
+    static std::array<VkVertexInputAttributeDescription, 4> getParticleAttributeDescriptions();
+    static VkVertexInputBindingDescription getParticleInputBindings();
 };
 
 struct ComputeConstants {
