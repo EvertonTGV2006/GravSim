@@ -44,4 +44,6 @@
         return attributeDescriptions;
     }
 
-
+    void Vertex::printVertex() {
+        std::cout << "Position: " << pos.x << ", " << pos.y << ", " << pos.z << " Colour: " << colour.r << ", " << colour.g << ", " << colour.b << std::endl;
+    }

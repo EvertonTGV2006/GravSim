@@ -41,6 +41,7 @@ void PlayerObject::updateGLFWcallbacks() {
 	glfwSetFramebufferSizeCallback(winmanager.window, framebufferResizeCallback);
 	glfwSetCursorPosCallback(winmanager.window, mouseMotionCallback);
 	glfwSetCursorPos(winmanager.window, xpos, ypos);
+	std::cout << "Setting Callbacks";
 	glfwSetKeyCallback(winmanager.window, keyCallback);
 	glfwSetScrollCallback(winmanager.window, scrollCallback);
 	glfwSetWindowCloseCallback(winmanager.window, windowCloseCallback);
@@ -84,11 +85,12 @@ void PlayerObject::mouseMotionCallback(GLFWwindow* window, double xpos, double y
 }
 void PlayerObject::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
-	//std::cout << "Key: " << key << " | Action: " << action << std::endl;
+	std::cout << "Key: " << key << " | Action: " << action << std::endl;
 
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		//std::cout << "Window should close cmd";
 		app->windowShouldClose = true;
+		glfwSetWindowShouldClose(window, GLFW_TRUE);
 		//std::cout << "Close Window!" << std::endl;
 	}
 	else if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
@@ -103,6 +105,9 @@ void PlayerObject::keyCallback(GLFWwindow* window, int key, int scancode, int ac
 	}
 	else if (key == GLFW_KEY_TAB && action == GLFW_RELEASE) {
 		app->timeAccel = false;	
+	}
+	else if (key == GLFW_KEY_V && action == GLFW_PRESS) {
+		app->validateParticles = true; //validate particles
 	}
 	else if (action == GLFW_PRESS && key == GLFW_KEY_P) {
 		if (glfwGetWindowMonitor(window) == NULL) {

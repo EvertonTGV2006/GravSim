@@ -1,0 +1,59 @@
+#define WORKSIZE =  1024
+#define SUBSIZE = 32
+
+
+layout (std140, binding = 1) readonly buffer offsets1{
+    uint oldOffsets[ ];
+}
+layout (std140, binding = 2) buffer offsets2{
+    uint deltaOffsets[ ];
+}
+layout (std140, binding = 3) buffer offsets3 {
+    uint newOffsets[ ];
+}
+layout (std140, binding = 4) buffer offsets4{
+    
+}
+
+
+shared int subTotalDelta[WORKSIZE / SUBGROUP_SIZE];
+
+layout (local_size_x = )
+
+
+
+
+void main(){
+    //we want to perform scan on delta offsets. since each uint is a 8 4bit values (with 1000 being 0, 1001 = 1, 0111 = -1 etc), we scan each uint in the thread
+    uint gID = gl_GlobalInvocationID.x;
+    uint lID = gl_LocalInvocationID.x;
+    uint wID = gl_WorkGroupID.x;
+    uint sID = lID >> 5; //subgroup ID
+    uint deltaIn = deltaOffsets[gID];
+
+    int deltaSum = 0;
+    //now we sum the values of the deltaIn 8 nibbles
+    for (int i = 0; i < 8; i++){
+        uint dataMask = 7 << i * 4; //access the 3 ls bits for the data
+        uint signMask = 8 << i * 4; //access the ms bit for the sign 
+        uint dataIn = (deltaIn & dataMask) >> i * 4;
+        deltaSum = (deltaIn & signMask) ? deltaSum + dataIn : deltaSum - dataIn; //if sign bit is 1, data is pos, add, else subtract.
+    }
+    int subScanDelta = subgroupExclusiveAdd(deltaSum);
+    barrier()
+    if (lID & (SUBSIZE - 1) == SUBSIZE - 1){ //select the 31 thread of the subgroup as that will have the highest subScanDelta
+        subTotalDelta[sID] = subScanDelta + deltaSum;
+        barrier();
+        for (uint i = 1; i < WORKSIZE / SUBSIZE; i<=1){ 
+            if(sID & i == 0){//if the selected bit for the sID is 0, break out the loop
+                break;
+            }
+            else {
+                subTotalDelta[sID] += subTotalDelta[sID - i]; //if selected bit = 1, then add the value of the pair who's bit is 0
+                barrier();
+            }
+        }
+    }
+    
+    
+}

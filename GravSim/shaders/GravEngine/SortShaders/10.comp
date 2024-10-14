@@ -1,0 +1,77 @@
+#version 460
+
+#extension GL_KHR_shader_subgroup_basic : enable
+#extension GL_KHR_shader_subgroup_arithmetic : enable
+#extension GL_KHR_shader_subgroup_ballot : enable
+
+const int WORKSIZE =  1024;
+const int SUBSIZE = 32;
+const int SEGMENTSIZE = 16384;
+const uint DATA_MASK = 16383;
+const int SEGMENTBITS = 16;
+const int CELL_COUNT = 32768;
+const ivec3 GRID_DIMENSIONS = ivec3(32, 32, 32);
+const vec3 DOMAIN_DIMENSIONS = vec3(16, 16, 16);
+const int SEARCH_SIZE = 1;
+const uint SEARCH_CELLS = 9; //pow(2*SEARCH_SIZE + 1, 3);
+const float CONSTANT_G = 0.00001;
+const float dt = 0.5;
+
+struct Particle{
+    vec4 pos; //mass packed as w
+    vec4 vel;   //unused packed as w
+    int cell;
+    int newIndex;
+};
+struct UParticle{
+    vec3 pos;
+    vec3 vel;
+    float unused;
+    float mass;
+    int cell;
+    int newIndex;
+};
+
+layout (std430, binding = 0) buffer SSBOstageOutput{
+    int wScan[ ]; //size of workgroups
+};
+layout (std430, binding = 1) buffer SSBOOutput{
+    int offA[ ]; //size of cells
+};
+layout (std430, binding = 2) buffer SSBOInput2{
+    int offB[ ];
+};
+layout (std430, binding = 3) buffer SSBOInput3{
+    uint dOff[ ];
+};
+layout (std430, binding = 4) buffer PartInput{
+    Particle pIn[ ];
+};
+layout (std430, binding = 5) buffer PartOutput{
+    Particle pOut[ ];
+};
+layout (local_size_x = WORKSIZE) in;
+
+
+uint gID = gl_GlobalInvocationID.x;
+uint lID = gl_LocalInvocationID.x;
+uint wID = gl_WorkGroupID.x;
+uint sID = lID >> 5;
+
+void main(){
+    Particle p1 = pIn[gID];
+    int nCell = p1.cell;
+    int offsetStart = offB[nCell];
+    int offsetEnd = (nCell < offB.length() - 1) ? offB[nCell + 1] : offB.length();
+    int currentIndex = int(gID) - offA[nCell]; //only use this if havent moved;
+    int newIndex = 0;
+
+    if(p1.newIndex == 0){
+        newIndex = offsetStart + currentIndex;
+    }
+    else {
+        newIndex = offsetEnd - p1.newIndex;
+    }
+    p1.newIndex = 0;
+    pOut[newIndex] = p1;
+}

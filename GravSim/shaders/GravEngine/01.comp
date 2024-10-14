@@ -1,0 +1,103 @@
+#version 450
+
+#extension GL_KHR_shader_subgroup_basic : enable
+#extension GL_KHR_shader_subgroup_arithmetic : enable
+
+
+
+struct Particle {
+	vec4 pos;
+	vec4 vel;
+};
+
+
+
+layout(std140, binding = 0) readonly buffer ParticleSSBOIn {
+   Particle particlesIn[ ];
+};
+
+layout(std140, binding = 1) buffer ParticleSSBOOut {
+   Particle particlesOut[ ];
+};
+
+layout(push_constant) uniform pc {
+    double deltaTime;
+} constants;
+
+const int GROUP_SIZE = 1024;
+const int LN_GP_SIZE = 10;
+const int ADD_PER_GROUP = 16 ;
+const int LN_ADD_PER_GROUP = 4;
+
+const int SUBGROUP_SIZE = 32;
+const int LN_SUB_SIZE = 5;
+
+const float scale = 0.01; // defined in geometry.h
+
+const float scaleSquaredInv = 0.25 / (scale * scale);
+
+shared vec4 loc_acc[GROUP_SIZE];
+
+layout(local_size_x = 1, local_size_y = GROUP_SIZE, local_size_z = 1) in;
+
+void main() 
+{
+    float G = 0.0008;
+
+
+    float dt = float(constants.deltaTime);
+    
+    uint inx = gl_GlobalInvocationID.x;
+    uint iny = gl_LocalInvocationID.y;
+
+    Particle partx = particlesIn[inx];
+
+    vec4 thisaccel = {0, 0, 0, 0};
+    for (uint i =0; i < ADD_PER_GROUP; i++){
+        Particle party = particlesIn[(iny + i)];
+        if (inx != (iny + i)){
+
+            vec4 sep = partx.pos - party.pos;
+            float distSquaredInv = 1/dot(sep,sep);
+            vec4 sepNorm = -normalize(sep);
+            thisaccel += G*party.vel.w*distSquaredInv*sepNorm;
+        }
+    }
+    vec4 accel = subgroupAdd(thisaccel);
+    barrier();
+    Particle parto;
+
+    if ((gl_LocalInvocationID.y & (SUBGROUP_SIZE - 1)) == 0){ //subgroupElect();
+        uint index = gl_LocalInvocationID.y;
+        
+        index >>= LN_SUB_SIZE;
+
+        loc_acc[index] = accel;
+        uint offset = 1;
+        uint check = 1;
+        //1st add is on even thread so check the 1s bit
+        uint flag = 0;
+        barrier();
+
+        for (int i = 0; i < (LN_GP_SIZE - LN_SUB_SIZE); i++){
+            if ((flag == 0) && ((index & check) == 0)){
+                loc_acc[index] += loc_acc[index + offset];
+                offset <<=1;
+                check <<= 1;
+                barrier();
+            }
+            else {flag = 1;}
+        }
+        if (gl_LocalInvocationID.y == 0){
+            parto.vel.xyz = partx.vel.xyz + dt * loc_acc[0].xyz;
+            parto.vel.w = partx.vel.w;
+            parto.pos = partx.pos + dt * vec4(parto.vel.xyz, 0.0);
+
+            particlesOut[inx] = parto;
+        }
+    }
+}
+
+    
+
+

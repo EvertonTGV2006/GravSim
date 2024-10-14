@@ -1,0 +1,66 @@
+#version 460
+
+const uint WORKSIZE =  1024;
+const uint SUBSIZE = 32;
+const uint ADD_PER_THREAD = 1;
+const uint SEGMENTSIZE = 256;
+const uint SEGMENTBITS = 8;
+const uint MOVE_PER_THREAD = 1;
+const uint CELL_COUNT = 4096;
+
+struct Particle{
+    vec4 pos;
+    vec4 vel;
+    uint cell;
+    uint newIndex;
+};
+
+
+layout (std430, binding = 1) buffer SSBOInput{
+    uint newOffsets[ ];
+};
+layout (std430, binding = 2) buffer SSBOInput2{
+    uint oldOffsets[ ];
+};
+layout (std430, binding = 4) buffer PartInput{
+    Particle particlesIn[ ];
+};
+layout (std430, binding = 5) buffer PartOutput{
+    Particle particlesOut[ ];
+};
+
+layout (local_size_x = WORKSIZE) in;
+
+void main(){
+    uint gID = gl_GlobalInvocationID.x;
+
+    Particle particleIn;
+    for(uint i = 0; i < MOVE_PER_THREAD; i++){
+        uint pID = gID * MOVE_PER_THREAD + i;
+        particleIn = particlesIn[pID];
+        uint cellID = particleIn.cell;
+        uint newIndex = particleIn.newIndex;
+        if(newIndex == 0){
+            //no cell move so simple, work out particle offset from current cell start and work out write location
+            uint currentOffset = pID;
+            uint cellOffset = oldOffsets[cellID];
+            uint localOffset = currentOffset - cellOffset;
+            uint newCellOffset = newOffsets[cellID];
+            uint newIndex = newCellOffset + localOffset;
+            particlesOut[newIndex] = particleIn;
+        }
+        else {
+            //cell move, so find new cell offset and place new index in from the end;
+            uint newCellEnd = 0;
+            if (cellID == CELL_COUNT - 1){
+                newCellEnd = particlesIn.length();
+            }
+            else {
+                newCellEnd = newOffsets[cellID + 1];
+            }
+            uint newIndex = newCellEnd - particleIn.newIndex;
+            particlesOut[newIndex] = particleIn;
+        }
+    }
+    
+}

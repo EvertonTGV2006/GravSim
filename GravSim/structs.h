@@ -3,7 +3,6 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include "structs.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -31,6 +30,7 @@ struct Vertex {
     glm::vec2 texCoord;
     static VkVertexInputBindingDescription getBindingDescription();
     static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions();
+    void printVertex();
 };
 struct Edge {
     uint16_t vert0;
@@ -40,6 +40,7 @@ struct UniformBufferObject {
     glm::mat4 model;
     glm::mat4 view;
     glm::mat4 proj;
+    glm::mat4 zeta;
 };
 struct OptionalSettings {
     bool Anisotropy;
@@ -47,7 +48,7 @@ struct OptionalSettings {
         if (Anisotropy) {
             features->samplerAnisotropy = VK_TRUE;
         }
-        features->shaderFloat64 = VK_TRUE;
+        features->shaderFloat64 = VK_FALSE;
     }
 };
 struct LightingPushConstants {
@@ -83,8 +84,33 @@ struct Particle {
     alignas(16)glm::vec3 position;
     alignas(16)glm::vec3 velocity;
     float mass;
+    uint32_t cell;
+    uint32_t newIndex;
+
+    void print() {
+        std::cout << "Position: " << position.x << ", " << position.y << ", " << position.z << std::endl;
+        std::cout << "Velocity: " << velocity.x << ", " << velocity.y << ", " << velocity.z << std::endl;
+        std::cout << "Mass: " << mass << " | Cell: " << cell << " | newIndex: " << newIndex << std::endl;
+    }
 };
 
 struct ComputeConstants {
     double deltaTime;
+};
+
+struct MemInit {
+    VkDeviceMemory memory;
+    uint32_t offset;
+    uint32_t range;
+};
+
+struct Mesh {
+    std::vector<Vertex>* vertices;
+    std::vector<uint16_t>* indices;
+    uint32_t vertexCount;
+    uint32_t indexCount;
+};
+struct MemoryDetails {
+    VkMemoryRequirements requirements;
+    VkMemoryPropertyFlags flags;
 };

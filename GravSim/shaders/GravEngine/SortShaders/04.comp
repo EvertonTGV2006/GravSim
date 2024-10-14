@@ -1,0 +1,114 @@
+
+#version 460
+
+
+
+const uint WORKSIZE =  1024;
+const uint SUBSIZE = 32;
+const uint ADD_PER_THREAD = 1;
+const uint SEGMENTSIZE = 256;
+const uint SEGMENTBITS = 8;
+const uint CELL_COUNT = 4096;
+
+struct Particle{
+    vec4 pos;
+    vec4 vel;
+    uint cell;
+    uint newIndex;
+};
+
+
+//this shader takes the final reduced scan and adds it to the new offsets;
+layout (std430, binding = 0) readonly buffer SSBOstageInput{
+    int scanIn[ ];
+};
+layout (std430, binding = 1) buffer SSBOInput{
+    uint newOffsets[ ];
+};
+layout (std430, binding = 2) readonly buffer SSBOInput2{
+    uint oldOffsets[ ];
+};
+layout (std430, binding = 5) readonly buffer PartInput{
+    Particle particlesIn[ ];
+};
+layout (std430, binding = 4) buffer PartOutput{
+    Particle particlesOut[ ];
+};
+
+layout(local_size_x = WORKSIZE) in;
+
+void main(){
+    uint gID  = gl_GlobalInvocationID.x;
+    uint wID = gl_WorkGroupID.x;
+    uint index = 0;
+    uint offsetIn = 0;
+    uint offsetOut = 0;
+    int sScanIn = 0;
+    uint uScanIn = 0;
+    uint offsetStart = 0;
+    uint offsetEnd = 0;
+    uint offsetRange = 0;
+    uint startIndex = 0;
+    uint endIndex = 0;
+    uint newIndex2 = 0;
+    Particle particleIn;
+
+    for (int i = 0; i <((32/2) / SEGMENTBITS ) * ADD_PER_THREAD; i++){
+        index = ((32/2) / SEGMENTBITS) * int(gID) * ADD_PER_THREAD + i;
+        offsetIn = newOffsets[index];
+
+        sScanIn = scanIn[wID];
+
+        if(sScanIn<0){
+            uScanIn = uint (sScanIn * -1);
+            offsetOut = offsetIn - uScanIn;
+        }
+        else {
+            uScanIn = uint(sScanIn);
+            offsetOut = offsetIn + uScanIn;
+        }
+        newOffsets[index] = offsetOut;
+
+
+
+        offsetStart = oldOffsets[index];
+        offsetEnd = 0;
+        if(index == CELL_COUNT - 1){
+             offsetEnd = particlesIn.length();
+        }
+        else {
+            offsetEnd = oldOffsets[index + 1];
+        }
+        offsetRange = offsetEnd - offsetStart;
+        startIndex = offsetStart;
+        endIndex = offsetEnd - 1;
+
+        
+
+
+        for (uint j = 0; j < offsetRange; j++){
+            //particleIn = particlesIn[offsetStart + j];
+            newIndex2 = particleIn.newIndex;
+            //particleIn.newIndex = j;
+            
+            if (newIndex2 == 0){
+                particlesOut[startIndex].pos = particleIn.pos;
+                particlesOut[startIndex].vel = particleIn.vel;
+                particlesOut[startIndex].cell = particleIn.cell;
+                particlesOut[startIndex].newIndex = particleIn.newIndex;
+                startIndex = startIndex + 1;
+            }
+            else {
+                //particlesOut[endIndex] = particleIn;
+                particlesOut[startIndex].pos = particleIn.pos;
+                particlesOut[startIndex].vel = particleIn.vel;
+                particlesOut[startIndex].cell = particleIn.cell;
+                particlesOut[startIndex].newIndex = particleIn.newIndex;
+                endIndex = endIndex - 1;
+            }
+        }
+    }
+
+    //newOffsets[gID] = newOffsets.length();
+    //newOffsets[wID * gID] = 2;
+}

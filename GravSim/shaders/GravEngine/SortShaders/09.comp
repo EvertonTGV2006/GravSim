@@ -1,0 +1,104 @@
+#version 460
+
+#extension GL_KHR_shader_subgroup_basic : enable
+#extension GL_KHR_shader_subgroup_arithmetic : enable
+#extension GL_KHR_shader_subgroup_ballot : enable
+
+const int WORKSIZE =  1024;
+const int SUBSIZE = 32;
+const int SEGMENTSIZE = 16384;
+const uint DATA_MASK = 16383;
+const int SEGMENTBITS = 16;
+const int CELL_COUNT = 32768;
+const ivec3 GRID_DIMENSIONS = ivec3(32, 32, 32);
+const vec3 DOMAIN_DIMENSIONS = vec3(16, 16, 16);
+const int SEARCH_SIZE = 1;
+const uint SEARCH_CELLS = 9; //pow(2*SEARCH_SIZE + 1, 3);
+const float CONSTANT_G = 0.00001;
+const float dt = 0.5;
+
+struct Particle{
+    vec4 pos; //mass packed as w
+    vec4 vel;   //unused packed as w
+    int cell;
+    int newIndex;
+};
+struct UParticle{
+    vec3 pos;
+    vec3 vel;
+    float unused;
+    float mass;
+    int cell;
+    int newIndex;
+};
+
+layout (std430, binding = 0) buffer SSBOstageOutput{
+    int wScan[ ]; //size of workgroups
+};
+layout (std430, binding = 1) buffer SSBOOutput{
+    int offA[ ]; //size of cells
+};
+layout (std430, binding = 2) buffer SSBOInput2{
+    int offB[ ];
+};
+layout (std430, binding = 3) buffer SSBOInput3{
+    uint dOff[ ];
+};
+layout (std430, binding = 4) buffer PartInput{
+    Particle pIn[ ];
+};
+layout (std430, binding = 5) buffer PartOutput{
+    Particle pOut[ ];
+};
+
+shared int sData[WORKSIZE / SUBSIZE];
+layout (local_size_x = WORKSIZE) in;
+
+
+uint gID = gl_GlobalInvocationID.x;
+uint lID = gl_LocalInvocationID.x;
+uint wID = gl_WorkGroupID.x;
+uint sID = lID >> 5;
+
+void main(){
+    int gScanIn = 0;
+    if (lID == WORKSIZE - 1){
+        gScanIn = wScan[wID];
+    }
+    for (int i = 0; i < WORKSIZE / SUBSIZE; i++){
+        if (lID == WORKSIZE - 1){
+            sData[i] = gScanIn;
+        }
+    }
+    barrier();
+    if ((lID & SUBSIZE - 1) == SUBSIZE - 1){
+        gScanIn = sData[sID];
+    }
+    int gScanIn2 = subgroupBroadcast(gScanIn, SUBSIZE - 1);
+    barrier();
+
+    int ofIn = offB[gID];
+    int ofOut = ofIn + gScanIn2;
+    offB[gID] = ofOut;
+
+    int offsetStart = offA[gID];
+    int offsetEnd = (gID < offA.length() - 1) ? offA[gID + 1] : offA.length();
+    int startIndex = offsetStart;
+    int endIndex = offsetEnd - 1;
+    Particle p1;
+    int writeIndex = 0;
+
+    for (int pID = offsetStart; pID < offsetEnd; pID++){
+        p1 = pOut[pID];
+        if (p1.newIndex == 0){
+            writeIndex = startIndex;
+            startIndex++;
+        }
+        else{
+            writeIndex = endIndex;
+            endIndex--;
+        }
+        pIn[writeIndex] = p1;
+    }
+    dOff[gID] = 0;
+}
