@@ -1,12 +1,5 @@
 #version 460
 
-struct Particle {
-	vec4 position;
-	vec4 velocity;
-    uint cell;
-    uint newIndex;
-};
-
 
 
 layout(binding = 0) uniform UniformBufferObject {
@@ -15,9 +8,6 @@ layout(binding = 0) uniform UniformBufferObject {
     mat4 proj;
 } ubo;
 
-layout(std140, binding = 1) readonly buffer ParticleSSBOIn {
-   Particle particlesIn[ ];
-};
 
 layout(push_constant) uniform pc {
     mat4 model;
@@ -25,9 +15,10 @@ layout(push_constant) uniform pc {
 } constants;
 
 
-layout(location = 0) in vec3 inPosition;
-layout(location = 1) in vec3 inColor;
-layout(location = 2) in vec2 inTexCoord;
+layout(location = 0) in vec4 inPosition;
+layout(location = 1) in vec4 inVelocity;
+layout(location = 2) in uint inCell;
+layout(location = 3) in uint inNewIndex;
 
 layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec3 fragNormal;
@@ -66,37 +57,28 @@ vec3 HSVtoRGB(float hue, float sat, float val){
 
 
 void main() {
-    Particle particleIn = particlesIn[gl_InstanceIndex];
     const float velMax = 15;
     const float velMin = 0;
 
 
-    uint mode = 1;
 
-    if (mode==0){
-        gl_Position = ubo.proj*ubo.view*constants.model*vec4(inPosition, 1.0);    
-        fragPos = (constants.model*vec4(inPosition, 1.0)).xyz;
-        fragColor = inColor;
-        fragNormal = vec3(0.0, 0.0, 1.0);
-    }
-    else if (mode==1){
     vec3 Color = {1.0f, 1.0f, 1.0f};
-    float mass = particleIn.velocity.w;
-        gl_Position = ubo.proj*ubo.view*constants.model*vec4((inPosition*mass+particleIn.position.xzy), 1.0);
-        fragPos = (constants.model*vec4(inPosition+vec3(particleIn.position.xzy), 1.0)).xyz;
-        float velMod = length(particleIn.velocity.xyz);
-        velMod = clamp(velMod, velMin, velMax);
-        float velModAdj = (velMod - velMin) * 360 / (velMax - velMin); 
+    float mass = inVelocity.w;
+    gl_Position = ubo.proj*ubo.view*constants.model*vec4(inPosition.xzy, 1.0);
+    fragPos = (constants.model*vec4(inPosition.xyz, 0)).xyz;
+    float velMod = length(inVelocity.xyz);
+    velMod = clamp(velMod, velMin, velMax);
+    float velModAdj = (velMod - velMin) * 360 / (velMax - velMin); 
 
-        fragColor = HSVtoRGB(velModAdj, 1.0f, 1.0f);
+    fragColor = HSVtoRGB(velModAdj, 1.0f, 1.0f);
 
-        //fragColor = inColor;
-        //fragColor = normalize(particleIn.velocity.xyz) + inColor * 0.3;
-        fragNormal = (constants.model*vec4(inPosition, 0.0)).xyz;
-    }
+    //fragColor = inColor;
+    //fragColor = normalize(inVelocity.xyz) + inColor * 0.3;
+    fragNormal = (constants.model*vec4(inPosition.xyz, 0.0)).xyz;
+
     
     
-    fragTexCoord = inTexCoord;
+    fragTexCoord = vec2(1,1);
     
 }
 

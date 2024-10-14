@@ -49,9 +49,9 @@ void BaseRasterizer::createPipeline() {
 		shaderStages[i].pSpecializationInfo = nullptr;
 		shaderStages[i].flags = 0;
 	}
-
-	auto bindingDescription = Vertex::getBindingDescription();
-	auto attributeDescriptions = Vertex::getAttributeDescriptions();
+	
+	auto bindingDescription = Particle::getParticleInputBindings();
+	auto attributeDescriptions = Particle::getParticleAttributeDescriptions();
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -62,7 +62,7 @@ void BaseRasterizer::createPipeline() {
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 	inputAssembly.primitiveRestartEnable = VK_FALSE;
 
 
@@ -76,9 +76,12 @@ void BaseRasterizer::createPipeline() {
 	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 	rasterizer.depthClampEnable = VK_FALSE;
 	rasterizer.rasterizerDiscardEnable = VK_FALSE;
-	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-	//rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
+	//rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+	////rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
+
+	rasterizer.polygonMode = VK_POLYGON_MODE_POINT; //for point rendering
 	rasterizer.lineWidth = 1.0f;
+
 	rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
 	//rasterizer.cullMode = VK_CULL_MODE_NONE;
 	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
@@ -173,14 +176,9 @@ void BaseRasterizer::createDescriptorSets() {
 	ubo.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	ubo.pImmutableSamplers = nullptr;
 
-	VkDescriptorSetLayoutBinding storage{};
-	storage.binding = 1;
-	storage.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	storage.descriptorCount = 1;
-	storage.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	storage.pImmutableSamplers = nullptr;
 
-	std::array<VkDescriptorSetLayoutBinding, 2> bindings = { ubo, storage };
+
+	std::array<VkDescriptorSetLayoutBinding, 1> bindings = { ubo };
 
 	VkDescriptorSetLayoutCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -211,14 +209,8 @@ void BaseRasterizer::createDescriptorSets() {
 
 
 
-		VkDescriptorBufferInfo ssboInfo{};
-		ssboInfo.buffer = gravStorageBuffer;
-		ssboInfo.offset = storageSize * ((i + 2) % FRAMES_IN_FLIGHT);
-		ssboInfo.range = storageSize;
 
-
-
-		std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+		std::array<VkWriteDescriptorSet, 1> descriptorWrites{};
 
 		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrites[0].dstSet = descriptorSets[i];
@@ -227,14 +219,6 @@ void BaseRasterizer::createDescriptorSets() {
 		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		descriptorWrites[0].descriptorCount = 1;
 		descriptorWrites[0].pBufferInfo = &bufferInfo;
-
-		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[1].dstSet = descriptorSets[i];
-		descriptorWrites[1].dstBinding = 1;
-		descriptorWrites[1].dstArrayElement = 0;
-		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-		descriptorWrites[1].descriptorCount = 1;
-		descriptorWrites[1].pBufferInfo = &ssboInfo;
 
 		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 	}
@@ -512,12 +496,13 @@ void BaseRasterizer::drawObjects(VkCommandBuffer commandBuffer, uint32_t frameIn
 	VkDeviceSize offsets[] = { 0 };
 
 	for (size_t i = 0; i < meshes.size(); i++) {
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffers[i], offsets);
-		vkCmdBindIndexBuffer(commandBuffer, indexBuffers[i], 0, VK_INDEX_TYPE_UINT16);
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &gravStorageBuffer, offsets);
+		//vkCmdBindIndexBuffer(commandBuffer, indexBuffers[i], 0, VK_INDEX_TYPE_UINT16);
 		//for single model
-		vkCmdDrawIndexed(commandBuffer, meshes[i].indexCount, 1, 0, 0, 0);
+		//vkCmdDrawIndexed(commandBuffer, meshes[i].indexCount, 1, 0, 0, 0);
 		//for instanced model everywhere
-		vkCmdDrawIndexed(commandBuffer, meshes[i].indexCount, particleCount, 0, 0, 0);
+		//vkCmdDrawIndexed(commandBuffer, meshes[i].indexCount, particleCount, 0, 0, 0);
+		vkCmdDraw(commandBuffer, particleCount, 1, particleCount * frameIndex, 0);
 	}
 }	
 

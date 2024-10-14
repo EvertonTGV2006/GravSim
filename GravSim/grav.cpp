@@ -392,7 +392,7 @@ void GravEngine::createStorageBuffers() {
 
 	VkBufferCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	createInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	createInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	createInfo.size = bufferSize;
 
@@ -824,7 +824,7 @@ void GravEngine::cleanup() {
 	vkDestroyBuffer(device, offsetBuffer, nullptr);
 	vkDestroyBuffer(device, deltaBuffer, nullptr);
 	vkDestroyBuffer(device, scanBuffer, nullptr);
-	vkDestroyBuffer(device, stagingBuffer, nullptr);
+	//vkDestroyBuffer(device, stagingBuffer, nullptr);
 
 	for (size_t i = 0; i < sortPipelines.size(); i++) {
 		vkDestroyPipeline(device, sortPipelines[i], nullptr);
