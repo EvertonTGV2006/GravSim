@@ -138,7 +138,7 @@ private:
 	void executeCompute();
 	void executeGraphics();
 
-
+	void particleDataFetch();
 
 	void recreateSwapChain();
 	void cleanupSwapChain();

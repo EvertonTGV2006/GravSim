@@ -14,7 +14,7 @@ const ivec3 GRID_DIMENSIONS = ivec3(32, 32, 32);
 const vec3 DOMAIN_DIMENSIONS = vec3(16, 16, 16);
 const int SEARCH_SIZE = 1;
 const uint SEARCH_CELLS = 9; //pow(2*SEARCH_SIZE + 1, 3);
-const float CONSTANT_G = 0.001;
+const float CONSTANT_G = 0.01;
 const float dt = 0.001;
 const vec3 normals[3] = {vec3(1, 0, 0), vec3(0,1,0),vec3(0,0,1)};
 const float normalsDots[2] = {0, 16}; 
@@ -147,8 +147,8 @@ void evaulateParticleForce(in UParticle p1, in UParticle p2, out vec3 F){
     if(sep2 != 0){
         sep2Inv = 1 / sep2;
         massProd = p1.mass * p2.mass;
-        //F = CONSTANT_G * massProd * sep2Inv * sep;
-        F = (a * pow(2, -b * (sep2 - f)) + c * pow(2, -d * (sep2 - f))) * sep * scale;
+        F = CONSTANT_G * massProd * sep2Inv * sep;
+        //F = (a * pow(2, -b * (sep2 - f)) + c * pow(2, -d * (sep2 - f))) * sep * scale;
 
     }
     else{
@@ -192,7 +192,7 @@ void evaluateCellForces(in UParticle p1, in ivec3 c2Pos, out vec3 F){
             fMag = 1 / fMag;
 
         
-            fMag = fMag * p1.mass * 0.000001;
+            fMag = fMag * p1.mass * 0.00001;
 
             F = fMag * accelDir;
         }
@@ -214,9 +214,9 @@ void evaluateCellForces(in UParticle p1, in ivec3 c2Pos, out vec3 F){
 void moveParticle(in UParticle p1, in vec3 F, out UParticle p2){
     p1.mass = (p1.mass == 0)? 1 : p1.mass;
     vec3 a = F / p1.mass;
-    a.y = a.y - 9.81;
+    a.y = a.y + 9.81;
     p2 = p1;
-    p2.vel = p1.vel + a * dt;
+    p2.vel = 0.9996*p1.vel + a * dt;
     p2.pos = p1.pos + p2.vel * dt;
 
     const uint subData = 1 << SEGMENTBITS;
@@ -277,8 +277,8 @@ void main(){
             F += -sep * normals[i] * 10 * pMain.mass;
         }
     }
-    Ft = -0.0000001 * pMain.vel;
-    F += Ft;
+    //Ft = -0.0000001 * pMain.vel;
+    //F += Ft;
     UParticle pUpd;
     moveParticle(pMain, F, pUpd);
     repackParticle(pUpd, pT);

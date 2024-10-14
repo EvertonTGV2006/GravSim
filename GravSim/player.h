@@ -31,6 +31,7 @@ public:
 
 
 	std::atomic_bool windowShouldClose;
+	bool validateParticles = false;
 
 	glm::vec3 pos = { -4,27,0 };
 	glm::vec3 viewDirection = {4, -27, 0 };
