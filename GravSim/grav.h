@@ -55,6 +55,8 @@ public:
 
 	VkBuffer getInterleavedStorageBuffer();
 
+	uint32_t computeIndex = 0;
+
 	void cleanup();
 
 	void createRandomData();
@@ -62,6 +64,11 @@ public:
 	void runCommands();
 
 	bool OLD_EX = false;
+
+	void validateParticles();
+
+	glm::ivec3 GRID_DIMENSIONS = { 32, 32, 32 };
+	glm::vec3 DOMAIN_DIMENSIONS = { 16, 16, 16 };
 
 private:
 	VkDevice device;
@@ -78,7 +85,7 @@ private:
 	
 	bool firstFrame = true;
 
-	uint32_t computeIndex = 0;
+	
 
 	VkQueue gravQueue;
 

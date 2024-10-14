@@ -452,7 +452,7 @@ void GravEngine::syncBufferData_A(MemoryDetails* stagingRequirements) {
 	VkBufferCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	createInfo.size = std::max(sizeof(Particle) * particles->size(), sizeof(uint32_t) * pOffsets->size());
-	createInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	createInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 	if (vkCreateBuffer(device, &createInfo, nullptr, &stagingBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create gravEngine staging buffer"); }
@@ -557,6 +557,7 @@ void GravEngine::syncBufferData_B(bool direction, MemInit memory) {
 	}
 
 	vkDestroyFence(device, transferFence, nullptr);
+	vkDestroyBuffer(device, stagingBuffer, nullptr);
 	vkResetCommandBuffer(transferCommandBuffer, 0);
 }
 void GravEngine::simGrav(double dt) {
@@ -985,4 +986,58 @@ void GravEngine::runCommands() {
 
 
 
+}
+
+void GravEngine::validateParticles() {
+	std::cout << "Validating Particles..." << std::endl;
+	uint32_t prevCell = 0;
+	uint32_t currentCellCount = 0;
+
+	std::vector<uint8_t> errors;
+	std::vector<uint32_t> indices;
+	std::vector<Particle> errorParticles;
+	std::vector < std::array<uint32_t, 5> >sortCells;
+	for (uint32_t i = 0; i < particles->size(); i++) {
+		Particle p = (*particles)[i];
+		uint8_t boundaryViolation = 0;
+		if (p.position.x < 0 || p.position.y < 0 || p.position.z < 0 || p.position.x > DOMAIN_DIMENSIONS.x || p.position.y > DOMAIN_DIMENSIONS.y || p.position.z > DOMAIN_DIMENSIONS.z) {
+			boundaryViolation = 1;
+		}
+		glm::ivec3 cellPos;
+		cellPos.x = floor(p.position.x * GRID_DIMENSIONS.x / DOMAIN_DIMENSIONS.x);
+		cellPos.y = floor(p.position.y * GRID_DIMENSIONS.y / DOMAIN_DIMENSIONS.y);
+		cellPos.z = floor(p.position.z * GRID_DIMENSIONS.z / DOMAIN_DIMENSIONS.z);
+		uint32_t cell = cellPos.x + GRID_DIMENSIONS.x * cellPos.y + GRID_DIMENSIONS.x * GRID_DIMENSIONS.y * cellPos.z;
+		uint8_t cellViolation = (cell != p.cell) ? 2 : 0;
+
+		uint8_t sortViolation = (prevCell > cell) ? 4 : 0;
+		currentCellCount = (prevCell == cell) ? currentCellCount++ : 0;
+		uint8_t cellCountAnomoly = (currentCellCount > 20) ? 8 : 0;
+
+		uint8_t error = boundaryViolation | cellViolation | sortViolation | cellCountAnomoly;
+
+		if (error) {
+			indices.push_back(i);
+			errors.push_back(error);
+			errorParticles.push_back(p);
+			if (sortViolation) {
+				if (i > 2 && i < particles->size()-2) {
+					std::array<uint32_t, 5> temp;
+					temp[0] = (*particles)[i - 2].cell;
+					temp[1] = (*particles)[i - 1].cell;
+					temp[2] = (*particles)[i].cell;
+					temp[3] = (*particles)[i + 1].cell;
+					temp[4] = (*particles)[i + 2].cell;
+					sortCells.push_back(temp);
+				}
+			}
+		}
+
+		prevCell = p.cell;
+	}
+
+	for (uint32_t i = 0; i < errors.size(); i++) {
+		std::cout << "Particle: " << indices[i] << "\t| Error: " << static_cast<uint32_t>(errors[i]) << std::endl;
+		errorParticles[i].print();
+	}
 }

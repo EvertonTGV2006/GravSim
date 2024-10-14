@@ -330,6 +330,13 @@ void VulkanEngine::executeGraphics() {
     //std::cout << "FPS: " << 1.0 / dt.count() << std::endl;
 
     frameIndex = (frameIndex + 1) % FRAMES_IN_FLIGHT;
+
+
+    //check if validate particles
+    if (player->validateParticles == true && gravEngine.computeIndex==0) {
+        particleDataFetch();
+        player->validateParticles = false;
+   }
 }
 void VulkanEngine::runCompute() {
     while (!glfwWindowShouldClose(winmanager.window)) {
@@ -868,6 +875,48 @@ void VulkanEngine::initSubclassData() {
 
     vkFreeMemory(device, stagingMemory, nullptr);
     vkFreeCommandBuffers(device, graphicsCommandPool, 1, &transferCommandBuffer);
+}
+
+void VulkanEngine::particleDataFetch() {
+
+    VkDeviceMemory stagingMemory;
+
+    MemoryDetails memRequirements;
+    gravEngine.syncBufferData_A(&memRequirements);
+    //memRequirements[0].flags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+
+    VkMemoryAllocateInfo memoryInfo{};
+    memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    memoryInfo.allocationSize = memRequirements.requirements.size;
+    memoryInfo.memoryTypeIndex = findMemoryType(memRequirements);
+    if (vkAllocateMemory(device, &memoryInfo, nullptr, &stagingMemory) != VK_SUCCESS) { throw std::runtime_error("Failed to allocated memory"); }
+
+    MemInit memInitStructs;
+
+    memInitStructs.memory = stagingMemory;
+    memInitStructs.offset = 0;
+    memInitStructs.range = memRequirements.requirements.size;
+
+
+
+    VkCommandBufferAllocateInfo commandInfo{};
+    commandInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    commandInfo.commandBufferCount = 1;
+    commandInfo.commandPool = graphicsCommandPool;
+    commandInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+
+
+    VkCommandBuffer transferCommandBuffer;
+
+    vkAllocateCommandBuffers(device, &commandInfo, &transferCommandBuffer);
+
+    gravEngine.syncBufferData_B(false, memInitStructs);
+
+
+    vkFreeMemory(device, stagingMemory, nullptr);
+    vkFreeCommandBuffers(device, graphicsCommandPool, 1, &transferCommandBuffer);
+
+    gravEngine.validateParticles();
 }
 
 

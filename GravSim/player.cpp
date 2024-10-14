@@ -106,6 +106,9 @@ void PlayerObject::keyCallback(GLFWwindow* window, int key, int scancode, int ac
 	else if (key == GLFW_KEY_TAB && action == GLFW_RELEASE) {
 		app->timeAccel = false;	
 	}
+	else if (key == GLFW_KEY_V && action == GLFW_PRESS) {
+		app->validateParticles = true; //validate particles
+	}
 	else if (action == GLFW_PRESS && key == GLFW_KEY_P) {
 		if (glfwGetWindowMonitor(window) == NULL) {
 			glfwGetWindowPos(window, &app->windowxpos, &app->windowypos);

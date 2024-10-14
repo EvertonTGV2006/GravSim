@@ -87,7 +87,11 @@ struct Particle {
     uint32_t cell;
     uint32_t newIndex;
 
-
+    void print() {
+        std::cout << "Position: " << position.x << ", " << position.y << ", " << position.z << std::endl;
+        std::cout << "Velocity: " << velocity.x << ", " << velocity.y << ", " << velocity.z << std::endl;
+        std::cout << "Mass: " << mass << " | Cell: " << cell << " | newIndex: " << newIndex << std::endl;
+    }
 };
 
 struct ComputeConstants {
