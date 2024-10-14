@@ -762,7 +762,7 @@ void GravEngine::simGrav(double dt) {
 
 	computeIndex = (computeIndex + 1) % COMPUTE_STEPS;
 
-	if (frameIndex == UINT64_MAX) {
+	if (frameIndex == 8192) {
 		endTime = std::chrono::high_resolution_clock::now();
 		renderDuration = std::chrono::duration(endTime - startTime);
 		std::cout <<"Render Duration: "<< renderDuration << std::endl;
