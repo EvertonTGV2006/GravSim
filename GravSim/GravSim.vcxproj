@@ -106,13 +106,17 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>C:\Users\garet\Documents\Visual Studio 2022\Libraries\glm;C:\VulkanSDK\1.3.296.0\Include;C:\Users\garet\Documents\Visual Studio 2022\Libraries\glfw-3.4.bin.WIN64\include;C:\Users\garet\Documents\Visual Studio 2022\Libraries\stb-master</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\garet\Documents\Visual Studio 2022\Libraries\glm;C:\VulkanSDK\1.3.296.0\Include;C:\Users\garet\Documents\Visual Studio 2022\Libraries\glfw-3.4.bin.WIN64\include;C:\Users\garet\Documents\Visual Studio 2022\Libraries\stb-master;C:\Users\garet\Documents\Visual Studio 2022\Libraries\freetype-2.13.3\include</AdditionalIncludeDirectories>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
+      <Optimization>Disabled</Optimization>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\garet\Documents\Visual Studio 2022\Libraries\glfw-3.4.bin.WIN64\lib-vc2022;C:\VulkanSDK\1.3.296.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3.lib;vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Users\garet\Documents\Visual Studio 2022\Libraries\glfw-3.4.bin.WIN64\lib-vc2022;C:\VulkanSDK\1.3.296.0\Lib;C:\Users\garet\Documents\Visual Studio 2022\Libraries\freetype-2.13.3\objs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3.lib;vulkan-1.lib;freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -137,22 +141,24 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="baseRasterizer.cpp" />
+    <ClCompile Include="particleRasterizer.cpp" />
     <ClCompile Include="engine.cpp" />
     <ClCompile Include="geometry.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="grav.cpp" />
     <ClCompile Include="player.cpp" />
     <ClCompile Include="structs.cpp" />
+    <ClCompile Include="uiRasterizer.cpp" />
     <ClCompile Include="window.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="baseRasterizer.h" />
+    <ClInclude Include="particleRasterizer.h" />
     <ClInclude Include="engine.h" />
     <ClInclude Include="geometry.h" />
     <ClInclude Include="grav.h" />
     <ClInclude Include="player.h" />
     <ClInclude Include="structs.h" />
+    <ClInclude Include="uiRasterizer.h" />
     <ClInclude Include="window.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

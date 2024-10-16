@@ -11,6 +11,10 @@
 #include <array>
 #include <glm/glm.hpp>
 
+#include "ft2build.h"
+#include FT_FREETYPE_H
+#include FT_BITMAP_H
+
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
     std::optional<uint32_t> presentFamily;
@@ -116,4 +120,12 @@ struct Mesh {
 struct MemoryDetails {
     VkMemoryRequirements requirements;
     VkMemoryPropertyFlags flags;
+};
+
+struct textBitmapWrapper {
+    char character;
+    int16_t advance;
+    int16_t bearingX;
+    int16_t bearingY;
+    FT_Bitmap* address;
 };

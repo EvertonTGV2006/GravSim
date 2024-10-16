@@ -21,8 +21,9 @@
 #include "structs.h"
 #include "player.h"
 
-#include "baseRasterizer.h"
+#include "particleRasterizer.h"
 #include "grav.h"
+#include "uiRasterizer.h"
 
 class VulkanEngine {
 public:
@@ -95,8 +96,9 @@ private:
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
 
-	BaseRasterizer baseRasterizer;
+	particleRasterizer particleRasterizer;
 	GravEngine gravEngine;
+	UIRasterizer uiRasterizer;
 
 	std::vector<MemInit> memoryContainers;
 	std::vector<VkDeviceMemory> memory;

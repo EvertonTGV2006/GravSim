@@ -801,6 +801,7 @@ void ParticleGeometry::createParticles(uint32_t size) {
 		part.velocity = 0.2f * glm::cross(part.position, up);
 		part.velocity = glm::normalize(part.velocity);
 		part.velocity /= glm::pow(glm::dot(part.position, part.position), 0.25f);
+		//part.velocity *= 20;
 		float pow = glm::linearRand<float>(-1, 1);
 		part.mass = glm::pow(2.0f, pow);
 		//part.mass /= glm::pow(glm::dot(part.position, part.position), 0.5);

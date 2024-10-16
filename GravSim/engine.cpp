@@ -37,6 +37,8 @@ void VulkanEngine::initEngine() {
     winmanager.initWindow();
     player->winmanager = winmanager;
     player->updateGLFWcallbacks();
+
+    uiRasterizer.initUI_B();
     
     createInstance();
     setupDebugMessenger();
@@ -76,7 +78,7 @@ void VulkanEngine::initEngine() {
     std::vector<std::string> shaderFiles;
 
     shaderFiles.insert(std::end(shaderFiles), std::begin(gravEngine.shaderFiles), std::end(gravEngine.shaderFiles));
-    shaderFiles.insert(std::end(shaderFiles), std::begin(baseRasterizer.shaderFiles), std::end(baseRasterizer.shaderFiles));
+    shaderFiles.insert(std::end(shaderFiles), std::begin(particleRasterizer.shaderFiles), std::end(particleRasterizer.shaderFiles));
 
     partt.join();
 
@@ -112,17 +114,17 @@ void VulkanEngine::initEngine() {
     rast.shaderCode = { &shaderCode[6], &shaderCode[7] };
     rast.gravStorageBuffer = gravEngine.getInterleavedStorageBuffer();
 
-    //std::thread rastt(&BaseRasterizer::initRast, &baseRasterizer, rast);
-    baseRasterizer.initRast_A(rast);
+    //std::thread rastt(&particleRasterizer::initRast, &particleRasterizer, rast);
+    particleRasterizer.initRast_A(rast);
     
     //rastt.join();
 
 
-    baseRasterizer.storeGravStorageBuffer(gravEngine.getInterleavedStorageBuffer());
+    particleRasterizer.storeGravStorageBuffer(gravEngine.getInterleavedStorageBuffer());
 
     allocateMemory();
 
-    baseRasterizer.initRast_B();
+    particleRasterizer.initRast_B();
     gravEngine.initGrav_B();
 
     renderGravSemaphores = gravEngine.getInterleavedSemaphores(gravRenderSemaphores);
@@ -130,6 +132,8 @@ void VulkanEngine::initEngine() {
     initSubclassData();
 
     //gravEngine.createRandomData();
+
+    
 
     frameTimes.reserve(1000);
 }
@@ -232,7 +236,7 @@ void VulkanEngine::executeGraphics() {
     ubo.proj = glm::perspective(glm::radians(45.0f), (float)swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 1000.0f);
     ubo.zeta = glm::mat4(1);
 
-    baseRasterizer.drawObjects(drawCommandBuffers[frameIndex], frameIndex, ubo);
+    particleRasterizer.drawObjects(drawCommandBuffers[frameIndex], frameIndex, ubo);
 
     vkCmdEndRenderPass(drawCommandBuffers[frameIndex]);
 
@@ -756,7 +760,7 @@ void VulkanEngine::allocateMemory() {
     std::vector<MemoryDetails> memRequirements;
     std::vector<uint16_t> counts;
     gravEngine.getMemoryRequirements(&memRequirements, &counts);
-    baseRasterizer.getMemoryRequirements(&memRequirements, &counts);
+    particleRasterizer.getMemoryRequirements(&memRequirements, &counts);
 
 
     //now filter and check for duplicate memory types and alignments
@@ -830,7 +834,7 @@ void VulkanEngine::allocateMemory() {
     }
     //now finally dispatch all the MemInit structs to subclasses
     gravEngine.initMemory({ memoryContainers[0], memoryContainers[1],memoryContainers[2],memoryContainers[3] });
-    baseRasterizer.initMemory({ memoryContainers[4],memoryContainers[5],memoryContainers[6]});
+    particleRasterizer.initMemory({ memoryContainers[4],memoryContainers[5],memoryContainers[6]});
 
 }
 void VulkanEngine::initSubclassData() {
@@ -838,7 +842,7 @@ void VulkanEngine::initSubclassData() {
     VkDeviceMemory stagingMemory;
 
     std::array<MemoryDetails,2> memRequirements;
-    baseRasterizer.initBufferData_A(&memRequirements[0]);
+    particleRasterizer.initBufferData_A(&memRequirements[0]);
     gravEngine.syncBufferData_A(&memRequirements[1]);
     //memRequirements[0].flags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
@@ -869,7 +873,7 @@ void VulkanEngine::initSubclassData() {
 
     vkAllocateCommandBuffers(device, &commandInfo, &transferCommandBuffer);
 
-    baseRasterizer.initBufferData_B(transferCommandBuffer, graphicsQueue, memInitStructs[0]);
+    particleRasterizer.initBufferData_B(transferCommandBuffer, graphicsQueue, memInitStructs[0]);
     gravEngine.syncBufferData_B(true, memInitStructs[1]);
 
 
@@ -1485,7 +1489,7 @@ void VulkanEngine::cleanupSwapChain() {
 }
 void VulkanEngine::cleanup() {
     vkDeviceWaitIdle(device);
-    baseRasterizer.cleanup();
+    particleRasterizer.cleanup();
     gravEngine.cleanup();
 
     writeOutSampleData();
