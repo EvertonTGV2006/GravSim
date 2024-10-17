@@ -37,9 +37,16 @@ public:
 
 	void cleanup();
 
+	uint32_t MAX_STRING_LENGTH = 256;
+
 	void drawElements(VkCommandBuffer, uint32_t);
 
 	static const uint32_t FRAMES_IN_FLIGHT = 3;
+
+	void initBufferData_A(MemoryDetails*);
+	void initBufferData_B(VkCommandBuffer, VkQueue, MemInit);
+	std::vector<std::string> shaderFiles = { "shaders/UIRasterizer/01.spv", "shaders/UIRasterizer/02.spv" };
+
 
 private:
 	VkDevice device;
@@ -48,23 +55,29 @@ private:
 
 	VkPhysicalDeviceMemoryProperties memProperties;
 
-	VkPipeline boxPipeline;
-	VkPipelineLayout boxPipelineLayout;
-	std::array<VkDescriptorSet, FRAMES_IN_FLIGHT> boxDescriptorSets;
-	VkDescriptorSetLayout boxDescriptorSetLayout;
+	VkPipeline pipeline;
+	VkPipelineLayout pipelineLayout;
+	std::array<VkDescriptorSet, FRAMES_IN_FLIGHT> descriptorSets;
+	VkDescriptorSetLayout descriptorSetLayout;
 
-	VkPipeline textPipeline;
-	VkPipelineLayout textPipelineLayout;
-	std::array<VkDescriptorSet, FRAMES_IN_FLIGHT> textDescriptorSets;
-	VkDescriptorSetLayout textDescriptorSetLayouts;
 
 	VkBuffer vertexBuffer;
 	MemInit vertexMemory;
+	VkImage texImage;
+	VkImageView texImageView;
+	VkSampler texSampler;
+	MemInit texMemory;
+
+	VkBuffer stagingBuffer;
+	MemInit stagingMemory;
+
 
 	VkBuffer uniformBuffer;
 	MemInit uniformBufferMemory;
 	char* uniformBufferMapped;
 	uint32_t uniformBufferSize;
+	uint32_t uniformBufferRegion;
+	std::array<char*, FRAMES_IN_FLIGHT> uniformsMapped;
 
 	FT_Library library;
 	FT_Face face;
@@ -77,14 +90,30 @@ private:
 	uint32_t characterCount = 128;
 
 	
+	
 	std::array<std::vector<char>*, 2> shaderCode;
 
-	void createPipelines();
+	MemoryDetails vertexRequirements{};
+	MemoryDetails uniformRequirements{};
+	MemoryDetails texRequirements{};
+
+	void createPipeline();
 	void createDescriptorSets();
 	void createBuffers();
+	void createImageView();
+	void createSampler();
 
 	void initFreetype();
-	void initGlyphs();
+
+	std::vector<uint8_t> texPixels;
+	uint16_t texWidth = 0;
+	uint16_t texHeight = 0;
+	uint16_t charWidth = 0;
+	int16_t charStart = 34;
+	int16_t charCount = CHAR_MAX - charStart;
+
+
+	std::vector<glm::ivec2> vertices;
 
 
 };

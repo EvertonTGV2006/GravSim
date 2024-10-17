@@ -1,8 +1,7 @@
 #include "engine.h"
 
 #include <GLFW/glfw3.h>
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+
 
 #include "window.h"
 #include "structs.h"
@@ -74,11 +73,14 @@ void VulkanEngine::initEngine() {
 
     std::thread partt(&ParticleGeometry::createParticles, &part, partCount);
 
+
     std::vector<std::vector<char>> shaderCode;
     std::vector<std::string> shaderFiles;
 
     shaderFiles.insert(std::end(shaderFiles), std::begin(gravEngine.shaderFiles), std::end(gravEngine.shaderFiles));
     shaderFiles.insert(std::end(shaderFiles), std::begin(particleRasterizer.shaderFiles), std::end(particleRasterizer.shaderFiles));
+    shaderFiles.insert(std::end(shaderFiles), std::begin(uiRasterizer.shaderFiles), std::end(uiRasterizer.shaderFiles));
+
 
     partt.join();
 
@@ -93,6 +95,15 @@ void VulkanEngine::initEngine() {
     grav.particles = &particles;
     grav.offsets = &offsets;
     grav.shaderCode = { &shaderCode[0], &shaderCode[1], &shaderCode[2], &shaderCode[3], &shaderCode[4], &shaderCode[5]};
+
+    UIInit ui{};
+    ui.descriptorPool = descriptorPool;
+    ui.device = device;
+    ui.memProperties = memProperties;
+    ui.player = player;
+    ui.renderPass = renderPass;
+    ui.shaderCode = { &shaderCode[8], &shaderCode[9] };
+    uiRasterizer.initUI_A(ui);
 
 
     //std::thread gravt(&GravEngine::initGrav, &gravEngine, grav);
@@ -124,6 +135,7 @@ void VulkanEngine::initEngine() {
 
     allocateMemory();
 
+    uiRasterizer.initUI_B();
     particleRasterizer.initRast_B();
     gravEngine.initGrav_B();
 
@@ -761,6 +773,7 @@ void VulkanEngine::allocateMemory() {
     std::vector<uint16_t> counts;
     gravEngine.getMemoryRequirements(&memRequirements, &counts);
     particleRasterizer.getMemoryRequirements(&memRequirements, &counts);
+    uiRasterizer.getMemoryRequirements(&memRequirements, &counts);
 
 
     //now filter and check for duplicate memory types and alignments
@@ -835,6 +848,7 @@ void VulkanEngine::allocateMemory() {
     //now finally dispatch all the MemInit structs to subclasses
     gravEngine.initMemory({ memoryContainers[0], memoryContainers[1],memoryContainers[2],memoryContainers[3] });
     particleRasterizer.initMemory({ memoryContainers[4],memoryContainers[5],memoryContainers[6]});
+    uiRasterizer.initMemory({ memoryContainers[7], memoryContainers[8], memoryContainers[9] });
 
 }
 void VulkanEngine::initSubclassData() {
