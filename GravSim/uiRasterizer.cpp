@@ -182,7 +182,7 @@ void UIRasterizer::createBuffers() {
 	if (vkCreateImage(device, &imageInfo, nullptr, &texImage) != VK_SUCCESS) { throw std::runtime_error("Failed to create texture atlas image"); }
 
 
-	uniformBufferSize = sizeof(uint32_t) * charCount * FRAMES_IN_FLIGHT;
+	uniformBufferSize = sizeof(uint32_t) * stringLength * FRAMES_IN_FLIGHT / sizeof(char);
 	VkBufferCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	createInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
@@ -335,7 +335,7 @@ void UIRasterizer::createPipeline() {
 	}
 	VkVertexInputAttributeDescription attributeDescription{};
 	attributeDescription.binding = 0;
-	attributeDescription.format = VK_FORMAT_R32G32B32A32_SINT;
+	attributeDescription.format = VK_FORMAT_R32G32_SFLOAT;
 	attributeDescription.location = 0;
 	attributeDescription.offset = 0;
 
@@ -577,11 +577,11 @@ void UIRasterizer::initFreetype() {
 
 void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameIndex) {
 	UIPushConstants pushConstant{};
-	pushConstant.charAdvance = charAdvance/texWidth;
+	pushConstant.charAdvance = float(charAdvance)/texWidth;
 	pushConstant.charDimensions = glm::vec2(float(charWidth)/float(texWidth), 1);
 	pushConstant.renderStage = 1;
 
-	glm::vec2 screenPos1 = glm::vec2(0.5, -0.5);
+	glm::vec2 screenPos1 = glm::vec2(-0.5, -0.5);
 	glm::vec2 screenDim1 = glm::vec2(10, 0.25);
 
 	pushConstant.screenPosition = screenPos1;
@@ -596,7 +596,7 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 	VkDeviceSize offsets[] = { 0 };
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer,offsets);
 
-	vkCmdDraw(commandBuffer, vertices.size(), 1, 0, 0);
+	vkCmdDraw(commandBuffer, vertices.size(), 11, 0, 0);
 	
 
 }

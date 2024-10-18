@@ -21,6 +21,7 @@ layout(location = 0) in vec2 inPosition;
 
 layout(location = 0) out vec2 fragTexCoord;
 
+int characters[11] = int[](1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11);
 
 void main() {
     int i = gl_InstanceIndex;
@@ -44,6 +45,8 @@ void main() {
 
         uint char = (ubo.stringContents[uboIndex] >> uboShift) & uboMask;
         char = char - CHAR_START;
+
+        char = characters[i];
 
         fragTexCoord = vec2(inPosition.x + char * charDimensions.x, inPosition.y);
         //work out texture position for the current char being rendered;
