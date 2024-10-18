@@ -384,7 +384,7 @@ void particleRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer,
 		};
 		VkBufferCopy copy{};
 		copy.size = meshes[i].vertices->size() * sizeof(Vertex);
-		copy.srcOffset = stagingMemory.offset;
+		copy.srcOffset = 0;
 		copy.dstOffset = vertexOffsets[i];
 		
 		//step 2 perform copy
@@ -442,7 +442,7 @@ void particleRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer,
 		};
 		VkBufferCopy copy{};
 		copy.size = meshes[i].indices->size() * sizeof(uint16_t);
-		copy.srcOffset = stagingMemory.offset;
+		copy.srcOffset = 0;
 		copy.dstOffset = indexOffsets[i];
 
 		//step 2 perform copy

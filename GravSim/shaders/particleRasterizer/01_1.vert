@@ -59,7 +59,7 @@ vec3 HSVtoRGB(float hue, float sat, float val){
 void main() {
     const float velMax = 15;
     const float velMin = 0;
-
+    gl_PointSize = 1.0;
 
 
     vec3 Color = {1.0f, 1.0f, 1.0f};

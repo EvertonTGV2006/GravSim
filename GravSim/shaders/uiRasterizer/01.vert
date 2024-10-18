@@ -1,23 +1,22 @@
 #version 460
 
-const uint CHAR_COUNT = 126 - 34;
-const uint CHAR_START = 34;
+const uint CHAR_COUNT = 128 - 32;
+const uint CHAR_START = 32;
 
 layout(binding = 0) uniform UniformBufferObject{
     int[CHAR_COUNT] stringContents;
 } ubo;
 
 layout(push_constant) uniform pc {
-    ivec2 charDimensions;
+    vec2 charDimensions;
     vec2 screenPosition;
     vec2 screenDimensions;
-    uint  charAdvance;
+    float charAdvance;
     uint renderStage;       
-
 };
 
 
-layout(location = 0) in ivec2 inPosition;
+layout(location = 0) in vec2 inPosition;
 
 
 layout(location = 0) out vec2 fragTexCoord;
@@ -52,6 +51,14 @@ void main() {
         //now work out out position based on instance ID and char Advance
         vec2 stringPosition = vec2(screenDimensions.x * (charAdvance * i + inPosition.x), screenDimensions.y * inPosition.y);
         gl_Position = vec4(screenPosition.x + stringPosition.x, screenPosition.y + stringPosition.y, 0.0, 1.0);
+    }
+    if(renderStage == 2){
+        vec2 positions[3] = vec2[](
+            vec2(0.0, -0.5),
+            vec2(0.5, 0.5),
+            vec2(-0.5, 0.5)
+        );
+        gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
     }
 
 

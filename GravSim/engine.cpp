@@ -794,7 +794,8 @@ void VulkanEngine::allocateMemory() {
             for (size_t j = 0; j < memRequirements.size(); j++) {
                 if (memRequirements[i].requirements.memoryTypeBits == memRequirements[j].requirements.memoryTypeBits &&
                     memRequirements[i].requirements.alignment == memRequirements[j].requirements.alignment &&
-                    memRequirements[i].flags == memRequirements[j].flags &&
+                    memRequirements[i].flags == memRequirements[j].flags && 
+                    memRequirements[j].flags != (VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) &&
                     i != j &&
                     orderedFlags[j] == false /*this one shouldn't be needed*/) {
                     orderedMappings.push_back(j);
@@ -1512,6 +1513,7 @@ void VulkanEngine::cleanup() {
     vkDeviceWaitIdle(device);
     particleRasterizer.cleanup();
     gravEngine.cleanup();
+    uiRasterizer.cleanup();
 
     writeOutSampleData();
 

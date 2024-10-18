@@ -25,10 +25,11 @@ void UIRasterizer::initUI_A(UIInit details) {
 
 	initFreetype();
 	createBuffers();
-	createImageView();
+
 }
 
 void UIRasterizer::initUI_B() {
+	createImageView();
 	createSampler();
 	createDescriptorSets();
 	createPipeline();
@@ -97,8 +98,8 @@ void UIRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer, VkQue
 	memcpy(data, vertices.data(), copySize);
 	VkBufferCopy copy{};
 	copy.size = copySize;
-	copy.srcOffset = stagingMemory.offset;
-	copy.dstOffset = vertexMemory.offset;
+	copy.srcOffset = 0;
+	copy.dstOffset = 0;
 	if (vkBeginCommandBuffer(transferCommandBuffer, &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to begin transfer command buffer"); }
 	vkCmdCopyBuffer(transferCommandBuffer, stagingBuffer, vertexBuffer, 1, &copy);
 	if (vkEndCommandBuffer(transferCommandBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to end transfer command buffer"); }
@@ -130,7 +131,7 @@ void UIRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer, VkQue
 	vkCmdPipelineBarrier(transferCommandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
 	VkBufferImageCopy region{};
-	region.bufferOffset = stagingMemory.offset;
+	region.bufferOffset = 0;
 	region.bufferRowLength = 0;
 	region.bufferImageHeight = 0;
 	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -154,6 +155,10 @@ void UIRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer, VkQue
 	vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
 	vkResetFences(device, 1, &transferFence);
 	vkResetCommandBuffer(transferCommandBuffer, 0);
+
+	vkDestroyFence(device, transferFence, nullptr);
+
+	vkDestroyBuffer(device, stagingBuffer, nullptr);
 }
 
 void UIRasterizer::createBuffers() {
@@ -177,7 +182,7 @@ void UIRasterizer::createBuffers() {
 	if (vkCreateImage(device, &imageInfo, nullptr, &texImage) != VK_SUCCESS) { throw std::runtime_error("Failed to create texture atlas image"); }
 
 
-	uniformBufferSize = sizeof(uint32_t) * charCount;
+	uniformBufferSize = sizeof(uint32_t) * charCount * FRAMES_IN_FLIGHT;
 	VkBufferCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	createInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
@@ -185,7 +190,7 @@ void UIRasterizer::createBuffers() {
 	createInfo.size = sizeof(vertices[0]) * vertices.size();
 	if (vkCreateBuffer(device, &createInfo, nullptr, &vertexBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create UI vertex buffer"); }
 	createInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-	createInfo.usage = uniformBufferSize;
+	createInfo.size = uniformBufferSize;
 	if (vkCreateBuffer(device, &createInfo, nullptr, &uniformBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create UI uniform buffer"); }
 
 	vkGetBufferMemoryRequirements(device, vertexBuffer, &vertexRequirements.requirements);
@@ -217,16 +222,16 @@ void UIRasterizer::createImageView() {
 void UIRasterizer::createSampler() {
 	VkSamplerCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	createInfo.magFilter = VK_FILTER_LINEAR;
-	createInfo.minFilter = VK_FILTER_LINEAR;
-	createInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	createInfo.magFilter = VK_FILTER_NEAREST;
+	createInfo.minFilter = VK_FILTER_NEAREST;
+	createInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 	createInfo.anisotropyEnable = VK_FALSE;
-	createInfo.unnormalizedCoordinates = VK_TRUE;
+	createInfo.unnormalizedCoordinates = VK_FALSE;
 	createInfo.compareEnable =  VK_FALSE;
 	createInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-	createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
 	createInfo.mipLodBias = 0.0f;
 	createInfo.minLod = 0.0f;
 	createInfo.maxLod = 0.0f;
@@ -269,7 +274,7 @@ void UIRasterizer::createDescriptorSets() {
 	uniformBufferRegion = uniformBufferSize / 3;
 
 
-	for (size_t i = 1; i < FRAMES_IN_FLIGHT; i++) {
+	for (size_t i = 0; i < FRAMES_IN_FLIGHT; i++) {
 		VkDescriptorBufferInfo bufferInfo{};
 		bufferInfo.buffer = uniformBuffer;
 		bufferInfo.offset = i * uniformBufferRegion;
@@ -350,6 +355,7 @@ void UIRasterizer::createPipeline() {
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	inputAssembly.primitiveRestartEnable = VK_FALSE;
+	
 
 	VkPipelineViewportStateCreateInfo viewportState{};
 	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -363,6 +369,8 @@ void UIRasterizer::createPipeline() {
 	rasterizer.polygonMode = VK_POLYGON_MODE_FILL; //for point rendering
 	rasterizer.lineWidth = 1.0f;
 	rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
+	rasterizer.cullMode = VK_CULL_MODE_NONE;
+	
 	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rasterizer.depthBiasEnable = VK_FALSE;
 
@@ -385,6 +393,15 @@ void UIRasterizer::createPipeline() {
 	colorBlending.blendConstants[1] = 0.0f;
 	colorBlending.blendConstants[2] = 0.0f;
 	colorBlending.blendConstants[3] = 0.0f;
+
+	VkPipelineDepthStencilStateCreateInfo depthStencil{};
+	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	depthStencil.depthTestEnable = VK_TRUE;
+	depthStencil.depthWriteEnable = VK_TRUE;
+	depthStencil.depthCompareOp = VK_COMPARE_OP_ALWAYS;
+	depthStencil.depthBoundsTestEnable = VK_FALSE;
+	depthStencil.stencilTestEnable = VK_FALSE;
+
 
 	std::vector<VkDynamicState> dynamicStates = {
 	VK_DYNAMIC_STATE_VIEWPORT,
@@ -423,7 +440,7 @@ void UIRasterizer::createPipeline() {
 	createInfo.pDynamicState = &dynamicState;
 	createInfo.layout = pipelineLayout;
 	createInfo.renderPass = renderPass;
-	createInfo.pDepthStencilState = nullptr;
+	createInfo.pDepthStencilState = &depthStencil;
 	createInfo.subpass = 0;
 	createInfo.basePipelineHandle = VK_NULL_HANDLE;
 
@@ -535,8 +552,11 @@ void UIRasterizer::initFreetype() {
 		delete textContainers[i].address;
 	}
 
-	vertices = { glm::ivec2(0, 0), glm::ivec2(charWidth, 0), glm::ivec2(0, texHeight), glm::ivec2(0, texHeight), glm::ivec2(charWidth, 0), glm::ivec2(charWidth, texHeight) };
-
+	vertices = { glm::vec2(0, 0), glm::vec2(charWidth, 0), glm::vec2(0, texHeight), glm::vec2(0, texHeight), glm::vec2(charWidth, 0), glm::vec2(charWidth, texHeight) };
+	for (size_t i = 0; i < vertices.size(); i++) {
+		vertices[i].x = vertices[i].x / texWidth;
+		vertices[i].y = vertices[i].y / texHeight;
+	}
 
 	FT_Done_FreeType(library);
 
@@ -557,23 +577,40 @@ void UIRasterizer::initFreetype() {
 
 void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameIndex) {
 	UIPushConstants pushConstant{};
-	pushConstant.charAdvance = charAdvance;
-	pushConstant.charDimensions = glm::ivec2(texWidth, texHeight);
-	pushConstant.renderStage = 0;
+	pushConstant.charAdvance = charAdvance/texWidth;
+	pushConstant.charDimensions = glm::vec2(float(charWidth)/float(texWidth), 1);
+	pushConstant.renderStage = 1;
 
-	glm::vec2 screenPos1 = glm::vec2(0.5, 0.5);
-	glm::vec2 screenDim1 = glm::vec2(0.25, 0.25);
+	glm::vec2 screenPos1 = glm::vec2(0.5, -0.5);
+	glm::vec2 screenDim1 = glm::vec2(10, 0.25);
 
 	pushConstant.screenPosition = screenPos1;
 	pushConstant.screenDimensions = screenDim1;
 
+	std::array<char, 11> str = { 'H','e','l','l','o',' ','W','o','r','l','d' };
+	memcpy(uniformsMapped[frameIndex], str.data(), sizeof(str[0]) * str.size());
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[frameIndex], 0, nullptr);
 	vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &pushConstant);
-	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, { 0 });
+	VkDeviceSize offsets[] = { 0 };
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer,offsets);
 
 	vkCmdDraw(commandBuffer, vertices.size(), 1, 0, 0);
 	
+
+}
+
+void UIRasterizer::cleanup() {
+	vkDestroyBuffer(device, vertexBuffer, nullptr);
+	vkDestroyBuffer(device, uniformBuffer, nullptr);
+	vkDestroyImageView(device, texImageView, nullptr);
+	vkDestroySampler(device, texSampler, nullptr);
+	vkDestroyImage(device, texImage, nullptr);
+
+	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+	vkDestroyPipeline(device, pipeline, nullptr);
+	vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+
 
 }
