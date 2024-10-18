@@ -181,8 +181,9 @@ void UIRasterizer::createBuffers() {
 	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	if (vkCreateImage(device, &imageInfo, nullptr, &texImage) != VK_SUCCESS) { throw std::runtime_error("Failed to create texture atlas image"); }
 
+	uniformBufferRegion = sizeof(char) * stringLength;
+	uniformBufferSize = uniformBufferRegion * FRAMES_IN_FLIGHT;
 
-	uniformBufferSize = sizeof(uint32_t) * stringLength * FRAMES_IN_FLIGHT / sizeof(char);
 	VkBufferCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	createInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
@@ -271,7 +272,6 @@ void UIRasterizer::createDescriptorSets() {
 
 	if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS) { throw std::runtime_error("Failed to allocate UI descriptor sets"); }
 
-	uniformBufferRegion = uniformBufferSize / 3;
 
 
 	for (size_t i = 0; i < FRAMES_IN_FLIGHT; i++) {
@@ -588,6 +588,7 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 	pushConstant.screenDimensions = screenDim1;
 
 	std::array<char, 11> str = { 'H','e','l','l','o',' ','W','o','r','l','d' };
+
 	memcpy(uniformsMapped[frameIndex], str.data(), sizeof(str[0]) * str.size());
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
