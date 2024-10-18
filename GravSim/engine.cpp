@@ -37,7 +37,6 @@ void VulkanEngine::initEngine() {
     player->winmanager = winmanager;
     player->updateGLFWcallbacks();
 
-    uiRasterizer.initUI_B();
     
     createInstance();
     setupDebugMessenger();
@@ -249,6 +248,8 @@ void VulkanEngine::executeGraphics() {
     ubo.zeta = glm::mat4(1);
 
     particleRasterizer.drawObjects(drawCommandBuffers[frameIndex], frameIndex, ubo);
+
+    uiRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex);
 
     vkCmdEndRenderPass(drawCommandBuffers[frameIndex]);
 
@@ -855,18 +856,19 @@ void VulkanEngine::initSubclassData() {
 
     VkDeviceMemory stagingMemory;
 
-    std::array<MemoryDetails,2> memRequirements;
+    std::array<MemoryDetails,3> memRequirements;
     particleRasterizer.initBufferData_A(&memRequirements[0]);
     gravEngine.syncBufferData_A(&memRequirements[1]);
+    uiRasterizer.initBufferData_A(&memRequirements[2]);
     //memRequirements[0].flags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
     VkMemoryAllocateInfo memoryInfo{};
     memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memoryInfo.allocationSize = memRequirements[0].requirements.size + memRequirements[1].requirements.size;
+    memoryInfo.allocationSize = memRequirements[0].requirements.size + memRequirements[1].requirements.size + memRequirements[2].requirements.size;
     memoryInfo.memoryTypeIndex = findMemoryType(memRequirements[0]);
     if (vkAllocateMemory(device, &memoryInfo, nullptr, &stagingMemory) != VK_SUCCESS) { throw std::runtime_error("Failed to allocated memory"); }
 
-    std::array<MemInit, 2> memInitStructs;
+    std::array<MemInit, 3> memInitStructs;
 
     memInitStructs[0].memory = stagingMemory;
     memInitStructs[0].offset = 0;
@@ -875,6 +877,10 @@ void VulkanEngine::initSubclassData() {
     memInitStructs[1].memory = stagingMemory;
     memInitStructs[1].offset = memInitStructs[0].offset + memInitStructs[0].range;
     memInitStructs[1].range = memRequirements[1].requirements.size;
+
+    memInitStructs[2].memory = stagingMemory;
+    memInitStructs[2].offset = memInitStructs[1].offset + memInitStructs[1].range;
+    memInitStructs[2].range = memRequirements[2].requirements.size;
 
     VkCommandBufferAllocateInfo commandInfo{};
     commandInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -889,6 +895,7 @@ void VulkanEngine::initSubclassData() {
 
     particleRasterizer.initBufferData_B(transferCommandBuffer, graphicsQueue, memInitStructs[0]);
     gravEngine.syncBufferData_B(true, memInitStructs[1]);
+    uiRasterizer.initBufferData_B(transferCommandBuffer, graphicsQueue, memInitStructs[2]);
 
 
     vkFreeMemory(device, stagingMemory, nullptr);

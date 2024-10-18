@@ -25,6 +25,15 @@ struct UIInit {
 
 };
 
+struct UIPushConstants {
+	glm::ivec2 charDimensions;
+	glm::vec2 screenPosition;
+	glm::vec2 screenDimensions;
+	uint32_t  charAdvance;
+	uint32_t renderStage;
+};
+
+
 
 class UIRasterizer {
 public:
@@ -45,7 +54,7 @@ public:
 
 	void initBufferData_A(MemoryDetails*);
 	void initBufferData_B(VkCommandBuffer, VkQueue, MemInit);
-	std::vector<std::string> shaderFiles = { "shaders/UIRasterizer/01.spv", "shaders/UIRasterizer/02.spv" };
+	std::vector<std::string> shaderFiles = { "shaders/uiRasterizer/01.spv", "shaders/uiRasterizer/02.spv" };
 
 
 private:
@@ -109,8 +118,9 @@ private:
 	uint16_t texWidth = 0;
 	uint16_t texHeight = 0;
 	uint16_t charWidth = 0;
+	uint16_t charAdvance = 0;
 	int16_t charStart = 34;
-	int16_t charCount = CHAR_MAX - charStart;
+	int16_t charCount = 126 - charStart;
 
 
 	std::vector<glm::ivec2> vertices;

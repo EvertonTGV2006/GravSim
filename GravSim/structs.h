@@ -11,9 +11,19 @@
 #include <array>
 #include <glm/glm.hpp>
 
+
+
 #include "ft2build.h"
 #include FT_FREETYPE_H
 #include FT_BITMAP_H
+
+enum UIConfiguration {
+    UI_RENDER_MODE_FLEXIBLE = 1,
+    UI_RENDER_MODE_STATIC = 2,
+    UI_REFERENCE_MODE_UINT32_T = 4,
+    UI_REFERENCE_MODE_STRING = 8,
+    UI_REFERENCE_MODE_CHAR = 16
+};
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
@@ -128,4 +138,11 @@ struct textBitmapWrapper {
     int16_t bearingX;
     int16_t bearingY;
     FT_Bitmap* address;
+};
+struct UIElement {
+    glm::vec2 screenPosition;
+    glm::vec2 textPosition;
+    uint32_t configuration;
+    void* dataPointer;
+    void getCharVector(std::vector<char>*);
 };

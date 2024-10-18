@@ -29,6 +29,7 @@ void UIRasterizer::initUI_A(UIInit details) {
 }
 
 void UIRasterizer::initUI_B() {
+	createSampler();
 	createDescriptorSets();
 	createPipeline();
 }
@@ -175,6 +176,8 @@ void UIRasterizer::createBuffers() {
 	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	if (vkCreateImage(device, &imageInfo, nullptr, &texImage) != VK_SUCCESS) { throw std::runtime_error("Failed to create texture atlas image"); }
 
+
+	uniformBufferSize = sizeof(uint32_t) * charCount;
 	VkBufferCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	createInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
@@ -392,12 +395,17 @@ void UIRasterizer::createPipeline() {
 	dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
 	dynamicState.pDynamicStates = dynamicStates.data();
 
+	VkPushConstantRange constantRange{};
+	constantRange.size = sizeof(UIPushConstants);
+	constantRange.offset = 0;
+	constantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
 	VkPipelineLayoutCreateInfo layoutInfo{};
 	layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	layoutInfo.setLayoutCount = 1;
 	layoutInfo.pSetLayouts = &descriptorSetLayout;
-	layoutInfo.pushConstantRangeCount = 0;
-	layoutInfo.pPushConstantRanges = nullptr;
+	layoutInfo.pushConstantRangeCount = 1;
+	layoutInfo.pPushConstantRanges = &constantRange;
 
 	if (vkCreatePipelineLayout(device, &layoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) { throw std::runtime_error("Failed to create UI pipeline layout"); }
 	VkPipelineShaderStageCreateInfo shaderStages2[] = { shaderStages[0], shaderStages[1] };
@@ -433,7 +441,6 @@ void UIRasterizer::getMemoryRequirements(std::vector<MemoryDetails>* details, st
 	details->push_back(texRequirements);
 }
 
-
 void UIRasterizer::initFreetype() {
 	if (FT_Init_FreeType(&library)) { throw std::runtime_error("Failed to intialize FreeType Library"); }
 
@@ -456,6 +463,7 @@ void UIRasterizer::initFreetype() {
 	int16_t bxMax = 0;
 	int16_t yMin = 10;
 	int16_t yMax = 10;
+	int16_t advMax = 10;
 
 	std::vector<textBitmapWrapper> textContainers;
 
@@ -478,6 +486,7 @@ void UIRasterizer::initFreetype() {
 		bxMax = std::max(bxMax, tempContainer.bearingX);
 		yMin = std::min(yMin, (int16_t)(tempContainer.bearingY - face->glyph->bitmap.rows));
 		yMax = std::max(yMax, tempContainer.bearingY);
+		advMax = std::max(advMax, tempContainer.advance);
 
 
 		FT_Bitmap_Init(tempContainer.address);
@@ -489,6 +498,7 @@ void UIRasterizer::initFreetype() {
 	charWidth = 4*ceil(((float)(xMax + bxMax - xMin))/4);
 	texWidth = charCount * charWidth;
 	texHeight = 4 * ceil(((float)(yMax - yMin))/4);
+	charAdvance = advMax;
 	int16_t orgHeight = -yMin;
 	int16_t orgWidth = xMin;
 
@@ -543,4 +553,27 @@ void UIRasterizer::initFreetype() {
 	}
 
 	file.close();
+}
+
+void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameIndex) {
+	UIPushConstants pushConstant{};
+	pushConstant.charAdvance = charAdvance;
+	pushConstant.charDimensions = glm::ivec2(texWidth, texHeight);
+	pushConstant.renderStage = 0;
+
+	glm::vec2 screenPos1 = glm::vec2(0.5, 0.5);
+	glm::vec2 screenDim1 = glm::vec2(0.25, 0.25);
+
+	pushConstant.screenPosition = screenPos1;
+	pushConstant.screenDimensions = screenDim1;
+
+
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[frameIndex], 0, nullptr);
+	vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &pushConstant);
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, { 0 });
+
+	vkCmdDraw(commandBuffer, vertices.size(), 1, 0, 0);
+	
+
 }

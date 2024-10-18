@@ -11,6 +11,7 @@
 #include <optional>
 #include <array>
 #include <glm/glm.hpp>
+#include <charconv>
 
 
 
@@ -79,4 +80,19 @@
 
     void Vertex::printVertex() {
         std::cout << "Position: " << pos.x << ", " << pos.y << ", " << pos.z << " Colour: " << colour.r << ", " << colour.g << ", " << colour.b << std::endl;
+    }
+
+    void UIElement::getCharVector(std::vector<char>* data) {
+        uint32_t REFERENCE_CONFIGURATIONS = 4 | 8 | 16;
+        uint32_t referenceConfig = configuration & REFERENCE_CONFIGURATIONS;
+        switch (referenceConfig) {
+        case UI_REFERENCE_MODE_UINT32_T:
+            data->resize(10);
+            std::to_chars(data->data(), data->data() + data->size(), *reinterpret_cast<uint32_t*>(dataPointer));
+        case UI_REFERENCE_MODE_CHAR:
+            *data = *reinterpret_cast<std::vector<char>*>(dataPointer);
+        case UI_REFERENCE_MODE_STRING:
+            std::string* str = reinterpret_cast<std::string*>(dataPointer);
+            std::copy(str->begin(), str->end(), std::back_inserter(*data));
+        }
     }
