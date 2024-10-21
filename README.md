@@ -1,2 +1,2 @@
 # GravSim
-### My first Git Project
+### Particle Simulation in Vulkan / C++
