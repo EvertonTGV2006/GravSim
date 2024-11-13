@@ -13,7 +13,8 @@ layout(push_constant) uniform pc {
     vec2 screenPosition;
     vec2 screenDimensions;
     float charAdvance;
-    uint renderStage;       
+    uint renderStage;  
+    int instanceOffset;     
 };
 
 
@@ -25,7 +26,7 @@ layout(location = 0) out vec2 fragTexCoord;
 int characters[11] = int[](72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100);
 
 void main() {
-    uint i = gl_InstanceIndex;
+    int i = gl_InstanceIndex - instanceOffset;
 
     if(renderStage == 0){
         //draw blank boxes if renderstage is 0
@@ -53,7 +54,7 @@ void main() {
 
         char = char - CHAR_START;
 
-        char = characters[i] - CHAR_START;
+        //char = characters[i] - CHAR_START;
 
         fragTexCoord = vec2(inPosition.x + char * charDimensions.x, inPosition.y);
 
@@ -62,7 +63,7 @@ void main() {
         //fragTexCoord = vec2(newChar, newChar);
         //work out texture position for the current char being rendered;
 
-        //now work out out position based on instance ID and char Advance
+        //now work out out position based on instance ID and instanceOffset and char Advance
         vec2 stringPosition = vec2(screenDimensions.x * (charAdvance * i + inPosition.x), screenDimensions.y * inPosition.y);
         gl_Position = vec4(screenPosition.x + stringPosition.x, screenPosition.y + stringPosition.y, 0.0, 1.0);
     }

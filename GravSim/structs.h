@@ -140,9 +140,10 @@ struct textBitmapWrapper {
     FT_Bitmap* address;
 };
 struct UIElement {
-    glm::vec2 screenPosition;
     glm::vec2 textPosition;
+    glm::vec2 textDimension;
     uint32_t configuration;
     void* dataPointer;
+    uint32_t* fPointer;
     void getCharVector(std::vector<char>*);
 };

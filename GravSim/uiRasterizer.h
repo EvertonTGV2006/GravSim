@@ -31,6 +31,7 @@ struct UIPushConstants {
 	glm::vec2 screenDimensions;
 	float  charAdvance;
 	uint32_t renderStage;
+	int32_t instanceOffset;
 };
 
 
@@ -96,9 +97,9 @@ private:
 	std::vector<char*> bitmapData;
 	uint32_t bitmapHeight;
 	uint32_t bitmapWidth;
-	uint32_t characterCount = 128;
+	static const uint32_t characterCount = 4096;
 
-	
+	std::array<char, characterCount> charData;
 	
 	std::array<std::vector<char>*, 2> shaderCode;
 
