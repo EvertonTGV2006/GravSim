@@ -8,6 +8,7 @@
 #include FT_BITMAP_H
 
 #include <fstream>
+#include <charconv>
 
 #include "uiRasterizer.h"
 #include "structs.h"
@@ -587,9 +588,9 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 	pushConstant.screenPosition = screenPos1;
 	pushConstant.screenDimensions = screenDim1;
 
-	std::array<char, 11> str = { 'H','e','l','l','o',' ','W','o','r','l','d' };
+	
 
-	memcpy(uniformsMapped[frameIndex], str.data(), sizeof(str[0]) * str.size());
+	//memcpy(uniformsMapped[frameIndex], str.data(), sizeof(str[0]) * str.size());
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[frameIndex], 0, nullptr);
@@ -597,7 +598,33 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 	VkDeviceSize offsets[] = { 0 };
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer,offsets);
 
-	vkCmdDraw(commandBuffer, vertices.size(), 11, 0, 0);
+	uint32_t charCounter = 0;
+	uint32_t charCount = 0;
+	char* cursorPos = charData.data();
+
+	for (uint32_t i = 0; i < player->elements.size(); i++) {
+		pushConstant.screenPosition = player->elements[i].textPosition;
+		pushConstant.screenDimensions = player->elements[i].textDimension;
+		pushConstant.instanceOffset = charCounter;
+		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &pushConstant);
+		if (player->elements[i].configuration == 0) {
+			std::to_chars(cursorPos, cursorPos + 10, *reinterpret_cast<uint32_t*>((player->elements[i].dataPointer)), 10);
+			charCount = 10;
+		}
+		else if (player->elements[i].configuration == 1) {
+			charCount = reinterpret_cast<std::vector<char>*>(player->elements[i].dataPointer)->size() * sizeof(char);
+			memcpy(cursorPos, reinterpret_cast<std::vector<char>*>(player->elements[i].dataPointer)->data(), charCount);
+		}
+
+		vkCmdDraw(commandBuffer, vertices.size(), charCount, 0, charCounter);
+		cursorPos += charCount;
+		charCounter += charCount;
+	}
+
+	memcpy(uniformsMapped[frameIndex], charData.data(), charData.size() * sizeof(charData[0]));
+
+	//vkCmdDraw(commandBuffer, vertices.size(), 11, 0, 0);
+	
 	
 
 }

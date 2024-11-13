@@ -9,8 +9,10 @@
 
 #include <map>
 #include <atomic>
+#include <vector>
 
 #include "window.h"
+#include "structs.h"
 //#include "renderer.h"
 
 enum playerViewOptions {
@@ -84,6 +86,13 @@ public:
 	int windowxpos = 0;
 	int windowypos = 0;
 
+	std::vector<UIElement> elements;
+	uint32_t number = 42;
+
+
+	std::vector<char> str = { 'H','e','l','l','o',' ','W','o','r','l','d' };
+	
+	void initUIElements();
 
 	void updateViewMat();
 	void updatePlayerMovement();

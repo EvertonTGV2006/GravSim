@@ -36,6 +36,7 @@ void VulkanEngine::initEngine() {
     winmanager.initWindow();
     player->winmanager = winmanager;
     player->updateGLFWcallbacks();
+    player->initUIElements();
 
     
     createInstance();
@@ -102,6 +103,7 @@ void VulkanEngine::initEngine() {
     ui.player = player;
     ui.renderPass = renderPass;
     ui.shaderCode = { &shaderCode[8], &shaderCode[9] };
+
     uiRasterizer.initUI_A(ui);
 
 
