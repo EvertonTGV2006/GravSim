@@ -2,9 +2,10 @@
 
 const uint CHAR_COUNT = 128 - 32;
 const uint CHAR_START = 32;
+const uint STRING_LENGTH = 256;
 
 layout(binding = 0) uniform UniformBufferObject{
-    int[CHAR_COUNT] stringContents;
+    uvec4[STRING_LENGTH / 16] stringContents;
 } ubo;
 
 layout(push_constant) uniform pc {
@@ -24,7 +25,7 @@ layout(location = 0) out vec2 fragTexCoord;
 int characters[11] = int[](72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100);
 
 void main() {
-    int i = gl_InstanceIndex;
+    uint i = gl_InstanceIndex;
 
     if(renderStage == 0){
         //draw blank boxes if renderstage is 0
@@ -39,16 +40,26 @@ void main() {
         //draw character boxes if renderStage is 1
 
         //Unpack data from UBO int array to character;
-        uint uboIndex = uint(floor(float(i) / 4));
-        uint uboShift = 8 * (i % 4);
-        uint uboMask = 31;
 
-        uint char = (ubo.stringContents[uboIndex] >> uboShift) & uboMask;
+        uint uboVecIndex = i >> 4;
+        uint uboValIndex = (i >> 2) & 3;
+        uint uboShiftIndex = i & 3;
+        uint uboShiftValue = 8 * uboShiftIndex;
+        uint uboMask = 31;
+        
+        uvec4 uboVec = ubo.stringContents[uboVecIndex];
+        uint uboVal = uboVec[uboValIndex];
+        uint char = (uboVal >> uboShiftValue) & uboMask;
+
         char = char - CHAR_START;
 
         char = characters[i] - CHAR_START;
 
         fragTexCoord = vec2(inPosition.x + char * charDimensions.x, inPosition.y);
+
+        //float newChar = float(char) / 50;
+        
+        //fragTexCoord = vec2(newChar, newChar);
         //work out texture position for the current char being rendered;
 
         //now work out out position based on instance ID and char Advance

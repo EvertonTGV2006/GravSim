@@ -190,7 +190,7 @@ void UIRasterizer::createBuffers() {
 	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	createInfo.size = sizeof(vertices[0]) * vertices.size();
 	if (vkCreateBuffer(device, &createInfo, nullptr, &vertexBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create UI vertex buffer"); }
-	createInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	createInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 	createInfo.size = uniformBufferSize;
 	if (vkCreateBuffer(device, &createInfo, nullptr, &uniformBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create UI uniform buffer"); }
 
@@ -587,9 +587,13 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 	pushConstant.screenPosition = screenPos1;
 	pushConstant.screenDimensions = screenDim1;
 
-	std::array<char, 11> str = { 'H','e','l','l','o',' ','W','o','r','l','d' };
+	std::string dataPointer = "Some sample text to DISPLAY!";
+	std::vector<char>data;
+	std::string* str = reinterpret_cast<std::string*>(&dataPointer);
+	std::copy(str->begin(), str->end(), std::back_inserter(data));
 
-	memcpy(uniformsMapped[frameIndex], str.data(), sizeof(str[0]) * str.size());
+	memcpy(uniformsMapped[frameIndex], data.data(), data.size() * sizeof(data[0]));
+
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[frameIndex], 0, nullptr);
@@ -597,7 +601,7 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 	VkDeviceSize offsets[] = { 0 };
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer,offsets);
 
-	vkCmdDraw(commandBuffer, vertices.size(), 11, 0, 0);
+	vkCmdDraw(commandBuffer, vertices.size(),22, 0, 0);
 	
 
 }
