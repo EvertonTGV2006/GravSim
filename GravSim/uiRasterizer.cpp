@@ -625,7 +625,25 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 
 	//vkCmdDraw(commandBuffer, vertices.size(), 11, 0, 0);
 	
-	
+	//std::vector<glm::uvec4> charVecData(charData.size()/16);
+	//memcpy(charVecData.data(), charData.data(), charData.size() * sizeof(char));
+	//for (uint32_t i = 0; i < charCounter; i++) {
+	//	uint32_t uboVecIndex = i >> 4;
+	//	uint32_t uboValIndex = (i >> 2) & 3;
+	//	uint32_t uboShiftIndex = i & 3;
+	//	uint32_t uboShiftValue = 8 * uboShiftIndex;
+	//	uint32_t uboMask = 127;
+
+	//	glm::uvec4 uboVec = charVecData[uboVecIndex];
+	//	uint32_t uboVal = uboVec[uboValIndex];
+	//	uint32_t char1 = (uboVal >> uboShiftValue) & uboMask;
+	//	char char2 = char1;
+	//	std::cout << char2;
+	//}
+
+
+
+
 
 }
 
@@ -639,6 +657,5 @@ void UIRasterizer::cleanup() {
 	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 	vkDestroyPipeline(device, pipeline, nullptr);
 	vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-
 
 }

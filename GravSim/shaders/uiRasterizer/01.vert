@@ -26,7 +26,7 @@ layout(location = 0) out vec2 fragTexCoord;
 int characters[11] = int[](72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100);
 
 void main() {
-    int i = gl_InstanceIndex - instanceOffset;
+    uint i = gl_InstanceIndex;
 
     if(renderStage == 0){
         //draw blank boxes if renderstage is 0
@@ -46,11 +46,13 @@ void main() {
         uint uboValIndex = (i >> 2) & 3;
         uint uboShiftIndex = i & 3;
         uint uboShiftValue = 8 * uboShiftIndex;
-        uint uboMask = 31;
+        uint uboMask = 127;
         
         uvec4 uboVec = ubo.stringContents[uboVecIndex];
         uint uboVal = uboVec[uboValIndex];
         uint char = (uboVal >> uboShiftValue) & uboMask;
+
+        
 
         char = char - CHAR_START;
 
@@ -64,7 +66,8 @@ void main() {
         //work out texture position for the current char being rendered;
 
         //now work out out position based on instance ID and instanceOffset and char Advance
-        vec2 stringPosition = vec2(screenDimensions.x * (charAdvance * i + inPosition.x), screenDimensions.y * inPosition.y);
+        uint j = i - instanceOffset;
+        vec2 stringPosition = vec2(screenDimensions.x * (charAdvance * j + inPosition.x), screenDimensions.y * inPosition.y);
         gl_Position = vec4(screenPosition.x + stringPosition.x, screenPosition.y + stringPosition.y, 0.0, 1.0);
     }
     if(renderStage == 2){
