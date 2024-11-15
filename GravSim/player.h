@@ -90,8 +90,10 @@ public:
 	uint32_t number = 42;
 
 
-	std::vector<char> str = { 'H','e','l','l','o',' ','W','o','r','l','d' };
-	
+	std::vector<char> str1 = { 'H','e','l','l','o',' ','W','o','r','l','d' };
+	//std::vector<char> str = { 'A', 'n', 'y', 't', 'h', 'i', 'n', 'g' };
+	std::string str = "Anything";
+
 	void initUIElements();
 
 	void updateViewMat();

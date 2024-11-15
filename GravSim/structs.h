@@ -22,7 +22,8 @@ enum UIConfiguration {
     UI_RENDER_MODE_STATIC = 2,
     UI_REFERENCE_MODE_UINT32_T = 4,
     UI_REFERENCE_MODE_STRING = 8,
-    UI_REFERENCE_MODE_CHAR = 16
+    UI_REFERENCE_MODE_CHAR = 16,
+    UI_REFERENCE_MODE_LABELLED_VALUE = 32
 };
 
 struct QueueFamilyIndices {
@@ -144,6 +145,7 @@ struct UIElement {
     glm::vec2 textDimension;
     uint32_t configuration;
     void* dataPointer;
+    void* labelPointer;
     uint32_t* fPointer;
-    void getCharVector(std::vector<char>*);
+    void getCharVector(std::vector<char>*, std::vector<uint32_t>*);
 };

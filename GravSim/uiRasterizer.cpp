@@ -464,7 +464,7 @@ void UIRasterizer::initFreetype() {
 
 	if (FT_New_Face(library, "C:/Windows/Fonts/CascadiaCode.ttf", 0, &face)) { throw std::runtime_error("Failed to load Font"); }
 
-	FT_Set_Pixel_Sizes(face, 0, 128);
+	FT_Set_Pixel_Sizes(face, 0, 48);
 
 
 	char character = 22;
@@ -602,32 +602,40 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 	uint32_t charCount = 0;
 	char* cursorPos = charData.data();
 
+	std::vector<char> charData;
+	std::vector<uint32_t> charCounts;
+
 	for (uint32_t i = 0; i < player->elements.size(); i++) {
 		pushConstant.screenPosition = player->elements[i].textPosition;
 		pushConstant.screenDimensions = player->elements[i].textDimension;
 		pushConstant.instanceOffset = charCounter;
 		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &pushConstant);
-		if (player->elements[i].configuration & UI_REFERENCE_MODE_UINT32_T) {
-			std::to_chars(cursorPos, cursorPos + 10, *reinterpret_cast<uint32_t*>((player->elements[i].dataPointer)), 10);
-			for (uint32_t i = 0; i < 10; i++) {
-				if (*(cursorPos + 10 - i) != 0) {
-					charCount = 10 + 1 - i;
-					break;
-				}
-			}
-		}
-		else if (player->elements[i].configuration & UI_REFERENCE_MODE_CHAR) {
-			charCount = reinterpret_cast<std::vector<char>*>(player->elements[i].dataPointer)->size() * sizeof(char);
-			memcpy(cursorPos, reinterpret_cast<std::vector<char>*>(player->elements[i].dataPointer)->data(), charCount);
-		}
+		//if (player->elements[i].configuration & UI_REFERENCE_MODE_UINT32_T) {
+		//	std::to_chars(cursorPos, cursorPos + 10, *reinterpret_cast<uint32_t*>((player->elements[i].dataPointer)), 10);
+		//	for (uint32_t i = 0; i < 10; i++) {
+		//		if (*(cursorPos + 10 - i) != 0) {
+		//			charCount = 10 + 1 - i;
+		//			break;
+		//		}
+		//	}
+		//}
+		//else if (player->elements[i].configuration & UI_REFERENCE_MODE_CHAR) {
+		//	charCount = reinterpret_cast<std::vector<char>*>(player->elements[i].dataPointer)->size() * sizeof(char);
+		//	memcpy(cursorPos, reinterpret_cast<std::vector<char>*>(player->elements[i].dataPointer)->data(), charCount);
+		//}
 
-		vkCmdDraw(commandBuffer, vertices.size(), charCount, 0, charCounter);
-		cursorPos += charCount;
-		charCounter += charCount;
+		//vkCmdDraw(commandBuffer, vertices.size(), charCount, 0, charCounter);
+		//cursorPos += charCount;
+		//charCounter += charCount;
+		player->elements[i].getCharVector(&charData, &charCounts);
+		vkCmdDraw(commandBuffer, vertices.size(), charCounts[i],0, charCounter);
+		charCounter += charCounts[i];
 	}
 
 	memcpy(uniformsMapped[frameIndex], charData.data(), charData.size() * sizeof(charData[0]));
 
+
+	
 	//vkCmdDraw(commandBuffer, vertices.size(), 11, 0, 0);
 	
 	//std::vector<glm::uvec4> charVecData(charData.size()/16);

@@ -53,7 +53,7 @@ void PlayerObject::initUIElements() {
 	elements[0].textPosition = glm::vec2(-0.5, -0.5);
 	elements[0].textDimension = glm::vec2(10, 0.25);
 	elements[0].dataPointer = &str;
-	elements[0].configuration = UI_REFERENCE_MODE_CHAR;
+	elements[0].configuration = UI_REFERENCE_MODE_STRING;
 	elements[1].textDimension = glm::vec2(10, 0.25);
 	elements[1].textPosition = glm::vec2(0, 0);
 	elements[1].configuration = UI_REFERENCE_MODE_UINT32_T;

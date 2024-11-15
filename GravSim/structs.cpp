@@ -82,17 +82,54 @@
         std::cout << "Position: " << pos.x << ", " << pos.y << ", " << pos.z << " Colour: " << colour.r << ", " << colour.g << ", " << colour.b << std::endl;
     }
 
-    void UIElement::getCharVector(std::vector<char>* data) {
-        uint32_t REFERENCE_CONFIGURATIONS = 4 | 8 | 16;
+    void UIElement::getCharVector(std::vector<char>* data, std::vector<uint32_t>* charCounts) {
+        uint32_t REFERENCE_CONFIGURATIONS = 4 | 8 | 16 | 32;
         uint32_t referenceConfig = configuration & REFERENCE_CONFIGURATIONS;
-        switch (referenceConfig) {
-        case UI_REFERENCE_MODE_UINT32_T:
-            data->resize(10);
-            std::to_chars(data->data(), data->data() + data->size(), *reinterpret_cast<uint32_t*>(dataPointer));
-        case UI_REFERENCE_MODE_CHAR:
-            *data = *reinterpret_cast<std::vector<char>*>(dataPointer);
-        case UI_REFERENCE_MODE_STRING:
+        std::vector<char>* charPointer;
+        uint32_t endLimit = 0;
+        if (UI_REFERENCE_MODE_UINT32_T & referenceConfig) {
+            data->resize(10 + data->size());
+            std::to_chars(data->data() + data->size() - 10, data->data() + data->size(), *reinterpret_cast<uint32_t*>(dataPointer));
+            endLimit = 0;
+            for (uint32_t i = 0; i < 10; i++) {
+                if ((*data)[data->size() - 1 - i] != 0) {
+                    endLimit = i;
+                    break;
+                }
+            }
+            data->resize(data->size() - endLimit);
+            charCounts->push_back(10 - endLimit);
+        }
+        else if (UI_REFERENCE_MODE_CHAR & referenceConfig) {
+            charPointer = reinterpret_cast<std::vector<char>*>(dataPointer);
+            data->resize(data->size() + charPointer->size());
+            std::memcpy(data->data() + data->size() - charPointer->size(), charPointer->data(), charPointer->size());
+            charCounts->push_back(charPointer->size());
+        }
+        else if (UI_REFERENCE_MODE_STRING & referenceConfig) {
             std::string* str = reinterpret_cast<std::string*>(dataPointer);
-            std::copy(str->begin(), str->end(), std::back_inserter(*data));
+            for (uint32_t i = 0; i < str->size(); i++) {
+                data->push_back((*str)[i]);
+            }
+            charCounts->push_back(str->size());
+        }
+        else if (UI_REFERENCE_MODE_LABELLED_VALUE & referenceConfig) {
+            charPointer = reinterpret_cast<std::vector<char>*>(labelPointer);
+            data->resize(data->size() + charPointer->size());
+            std::memcpy(data->data() + data->size() - charPointer->size(), charPointer->data(), charPointer->size());
+
+
+            data->resize(10 + data->size());
+            std::to_chars(data->data() + data->size() - 10, data->data() + data->size(), *reinterpret_cast<uint32_t*>(dataPointer));
+            endLimit = 0;
+            for (uint32_t i = 0; i < 10; i++) {
+                if ((*data)[data->size() - 1 - i] != 0) {
+                    endLimit = i;
+                    break;
+                }
+            }
+            data->resize(data->size() - endLimit);
+            charCounts->push_back(endLimit + charPointer->size());
         }
     }
+    
