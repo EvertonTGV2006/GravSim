@@ -47,7 +47,7 @@ public:
 
 	void cleanup();
 
-	uint32_t MAX_STRING_LENGTH = 256;
+	static const uint32_t MAX_STRING_LENGTH = 4096;
 
 	void drawElements(VkCommandBuffer, uint32_t);
 
@@ -97,9 +97,9 @@ private:
 	std::vector<char*> bitmapData;
 	uint32_t bitmapHeight;
 	uint32_t bitmapWidth;
-	static const uint32_t characterCount = 4096;
+	;
 
-	std::array<char, characterCount> charData;
+	std::array<char, MAX_STRING_LENGTH> charData;
 	
 	std::array<std::vector<char>*, 2> shaderCode;
 

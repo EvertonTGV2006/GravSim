@@ -464,7 +464,7 @@ void UIRasterizer::initFreetype() {
 
 	if (FT_New_Face(library, "C:/Windows/Fonts/CascadiaCode.ttf", 0, &face)) { throw std::runtime_error("Failed to load Font"); }
 
-	FT_Set_Pixel_Sizes(face, 0, 48);
+	FT_Set_Pixel_Sizes(face, 0, 128);
 
 
 	char character = 22;
@@ -607,11 +607,16 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 		pushConstant.screenDimensions = player->elements[i].textDimension;
 		pushConstant.instanceOffset = charCounter;
 		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &pushConstant);
-		if (player->elements[i].configuration == 0) {
+		if (player->elements[i].configuration & UI_REFERENCE_MODE_UINT32_T) {
 			std::to_chars(cursorPos, cursorPos + 10, *reinterpret_cast<uint32_t*>((player->elements[i].dataPointer)), 10);
-			charCount = 10;
+			for (uint32_t i = 0; i < 10; i++) {
+				if (*(cursorPos + 10 - i) != 0) {
+					charCount = 10 + 1 - i;
+					break;
+				}
+			}
 		}
-		else if (player->elements[i].configuration == 1) {
+		else if (player->elements[i].configuration & UI_REFERENCE_MODE_CHAR) {
 			charCount = reinterpret_cast<std::vector<char>*>(player->elements[i].dataPointer)->size() * sizeof(char);
 			memcpy(cursorPos, reinterpret_cast<std::vector<char>*>(player->elements[i].dataPointer)->data(), charCount);
 		}

@@ -2,7 +2,7 @@
 
 const uint CHAR_COUNT = 128 - 32;
 const uint CHAR_START = 32;
-const uint STRING_LENGTH = 256;
+const uint STRING_LENGTH = 4096;
 
 layout(binding = 0) uniform UniformBufferObject{
     uvec4[STRING_LENGTH / 16] stringContents;

@@ -53,10 +53,10 @@ void PlayerObject::initUIElements() {
 	elements[0].textPosition = glm::vec2(-0.5, -0.5);
 	elements[0].textDimension = glm::vec2(10, 0.25);
 	elements[0].dataPointer = &str;
-	elements[0].configuration = 1;
+	elements[0].configuration = UI_REFERENCE_MODE_CHAR;
 	elements[1].textDimension = glm::vec2(10, 0.25);
 	elements[1].textPosition = glm::vec2(0, 0);
-	elements[1].configuration = 0;
+	elements[1].configuration = UI_REFERENCE_MODE_UINT32_T;
 	elements[1].dataPointer = &number;
 }
 
@@ -131,6 +131,9 @@ void PlayerObject::keyCallback(GLFWwindow* window, int key, int scancode, int ac
 		if (glfwGetWindowMonitor(window) != NULL) {
 			glfwSetWindowMonitor(window, NULL, app->windowxpos, app->windowypos, 800, 600, GLFW_DONT_CARE);
 		}
+	}
+	else if (action == GLFW_PRESS && key == GLFW_KEY_Z) {
+		app->triggerStep = true;
 	}
 	else if (action == GLFW_PRESS) {
 			app->playerMoveFlags |= app->keyBindings[key];
