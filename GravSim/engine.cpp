@@ -36,7 +36,7 @@ void VulkanEngine::initEngine() {
     winmanager.initWindow();
     player->winmanager = winmanager;
     player->updateGLFWcallbacks();
-    player->initUIElements();
+    player->initUIElements(&frameCounter, &fpsVal);
 
     
     createInstance();
@@ -349,6 +349,17 @@ void VulkanEngine::executeGraphics() {
     //std::cout << "FPS: " << 1.0 / dt.count() << std::endl;
 
     frameIndex = (frameIndex + 1) % FRAMES_IN_FLIGHT;
+    frameCounter++;
+
+    fpsAverage[fpsIndex] = dt.count();
+    fpsIndex = (fpsIndex + 1) % 10;
+
+    double fpsSum = 0;
+    for (uint32_t i = 0; i < fpsAverage.size(); i++) {
+        fpsSum += fpsAverage[i];
+    }
+    fpsVal = 10 / fpsSum;
+
 
 
     //check if validate particles

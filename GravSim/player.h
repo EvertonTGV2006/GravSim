@@ -13,6 +13,7 @@
 
 #include "window.h"
 #include "structs.h"
+#include <chrono>
 //#include "renderer.h"
 
 enum playerViewOptions {
@@ -88,13 +89,16 @@ public:
 
 	std::vector<UIElement> elements;
 	uint32_t number = 42;
+	
 
 
 	std::vector<char> str1 = { 'H','e','l','l','o',' ','W','o','r','l','d' };
 	//std::vector<char> str = { 'A', 'n', 'y', 't', 'h', 'i', 'n', 'g' };
-	std::string str = "Anything";
+	 std::string str2 = "Anything";
+	std::string fLabel = "Frame Count: ";
+	std::string tLabel = "FPS: ";
 
-	void initUIElements();
+	void initUIElements(uint32_t*, uint32_t*);
 
 	void updateViewMat();
 	void updatePlayerMovement();

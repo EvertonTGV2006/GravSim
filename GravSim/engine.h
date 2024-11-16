@@ -45,6 +45,10 @@ public:
 	static const int COMPUTE_STEPS = 3;
 
 	uint32_t runNumber;
+	uint32_t frameCounter = 0;
+	uint32_t fpsVal = 0;
+	std::array<double, 10> fpsAverage;
+	uint32_t fpsIndex;
 
 	bool lowPerformanceSetting;
 
