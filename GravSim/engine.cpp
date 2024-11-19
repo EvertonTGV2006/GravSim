@@ -33,12 +33,14 @@
 
 
 void VulkanEngine::initEngine() {
+    std::chrono::time_point startTime = std::chrono::high_resolution_clock::now();
     winmanager.initWindow();
     player->winmanager = winmanager;
     player->updateGLFWcallbacks();
     player->initUIElements(&frameCounter, &fpsVal);
 
     
+
     createInstance();
     setupDebugMessenger();
     createSurface();
@@ -104,11 +106,13 @@ void VulkanEngine::initEngine() {
     ui.renderPass = renderPass;
     ui.shaderCode = { &shaderCode[8], &shaderCode[9] };
 
-    uiRasterizer.initUI_A(ui);
+
+    std::thread uitA(&UIRasterizer::initUI_A, &uiRasterizer, ui);
+    //uiRasterizer.initUI_A(ui);
 
 
-    //std::thread gravt(&GravEngine::initGrav, &gravEngine, grav);
-    gravEngine.initGrav_A(grav);
+    std::thread gravtA(&GravEngine::initGrav_A, &gravEngine, grav);
+    //gravEngine.initGrav_A(grav);
 
     spheret.join();
 
@@ -124,13 +128,16 @@ void VulkanEngine::initEngine() {
     rast.meshes = meshes;
     rast.particleCount = partCount;
     rast.shaderCode = { &shaderCode[6], &shaderCode[7] };
+
+    gravtA.join();
+
     rast.gravStorageBuffer = gravEngine.getInterleavedStorageBuffer();
 
-    //std::thread rastt(&particleRasterizer::initRast, &particleRasterizer, rast);
-    particleRasterizer.initRast_A(rast);
+    std::thread rasttA(&particleRasterizer::initRast_A, &particleRasterizer, rast);
+    //particleRasterizer.initRast_A(rast);
     
-    //rastt.join();
-
+    rasttA.join();
+    uitA.join();
 
     particleRasterizer.storeGravStorageBuffer(gravEngine.getInterleavedStorageBuffer());
 
@@ -139,6 +146,14 @@ void VulkanEngine::initEngine() {
     uiRasterizer.initUI_B();
     particleRasterizer.initRast_B();
     gravEngine.initGrav_B();
+
+    //std::thread uitB(&UIRasterizer::initUI_B, &uiRasterizer);
+    //std::thread rastB(&particleRasterizer::initRast_B, &particleRasterizer);
+    //std::thread gravtB(&GravEngine::initGrav_B, &gravEngine);
+
+    //uitB.join();
+    //rastB.join();
+    //gravtB.join();
 
     renderGravSemaphores = gravEngine.getInterleavedSemaphores(gravRenderSemaphores);
 
@@ -149,6 +164,12 @@ void VulkanEngine::initEngine() {
     
 
     frameTimes.reserve(1000);
+
+    std::chrono::time_point endTime = std::chrono::high_resolution_clock::now();
+
+    std::chrono::duration<double> elapsedTime = endTime - startTime;
+
+    std::cout <<std::endl<<"Program took " << elapsedTime << " to start." << std::endl;
 }
 
 void VulkanEngine::readFiles(std::vector<std::string> files, std::vector<std::vector<char>>* code) {
