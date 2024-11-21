@@ -660,6 +660,43 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 
 }
 
+void UIRasterizer::populateCharVector(UIText* text, std::vector<uint32_t>* charCounts) {
+	uint32_t tConfig = text->config & UI_DATA_MASK;
+	uint32_t endLimit = 0;
+
+
+	switch (tConfig) {
+	case UI_DATA_UINT32_T:
+		charVec.resize(10 + charVec.size());
+		std::to_chars(charVec.data() + charVec.size() - 10, charVec.data() + charVec.size(), *reinterpret_cast<uint32_t*>(text->dataP));
+		for (uint32_t i = 0; i < 10; i++) {
+			if (charVec[charVec.size() - 1 - i] != 0) {
+				endLimit = i;
+				break;
+			}
+		}
+		charVec.resize(charVec.size() - endLimit);
+		charCounts->push_back(10 - endLimit);
+
+
+	case UI_DATA_FLOAT:
+		charVec.push_back('0');
+		charCounts->push_back(1);
+	case UI_DATA_CHAR_VEC:
+		charVec.resize(charVec.size() + reinterpret_cast<std::vector<char>*>(text->dataP)->size());
+		std::memcpy(charVec.data() + charVec.size() - reinterpret_cast<std::vector<char>*>(text->dataP)->size(), reinterpret_cast<std::vector<char>*>(text->dataP)->data(), reinterpret_cast<std::vector<char>*>(text->dataP)->size());
+		charCounts->push_back(reinterpret_cast<std::vector<char>*>(text->dataP)->size());
+	case UI_DATA_STRING:
+		for (uint32_t i = 0; i < reinterpret_cast<std::string*>(text->dataP)->size(); i++) {
+			charVec.push_back((*reinterpret_cast<std::string*>(text->dataP))[i]);
+		}
+		charCounts->push_back(reinterpret_cast<std::string*>(text->dataP)->size());
+
+	default:
+		throw std::runtime_error("Unsupported text data type");
+	}
+}
+
 void UIRasterizer::cleanup() {
 	vkDestroyBuffer(device, vertexBuffer, nullptr);
 	vkDestroyBuffer(device, uniformBuffer, nullptr);

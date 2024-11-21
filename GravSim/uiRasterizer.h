@@ -115,6 +115,9 @@ private:
 
 	void initFreetype();
 
+	void populateCharVector(UIText*, std::vector<uint32_t>*);
+	std::vector<char> charVec;
+
 	std::vector<uint8_t> texPixels;
 	uint16_t texWidth = 0;
 	uint16_t texHeight = 0;
