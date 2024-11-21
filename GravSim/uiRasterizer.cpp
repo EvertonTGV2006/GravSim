@@ -598,38 +598,47 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 	VkDeviceSize offsets[] = { 0 };
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer,offsets);
 
-	uint32_t charCounter = 0;
-	uint32_t charCount = 0;
-	char* cursorPos = charData.data();
-
 	std::vector<char> charData;
-	std::vector<uint32_t> charCounts;
+	std::vector<uint32_t> blockLengths;
+	std::vector<uint32_t> blockCounts;
+	std::vector<uint32_t> blockConfigs;
 
-	for (uint32_t i = 0; i < player->elements.size(); i++) {
-		pushConstant.screenPosition = player->elements[i].textPosition;
-		pushConstant.screenDimensions = player->elements[i].textDimension;
-		pushConstant.instanceOffset = charCounter;
-		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &pushConstant);
-		//if (player->elements[i].configuration & UI_REFERENCE_MODE_UINT32_T) {
-		//	std::to_chars(cursorPos, cursorPos + 10, *reinterpret_cast<uint32_t*>((player->elements[i].dataPointer)), 10);
-		//	for (uint32_t i = 0; i < 10; i++) {
-		//		if (*(cursorPos + 10 - i) != 0) {
-		//			charCount = 10 + 1 - i;
-		//			break;
-		//		}
-		//	}
-		//}
-		//else if (player->elements[i].configuration & UI_REFERENCE_MODE_CHAR) {
-		//	charCount = reinterpret_cast<std::vector<char>*>(player->elements[i].dataPointer)->size() * sizeof(char);
-		//	memcpy(cursorPos, reinterpret_cast<std::vector<char>*>(player->elements[i].dataPointer)->data(), charCount);
-		//}
+	UIBox workingBox;
+	UIText* workingText;
+	uint32_t charCount = 0;
 
-		//vkCmdDraw(commandBuffer, vertices.size(), charCount, 0, charCounter);
-		//cursorPos += charCount;
-		//charCounter += charCount;
-		player->elements[i].getCharVector(&charData, &charCounts);
-		vkCmdDraw(commandBuffer, vertices.size(), charCounts[i],0, charCounter);
-		charCounter += charCounts[i];
+	for (uint32_t i = 0; i < player->boxes.size(); i++) {
+		blockCounts.clear();
+		blockConfigs.clear();
+		blockLengths.clear();
+		blockConfigs.push_back(0);
+		workingBox = (player->boxes)[i];
+		for (uint32_t j = 0; j < workingBox.textCount; j++) {
+			workingText = workingBox.dataP + j;
+			populateCharVector(workingText, &charCount);
+			if ((blockConfigs[blockConfigs.size() - 1] & UI_NEWLINE_MASK) == UI_NEWLINE_TRUE) {
+				blockConfigs.push_back(workingText->config);
+				blockCounts.push_back(charCount);
+				blockLengths.push_back(1);
+			}
+			else if ((blockConfigs[blockConfigs.size() - 1] & UI_ALIGNMENT_H_MASK) != (workingText->config & UI_ALIGNMENT_H_MASK)) {
+				blockConfigs.push_back(workingText->config);
+				blockCounts.push_back(charCount);
+				blockLengths.push_back(1);
+			}
+			else if ((blockConfigs[blockConfigs.size() - 1] & UI_ALIGNMENT_V_MASK) != (workingText->config & UI_ALIGNMENT_V_MASK)) {
+				blockConfigs.push_back(workingText->config);
+				blockConfigs.push_back(charCount);
+				blockLengths.push_back(1);
+			}
+			else {
+				blockCounts[blockCounts.size() - 1] += charCount;
+				blockLengths[blockLengths.size() - 1] += 1;
+			}
+			
+
+		}
+		
 	}
 
 	memcpy(uniformsMapped[frameIndex], charData.data(), charData.size() * sizeof(charData[0]));
@@ -660,7 +669,7 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 
 }
 
-void UIRasterizer::populateCharVector(UIText* text, std::vector<uint32_t>* charCounts) {
+void UIRasterizer::populateCharVector(UIText* text,uint32_t* charCounts) {
 	uint32_t tConfig = text->config & UI_DATA_MASK;
 	uint32_t endLimit = 0;
 
@@ -676,24 +685,27 @@ void UIRasterizer::populateCharVector(UIText* text, std::vector<uint32_t>* charC
 			}
 		}
 		charVec.resize(charVec.size() - endLimit);
-		charCounts->push_back(10 - endLimit);
+		*charCounts = 10 - endLimit;
 
-
+		break;
 	case UI_DATA_FLOAT:
 		charVec.push_back('0');
-		charCounts->push_back(1);
+		*charCounts = 1;
+		break;
 	case UI_DATA_CHAR_VEC:
 		charVec.resize(charVec.size() + reinterpret_cast<std::vector<char>*>(text->dataP)->size());
 		std::memcpy(charVec.data() + charVec.size() - reinterpret_cast<std::vector<char>*>(text->dataP)->size(), reinterpret_cast<std::vector<char>*>(text->dataP)->data(), reinterpret_cast<std::vector<char>*>(text->dataP)->size());
-		charCounts->push_back(reinterpret_cast<std::vector<char>*>(text->dataP)->size());
+		*charCounts = reinterpret_cast<std::vector<char>*>(text->dataP)->size();
+		break;
 	case UI_DATA_STRING:
 		for (uint32_t i = 0; i < reinterpret_cast<std::string*>(text->dataP)->size(); i++) {
 			charVec.push_back((*reinterpret_cast<std::string*>(text->dataP))[i]);
 		}
-		charCounts->push_back(reinterpret_cast<std::string*>(text->dataP)->size());
-
+		*charCounts = reinterpret_cast<std::string*>(text->dataP)->size();
+		break;
 	default:
 		throw std::runtime_error("Unsupported text data type");
+		break;
 	}
 }
 
