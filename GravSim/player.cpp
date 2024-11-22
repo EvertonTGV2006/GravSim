@@ -51,12 +51,12 @@ void PlayerObject::updateGLFWcallbacks() {
 
 void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 	elements.resize(4);
-	elements[0].textPosition = glm::vec2(-0.5, -0.5);
+	elements[0].textPosition = glm::vec2(0.3, 0.7);
 	elements[0].textDimension = glm::vec2(10, 0.25);
 	elements[0].dataPointer = &str2;
 	elements[0].configuration = UI_REFERENCE_MODE_STRING;
 	elements[1].textDimension = glm::vec2(10, 0.25);
-	elements[1].textPosition = glm::vec2(0, 0);
+	elements[1].textPosition = glm::vec2(0.8, 0);
 	elements[1].configuration = UI_REFERENCE_MODE_UINT32_T;
 	elements[1].dataPointer = &number;
 	elements[2].textDimension = glm::vec2(3, 0.1);
