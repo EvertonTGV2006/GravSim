@@ -599,46 +599,95 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer,offsets);
 
 	std::vector<char> charData;
-	std::vector<uint32_t> blockLengths;
-	std::vector<uint32_t> blockCounts;
-	std::vector<uint32_t> blockConfigs;
+	//std::vector<uint32_t> blockLengths;
+	//std::vector<uint32_t> blockCounts;
+	//std::vector<uint32_t> blockConfigs;
+	//std::vector<glm::vec2> textPositions;
+	//std::vector<glm::vec2> textDimensions;
+	glm::vec2 blockCursor = glm::vec2(-1, -1);
 
-	UIBox workingBox;
+	std::vector<uint32_t> blockCharCount;
+	std::vector<uint32_t> hBlockCount;
+	std::vector<uint32_t> newlineCount;
+	std::vector<uint32_t> vBlockCount;
+
+	UIBox* workingBox;
 	UIText* workingText;
 	uint32_t charCount = 0;
 
 	for (uint32_t i = 0; i < player->boxes.size(); i++) {
-		blockCounts.clear();
-		blockConfigs.clear();
-		blockLengths.clear();
-		blockConfigs.push_back(0);
-		workingBox = (player->boxes)[i];
-		for (uint32_t j = 0; j < workingBox.textCount; j++) {
-			workingText = workingBox.dataP + j;
-			populateCharVector(workingText, &charCount);
-			if ((blockConfigs[blockConfigs.size() - 1] & UI_NEWLINE_MASK) == UI_NEWLINE_TRUE) {
-				blockConfigs.push_back(workingText->config);
-				blockCounts.push_back(charCount);
-				blockLengths.push_back(1);
+		//blockCounts.clear();
+		//blockConfigs.clear();
+		//blockLengths.clear();
+		//blockConfigs.push_back(0);
+		//workingBox = (player->boxes)[i];
+		//for (uint32_t j = 0; j < workingBox.textCount; j++) {
+		//	workingText = workingBox.dataP + j;
+		//	populateCharVector(workingText, &charCount);
+		//	if ((blockConfigs[blockConfigs.size() - 1] & UI_NEWLINE_MASK) == UI_NEWLINE_TRUE) {
+		//		blockConfigs.push_back(workingText->config);
+		//		blockCounts.push_back(charCount);
+		//		blockLengths.push_back(1);
+		//	}
+		//	else if ((blockConfigs[blockConfigs.size() - 1] & UI_ALIGNMENT_H_MASK) != (workingText->config & UI_ALIGNMENT_H_MASK)) {
+		//		blockConfigs.push_back(workingText->config);
+		//		blockCounts.push_back(charCount);
+		//		blockLengths.push_back(1);
+		//	}
+		//	else if ((blockConfigs[blockConfigs.size() - 1] & UI_ALIGNMENT_V_MASK) != (workingText->config & UI_ALIGNMENT_V_MASK)) {
+		//		blockConfigs.push_back(workingText->config);
+		//		blockConfigs.push_back(charCount);
+		//		blockLengths.push_back(1);
+		//	}
+		//	else {
+		//		blockCounts[blockCounts.size() - 1] += charCount;
+		//		blockLengths[blockLengths.size() - 1] += 1;
+		//		blockConfigs[blockConfigs.size() - 1] = workingText->config;
+		//	}
+		//}
+		//uint32_t blockIndex = 0;
+		//uint32_t newlineCount = 0;
+		//for (uint32_t j = 0; j < blockConfigs.size(); j++) {
+		//	for (uint32_t k = 0; k < blockLengths[j]; k++) {
+		//		switch (blockConfigs[j] & UI_ALIGNMENT_H_MASK) {
+		//		case UI_ALIGNMENT_H_L:
+
+		//		}
+		//	}
+		//}
+
+
+
+
+		workingBox = &player->boxes[i];
+		uint32_t prevConfig = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE;
+		for (uint32_t j = 0; j < workingBox->textCount; j++) {
+			workingText = workingBox->dataP + j;
+
+			if ((workingText->config & UI_ALIGNMENT_V_MASK) != (workingText->config & UI_ALIGNMENT_V_MASK)) {
+				//action if v_block different
+				vBlockCount.push_back(0);
+				newlineCount.push_back(0);
+				hBlockCount.push_back(0);
+				prevConfig = (workingText->config & UI_ALIGNMENT_V_MASK) | UI_ALIGNMENT_H_L | UI_NEWLINE_FALSE;
 			}
-			else if ((blockConfigs[blockConfigs.size() - 1] & UI_ALIGNMENT_H_MASK) != (workingText->config & UI_ALIGNMENT_H_MASK)) {
-				blockConfigs.push_back(workingText->config);
-				blockCounts.push_back(charCount);
-				blockLengths.push_back(1);
+			else if ((workingText->config & UI_NEWLINE_MASK) == UI_NEWLINE_TRUE) {
+				//action if newline
+				vBlockCount[vBlockCount.size() - 1]++;
+				newlineCount[newlineCount.size() - 1]++;
+				hBlockCount.push_back(0);
+				prevConfig = (workingText->config & UI_ALIGNMENT_V_MASK) | UI_ALIGNMENT_H_L | UI_NEWLINE_FALSE;
 			}
-			else if ((blockConfigs[blockConfigs.size() - 1] & UI_ALIGNMENT_V_MASK) != (workingText->config & UI_ALIGNMENT_V_MASK)) {
-				blockConfigs.push_back(workingText->config);
-				blockConfigs.push_back(charCount);
-				blockLengths.push_back(1);
+			else if ((workingText->config & UI_ALIGNMENT_H_MASK) != (workingText->config & UI_ALIGNMENT_H_MASK)) {
+				//action if h_block different
+				vBlockCount[vBlockCount.size() - 1]++;
+				hBlockCount.push_back(0);
 			}
 			else {
-				blockCounts[blockCounts.size() - 1] += charCount;
-				blockLengths[blockLengths.size() - 1] += 1;
+				hBlockCount[hBlockCount.size() - 1]++;
+				vBlockCount[vBlockCount.size() - 1]++;
 			}
-			
-
 		}
-		
 	}
 
 	memcpy(uniformsMapped[frameIndex], charData.data(), charData.size() * sizeof(charData[0]));
