@@ -27,6 +27,39 @@ enum UIConfiguration {
     UI_REFERENCE_MODE_LABEL_CHAR_VALUE = 64,
     UI_REFERENCE_MODE_LABEL_TIME = 128
 };
+enum UIOptions {
+    //32Bits
+    //xxxxxxxxxxxxxxxxxxxxxxnnddddvvhh
+
+    //h = alignment horizontal
+    UI_ALIGNMENT_H_MASK = 3,
+    UI_ALIGNMENT_H_L = 1,
+    UI_ALIGNMENT_H_C = 2,
+    UI_ALIGNMENT_H_R = 3,
+
+    //v = alignment vertical
+    UI_ALIGNMENT_V_MASK = 3 << 2,
+    UI_ALIGNMENT_V_T = 1 << 2,
+    UI_ALIGNMENT_V_C = 2 << 2,
+    UI_ALIGNMENT_V_B = 3 << 2,
+
+    //d = dataType
+    UI_DATA_MASK = 15 << 4,
+    UI_DATA_UINT32_T = 1 << 4,
+    UI_DATA_FLOAT = 2 << 4,
+    UI_DATA_CHAR_VEC = 3 << 4,
+    UI_DATA_STRING = 4 << 4,
+
+    //n
+    UI_NEWLINE_MASK = 3 << 8,
+    UI_NEWLINE_TRUE = 1 << 8,
+    UI_NEWLINE_FALSE = 2 << 8
+};
+
+
+
+
+
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
@@ -150,4 +183,24 @@ struct UIElement {
     void* labelPointer;
     uint32_t* fPointer;
     void getCharVector(std::vector<char>*, std::vector<uint32_t>*);
+};
+
+
+
+struct UIText {
+    uint32_t config;
+    uint32_t charCount;
+    glm::vec2 size;
+    glm::vec2 offset;
+    glm::vec3 colour;
+    void* dataP;
+};
+struct UIBox {
+    uint32_t config;
+    uint32_t textCount;
+    glm::vec2 pos;
+    glm::vec2 size;
+    glm::vec2 offset;
+    glm::vec3 colour;
+    UIText* dataP;
 };

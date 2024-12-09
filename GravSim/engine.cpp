@@ -106,6 +106,7 @@ void VulkanEngine::initEngine() {
     ui.player = player;
     ui.renderPass = renderPass;
     ui.msaaSamples = msaaSamples;
+    ui.aspectRatio = &swapChainAspectRatio;
     ui.shaderCode = { &shaderCode[8], &shaderCode[9] };
 
 
@@ -631,6 +632,7 @@ void VulkanEngine::createSwapChain() {
 
     swapChainImageFormat = surfaceFormat.format;
     swapChainExtent = extent;
+    swapChainAspectRatio = float(extent.height) / float(extent.width);
 }
 void VulkanEngine::createImageViews() {
     swapChainImageViews.resize(swapChainImages.size());
