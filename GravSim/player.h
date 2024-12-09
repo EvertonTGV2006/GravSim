@@ -112,4 +112,6 @@ public:
 	static void windowCloseCallback(GLFWwindow*);
 
 	std::vector<UIBox> boxes;
+	UIText texts[128];
+	std::string strings[64];
 };

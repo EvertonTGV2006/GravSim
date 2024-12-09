@@ -21,6 +21,8 @@ struct UIInit {
 	VkPhysicalDeviceMemoryProperties memProperties;
 	std::array<std::vector<char>*, 2> shaderCode;
 
+	float* aspectRatio;
+
 	PlayerObject* player;
 
 };
@@ -70,6 +72,7 @@ private:
 	std::array<VkDescriptorSet, FRAMES_IN_FLIGHT> descriptorSets;
 	VkDescriptorSetLayout descriptorSetLayout;
 
+	float* aspectRatio;
 
 	VkBuffer vertexBuffer;
 	MemInit vertexMemory;
@@ -123,6 +126,7 @@ private:
 	uint16_t texHeight = 0;
 	uint16_t charWidth = 0;
 	uint16_t charAdvance = 0;
+	glm::vec2 rawCharDimensions = glm::vec2(0.03f, 0.13f);
 	glm::vec2 charDimensions = glm::vec2(0.03f, 0.13f);
 	int16_t charStart = 32;
 	int16_t charCount = 128 - charStart;

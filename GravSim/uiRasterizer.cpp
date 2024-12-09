@@ -24,6 +24,8 @@ void UIRasterizer::initUI_A(UIInit details) {
 
 	player = details.player;
 
+	aspectRatio = details.aspectRatio;
+
 	initFreetype();
 	createBuffers();
 
@@ -517,7 +519,7 @@ void UIRasterizer::initFreetype() {
 	texWidth = charCount * charWidth;
 	texHeight = 4 * ceil(((float)(yMax - yMin))/4);
 	charAdvance = advMax;
-	charDimensions.y = charDimensions.x * float(texHeight) / float(charWidth);
+	rawCharDimensions.y = rawCharDimensions.x * float(texHeight) / float(charWidth);
 	int16_t orgHeight = -yMin;
 	int16_t orgWidth = xMin;
 
@@ -595,6 +597,7 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 	vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &pushConstant);
 	VkDeviceSize offsets[] = { 0 };
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, offsets);
+	charVec.clear();
 
 	std::vector<char> charData;
 	//std::vector<uint32_t> blockLengths;
@@ -621,6 +624,8 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 	sText.dataP = &localChar;
 	sText.config = UI_DATA_CHAR_VEC;
 	
+	charDimensions.y = rawCharDimensions.y / *aspectRatio;
+	charDimensions.x = charDimensions.x;
 
 	
 	UIText tTexts[6] = { sText, sText,sText,sText,sText,sText };
@@ -636,13 +641,14 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 	tBox.dataP = &tTexts[0];
 
 	player->boxes.resize(1);
-	player->boxes[0] = tBox;
+	//player->boxes.push_back(tBox);
 
 	float px;
 	float py;
 	float dx;
 	float dy;
 	uint32_t workingConfig = 0;
+	float texAdvance = float(charAdvance) / float(charWidth) * charDimensions.x;
 
 	glm::vec2 screenCoords{};
 	glm::vec2 boxScreenCoords = glm::vec2(0.1,0.1);
@@ -835,12 +841,13 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 			default:
 				throw std::runtime_error("UI_ALIGNENT_V fall through");
 			}
-			blockBoxCoords = glm::vec2(px - (charDimensions.x * dx), py - (charDimensions.y * dy));
-			blockScreenCoords = glm::vec2(boxScreenCoords.x + (blockBoxCoords.x * boxDimCoords.x), boxScreenCoords.y + (blockBoxCoords.y * boxDimCoords.y));
+			
+			blockBoxCoords = glm::vec2(px - (texAdvance * dx), py - (charDimensions.y * dy));
+			blockScreenCoords = glm::vec2(workingBox->pos.x + (blockBoxCoords.x * workingBox->size.x), workingBox->pos.y + (blockBoxCoords.y * workingBox->size.y));
 			pc.charDimensions = charDimensions;
 			pc.screenPosition = blockScreenCoords;
 			pc.renderStage = 3;
-			pc.texAdvance = (float(charAdvance)/float(charWidth)) * charDimensions.y;
+			pc.texAdvance = texAdvance;
 			pc.texDimensions = glm::vec2(1.0f / charCount, 1);
 			pc.instanceOffset = charIndex;
 			vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &pc);

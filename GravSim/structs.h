@@ -198,6 +198,7 @@ struct UIText {
 struct UIBox {
     uint32_t config;
     uint32_t textCount;
+    glm::vec2 pos;
     glm::vec2 size;
     glm::vec2 offset;
     glm::vec3 colour;

@@ -52,6 +52,8 @@ public:
 
 	bool lowPerformanceSetting;
 
+	float swapChainAspectRatio;
+
 private:
 	VkInstance instance;
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
