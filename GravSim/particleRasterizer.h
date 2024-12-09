@@ -12,6 +12,8 @@ struct RastInit {
 	VkDescriptorPool descriptorPool;
 	VkRenderPass renderPass;
 
+	VkSampleCountFlagBits msaaSamples;
+
 	VkPhysicalDeviceMemoryProperties memProperties;
 
 	std::array<std::vector<char>*, 2> shaderCode;
@@ -52,6 +54,8 @@ private:
 	VkDevice device;
 	VkDescriptorPool descriptorPool;
 	VkRenderPass renderPass;
+
+	VkSampleCountFlagBits msaaSamples;
 
 	VkPhysicalDeviceMemoryProperties memProperties;
 
