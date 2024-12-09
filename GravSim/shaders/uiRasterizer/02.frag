@@ -10,6 +10,6 @@ void main(){
     outColour = texture(texSampler, fragTexCoord);
     //outColour = vec4(outColour.x, outColour.y, 0.0, 1.0);
     //outColour = vec4(fragTexCoord.x, 1.0 - fragTexCoord.y, 0.0, 1.0);
-    //outColour = vec4(fragTexCoord.x, fragTexCoord.y, 0.0, 1.0);
+    //outColour = vec4(fragTexCoord.x, fragTexCoord.y * 0, 0.0, 1.0);
     //outColour = vec4(1.0, 1.0, 1.0, 0.0);
 }

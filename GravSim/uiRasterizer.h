@@ -28,8 +28,8 @@ struct UIInit {
 struct UIPushConstants {
 	glm::vec2 charDimensions;
 	glm::vec2 screenPosition;
-	glm::vec2 screenDimensions;
-	float  charAdvance;
+	glm::vec2 texDimensions;
+	float  texAdvance;
 	uint32_t renderStage;
 	int32_t instanceOffset;
 };
@@ -123,6 +123,7 @@ private:
 	uint16_t texHeight = 0;
 	uint16_t charWidth = 0;
 	uint16_t charAdvance = 0;
+	glm::vec2 charDimensions = glm::vec2(0.03f, 0.13f);
 	int16_t charStart = 32;
 	int16_t charCount = 128 - charStart;
 	int16_t stringLength = 256;

@@ -95,6 +95,7 @@ private:
 	VkCommandPool transferCommandPool;
 	VkCommandPool computeCommandPool;
 
+	
 
 	VkImage depthImage;
 	VkDeviceMemory depthImageMemory;

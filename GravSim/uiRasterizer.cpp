@@ -517,6 +517,7 @@ void UIRasterizer::initFreetype() {
 	texWidth = charCount * charWidth;
 	texHeight = 4 * ceil(((float)(yMax - yMin))/4);
 	charAdvance = advMax;
+	charDimensions.y = charDimensions.x * float(texHeight) / float(charWidth);
 	int16_t orgHeight = -yMin;
 	int16_t orgWidth = xMin;
 
@@ -553,11 +554,8 @@ void UIRasterizer::initFreetype() {
 		delete textContainers[i].address;
 	}
 
-	vertices = { glm::vec2(0, 0), glm::vec2(charWidth, 0), glm::vec2(0, texHeight), glm::vec2(0, texHeight), glm::vec2(charWidth, 0), glm::vec2(charWidth, texHeight) };
-	for (size_t i = 0; i < vertices.size(); i++) {
-		vertices[i].x = vertices[i].x / texWidth;
-		vertices[i].y = vertices[i].y / texHeight;
-	}
+	vertices = { glm::vec2(0, 0), glm::vec2(1, 0), glm::vec2(0, 1), glm::vec2(0, 1), glm::vec2(1, 0), glm::vec2(1, 1) };
+
 
 	FT_Done_FreeType(library);
 
@@ -578,17 +576,17 @@ void UIRasterizer::initFreetype() {
 
 void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameIndex) {
 	UIPushConstants pushConstant{};
-	pushConstant.charAdvance = float(charAdvance)/texWidth;
-	pushConstant.charDimensions = glm::vec2(float(charWidth)/float(texWidth), 1);
+	pushConstant.texAdvance = float(charAdvance) / texWidth;
+	pushConstant.charDimensions = glm::vec2(float(charWidth) / float(texWidth), 1);
 	pushConstant.renderStage = 1;
 
 	glm::vec2 screenPos1 = glm::vec2(-0.5, -0.5);
 	glm::vec2 screenDim1 = glm::vec2(10, 0.25);
 
 	pushConstant.screenPosition = screenPos1;
-	pushConstant.screenDimensions = screenDim1;
+	pushConstant.texDimensions = screenDim1;
 
-	
+
 
 	//memcpy(uniformsMapped[frameIndex], str.data(), sizeof(str[0]) * str.size());
 
@@ -596,7 +594,7 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[frameIndex], 0, nullptr);
 	vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &pushConstant);
 	VkDeviceSize offsets[] = { 0 };
-	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer,offsets);
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, offsets);
 
 	std::vector<char> charData;
 	//std::vector<uint32_t> blockLengths;
@@ -606,14 +604,56 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 	//std::vector<glm::vec2> textDimensions;
 	glm::vec2 blockCursor = glm::vec2(-1, -1);
 
-	std::vector<uint32_t> blockCharCount;
+	std::vector<uint32_t> hBlockCountc;
 	std::vector<uint32_t> hBlockCount;
-	std::vector<uint32_t> newlineCount;
+	std::vector<uint32_t> nBlockCounth;
+	std::vector<uint32_t> nBlockCount;
+	std::vector<uint32_t> vBlockCountn;
 	std::vector<uint32_t> vBlockCount;
 
 	UIBox* workingBox;
 	UIText* workingText;
-	uint32_t charCount = 0;
+	uint32_t localCharCount = 0;
+	std::vector<char> localChar = { 'a','9' };
+
+	UIText sText{};
+	sText.charCount = 2;
+	sText.dataP = &localChar;
+	sText.config = UI_DATA_CHAR_VEC;
+	
+
+	
+	UIText tTexts[6] = { sText, sText,sText,sText,sText,sText };
+	tTexts[0].config |= UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE;
+	tTexts[1].config |= UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE;
+	tTexts[2].config |= UI_ALIGNMENT_H_C | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE;
+	tTexts[3].config |= UI_ALIGNMENT_H_C | UI_ALIGNMENT_V_T | UI_NEWLINE_TRUE;
+	tTexts[4].config |= UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_B | UI_NEWLINE_FALSE;
+	tTexts[5].config |= UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_B | UI_NEWLINE_TRUE;
+
+	UIBox tBox;
+	tBox.textCount = 6;
+	tBox.dataP = &tTexts[0];
+
+	player->boxes.resize(1);
+	player->boxes[0] = tBox;
+
+	float px;
+	float py;
+	float dx;
+	float dy;
+	uint32_t workingConfig = 0;
+
+	glm::vec2 screenCoords{};
+	glm::vec2 boxScreenCoords = glm::vec2(0.1,0.1);
+	glm::vec2 boxDimCoords = glm::vec2(0.9,0.9);
+	glm::vec2 blockBoxCoords = glm::vec2(0,0);
+	glm::vec2 blockScreenCoords{};
+
+	std::vector<glm::vec2> localPos;
+
+	UIPushConstants pc{};
+
 
 	for (uint32_t i = 0; i < player->boxes.size(); i++) {
 		//blockCounts.clear();
@@ -651,51 +691,186 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 		//	for (uint32_t k = 0; k < blockLengths[j]; k++) {
 		//		switch (blockConfigs[j] & UI_ALIGNMENT_H_MASK) {
 		//		case UI_ALIGNMENT_H_L:
-
 		//		}
 		//	}
 		//}
 
+		vBlockCount.push_back(0);
+		nBlockCount.push_back(0);
+		hBlockCount.push_back(0);
 
 
 
 		workingBox = &player->boxes[i];
 		uint32_t prevConfig = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE;
+
+		if (workingBox->textCount == 0) {
+			continue;
+		}
+
 		for (uint32_t j = 0; j < workingBox->textCount; j++) {
 			workingText = workingBox->dataP + j;
 
-			if ((workingText->config & UI_ALIGNMENT_V_MASK) != (workingText->config & UI_ALIGNMENT_V_MASK)) {
+			if ((workingText->config & UI_ALIGNMENT_V_MASK) != (prevConfig & UI_ALIGNMENT_V_MASK)) {
 				//action if v_block different
-				vBlockCount.push_back(0);
-				newlineCount.push_back(0);
-				hBlockCount.push_back(0);
+				vBlockCount.push_back(1);
+				nBlockCount.push_back(1);
+				hBlockCount.push_back(1);
 				prevConfig = (workingText->config & UI_ALIGNMENT_V_MASK) | UI_ALIGNMENT_H_L | UI_NEWLINE_FALSE;
 			}
 			else if ((workingText->config & UI_NEWLINE_MASK) == UI_NEWLINE_TRUE) {
 				//action if newline
 				vBlockCount[vBlockCount.size() - 1]++;
-				newlineCount[newlineCount.size() - 1]++;
-				hBlockCount.push_back(0);
+				nBlockCount.push_back(1);
+				hBlockCount.push_back(1);
 				prevConfig = (workingText->config & UI_ALIGNMENT_V_MASK) | UI_ALIGNMENT_H_L | UI_NEWLINE_FALSE;
 			}
-			else if ((workingText->config & UI_ALIGNMENT_H_MASK) != (workingText->config & UI_ALIGNMENT_H_MASK)) {
+			else if ((workingText->config & UI_ALIGNMENT_H_MASK) != (prevConfig & UI_ALIGNMENT_H_MASK)) {
 				//action if h_block different
 				vBlockCount[vBlockCount.size() - 1]++;
-				hBlockCount.push_back(0);
+				nBlockCount[nBlockCount.size() - 1]++;
+				hBlockCount.push_back(1);
+				prevConfig = workingText->config;
 			}
 			else {
 				hBlockCount[hBlockCount.size() - 1]++;
+				nBlockCount[nBlockCount.size() - 1]++;
 				vBlockCount[vBlockCount.size() - 1]++;
 			}
 		}
+
+		uint32_t hBlockIndex = 0;
+		uint32_t hBlockLimit = hBlockCount[0];
+		uint32_t nBlockIndex = 0;
+		uint32_t nBlockLimit = nBlockCount[0];
+		uint32_t vBlockIndex = 0;
+		uint32_t vBlockLimit = vBlockCount[0];
+		uint32_t texIndex = 0;
+		uint32_t lineIndex = 0;
+		uint32_t charIndex = 0;
+
+
+		nBlockCounth.push_back(0);
+		vBlockCountn.push_back(0);
+		hBlockCountc.push_back(0);
+
+		for (uint32_t j = 0; j < workingBox->textCount; j++) {
+			workingText = workingBox->dataP + j;
+			if (j >= vBlockLimit) {
+				nBlockIndex++;
+				nBlockLimit += nBlockCount[hBlockIndex];
+				hBlockIndex++;
+				hBlockLimit += hBlockCount[hBlockIndex];
+				vBlockIndex++;
+				vBlockLimit += vBlockCount[vBlockIndex];
+				nBlockCounth[nBlockCounth.size() - 1]++;
+				vBlockCountn[vBlockCountn.size() - 1]++;
+				hBlockCountc.push_back(0);
+				nBlockCounth.push_back(0);
+				vBlockCountn.push_back(0);
+				
+			}
+			else if (j >= nBlockLimit) {
+				nBlockIndex++;
+				nBlockLimit += nBlockCount[nBlockIndex];
+				hBlockIndex++;
+				hBlockLimit += hBlockCount[hBlockIndex];
+				nBlockCounth[nBlockCounth.size() - 1]++;
+				vBlockCountn[vBlockCountn.size() - 1]++;
+				hBlockCountc.push_back(0);
+				nBlockCounth.push_back(0);
+			}
+			else if (j >= hBlockLimit) {
+				hBlockIndex++;
+				hBlockLimit += hBlockCount[hBlockIndex];
+				nBlockCounth[nBlockCounth.size() - 1]++;;
+				hBlockCountc.push_back(0);
+			}
+			populateCharVector(workingText, &localCharCount);
+			hBlockCountc[hBlockCountc.size() - 1] += localCharCount;
+		}
+		nBlockCounth[nBlockCounth.size() - 1]++;
+		vBlockCountn[vBlockCountn.size() - 1]++;
+
+		hBlockIndex = 0;
+		hBlockLimit = 0;
+		nBlockIndex = 0;
+		nBlockLimit = nBlockCount[0];
+		vBlockIndex = 0;
+		vBlockLimit = vBlockCount[0];
+		
+
+
+		for (uint32_t k = 0; k < hBlockCount.size(); k++){
+			workingConfig = (workingBox->dataP + texIndex)->config;
+			switch (workingConfig & UI_ALIGNMENT_H_MASK) {
+			case UI_ALIGNMENT_H_L:
+				px = 0;
+				dx = 0;
+				break;
+			case UI_ALIGNMENT_H_C:
+				px = 0.5;
+				dx = hBlockCountc[k] / 2;
+				break;
+			case UI_ALIGNMENT_H_R:
+				px = 1;
+				dx = hBlockCountc[k];
+				break;
+			default:
+				throw std::runtime_error("UI_ALIGNENT_H fall through");
+			}
+			switch (workingConfig & UI_ALIGNMENT_V_MASK) {
+			case UI_ALIGNMENT_V_T:
+				py = 0;
+				dy = 0.0f - lineIndex;
+				break;
+			case UI_ALIGNMENT_V_C:
+				py = 0.5;
+				dy = vBlockCountn[vBlockIndex] / 2 - lineIndex;
+				break;
+			case UI_ALIGNMENT_V_B:
+				py = 1;
+				dy = vBlockCountn[vBlockIndex] - lineIndex;
+				break;
+			default:
+				throw std::runtime_error("UI_ALIGNENT_V fall through");
+			}
+			blockBoxCoords = glm::vec2(px - (charDimensions.x * dx), py - (charDimensions.y * dy));
+			blockScreenCoords = glm::vec2(boxScreenCoords.x + (blockBoxCoords.x * boxDimCoords.x), boxScreenCoords.y + (blockBoxCoords.y * boxDimCoords.y));
+			pc.charDimensions = charDimensions;
+			pc.screenPosition = blockScreenCoords;
+			pc.renderStage = 3;
+			pc.texAdvance = (float(charAdvance)/float(charWidth)) * charDimensions.y;
+			pc.texDimensions = glm::vec2(1.0f / charCount, 1);
+			pc.instanceOffset = charIndex;
+			vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &pc);
+			vkCmdDraw(commandBuffer, vertices.size(), hBlockCountc[k], 0, 0);
+			charIndex += hBlockCountc[k];
+
+			localPos.push_back(blockScreenCoords);
+
+			texIndex += hBlockCount[k];
+			if (texIndex >= nBlockLimit && texIndex < workingBox->textCount) {
+				nBlockIndex++;
+				nBlockLimit += nBlockCount[nBlockIndex];
+				lineIndex++;
+			}
+			//redo line index, counting hblocks per line, need to count newline blocks per vblock
+			if (texIndex >= vBlockLimit && texIndex < workingBox->textCount) {
+				vBlockIndex++;
+				vBlockLimit += vBlockCount[vBlockIndex];
+				lineIndex = 0;
+			}
+
+		}
+
 	}
+	memcpy(uniformsMapped[frameIndex], charVec.data(), charVec.size() * sizeof(charVec[0]));
 
-	memcpy(uniformsMapped[frameIndex], charData.data(), charData.size() * sizeof(charData[0]));
 
 
-	
 	//vkCmdDraw(commandBuffer, vertices.size(), 11, 0, 0);
-	
+
 	//std::vector<glm::uvec4> charVecData(charData.size()/16);
 	//memcpy(charVecData.data(), charData.data(), charData.size() * sizeof(char));
 	//for (uint32_t i = 0; i < charCounter; i++) {
@@ -716,6 +891,7 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 
 
 
+	
 }
 
 void UIRasterizer::populateCharVector(UIText* text,uint32_t* charCounts) {
