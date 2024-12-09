@@ -782,6 +782,9 @@ glm::vec3 SphereGeometry::randomColour(uint16_t mode) {
 	else if (mode == 6) {
 		return glm::vec3({ glm::linearRand<float>(0, 1) , 0, 0});
 	}
+	else {
+		throw std::runtime_error("Invalid colour mode");
+	}
 }
 
 void ParticleGeometry::createParticles(uint32_t size) {

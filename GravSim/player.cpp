@@ -69,6 +69,45 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 	elements[3].dataPointer = fpsVal;
 	elements[3].labelPointer = &tLabel;
 	elements[3].configuration = UI_REFERENCE_MODE_LABEL_STR_VALUE;
+
+	std::string frameString1 = "Frame Count: ";
+	strings[0] = frameString1;
+	frameString1 = "FPS: ";
+	strings[1] = frameString1;
+
+	UIText frameCounterText1{};
+	frameCounterText1.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_STRING;
+	frameCounterText1.colour = glm::vec3(1.0f, 1.0f, 1.0f);
+	frameCounterText1.dataP = &(strings[0]);
+	texts[0] = frameCounterText1;
+
+	frameCounterText1.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_UINT32_T;
+	frameCounterText1.colour = glm::vec3(1.0f, 1.0f, 1.0f);
+	frameCounterText1.dataP = frameIndex;
+	texts[1] = frameCounterText1;
+
+	frameCounterText1.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_TRUE | UI_DATA_STRING;
+	frameCounterText1.colour = glm::vec3(1.0f, 1.0f, 1.0f);
+	frameCounterText1.dataP = &(strings[1]);
+	texts[2] = frameCounterText1;
+
+	frameCounterText1.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_UINT32_T;
+	frameCounterText1.colour = glm::vec3(1.0f, 1.0f, 1.0f);
+	frameCounterText1.dataP = fpsVal;
+	texts[3] = frameCounterText1;
+
+	
+
+	UIBox frameCounterBox{};
+	frameCounterBox.pos = glm::vec2(0.02f, 0.02f);
+	frameCounterBox.size = glm::vec2(0.9f, 0.9f);
+	frameCounterBox.colour = glm::vec3(1.0f, 1.0f, 1.0f);
+	frameCounterBox.dataP = &(texts[0]);
+	frameCounterBox.textCount = 4;
+
+	boxes.push_back(frameCounterBox);
+
+	
 }
 
 void PlayerObject::framebufferResizeCallback(GLFWwindow* window, int width, int height){

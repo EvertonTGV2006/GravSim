@@ -17,9 +17,12 @@ struct UIInit {
 	VkDevice device;
 	VkDescriptorPool descriptorPool;
 	VkRenderPass  renderPass;
+	VkSampleCountFlagBits msaaSamples;
 
 	VkPhysicalDeviceMemoryProperties memProperties;
 	std::array<std::vector<char>*, 2> shaderCode;
+
+	float* aspectRatio;
 
 	PlayerObject* player;
 
@@ -28,10 +31,12 @@ struct UIInit {
 struct UIPushConstants {
 	glm::vec2 charDimensions;
 	glm::vec2 screenPosition;
-	glm::vec2 screenDimensions;
-	float  charAdvance;
+	glm::vec2 texDimensions;
+	float  texAdvance;
 	uint32_t renderStage;
+	glm::vec4 inColour;
 	int32_t instanceOffset;
+	
 };
 
 
@@ -63,6 +68,8 @@ private:
 	VkDescriptorPool descriptorPool;
 	VkRenderPass renderPass;
 
+	VkSampleCountFlagBits msaaSamples;
+
 	VkPhysicalDeviceMemoryProperties memProperties;
 
 	VkPipeline pipeline;
@@ -70,6 +77,7 @@ private:
 	std::array<VkDescriptorSet, FRAMES_IN_FLIGHT> descriptorSets;
 	VkDescriptorSetLayout descriptorSetLayout;
 
+	float* aspectRatio;
 
 	VkBuffer vertexBuffer;
 	MemInit vertexMemory;
@@ -115,11 +123,16 @@ private:
 
 	void initFreetype();
 
+	void populateCharVector(UIText*, uint32_t*);
+	std::vector<char> charVec;
+
 	std::vector<uint8_t> texPixels;
 	uint16_t texWidth = 0;
 	uint16_t texHeight = 0;
 	uint16_t charWidth = 0;
 	uint16_t charAdvance = 0;
+	glm::vec2 rawCharDimensions = glm::vec2(0.03f, 0.13f);
+	glm::vec2 charDimensions = glm::vec2(0.03f, 0.13f);
 	int16_t charStart = 32;
 	int16_t charCount = 128 - charStart;
 	int16_t stringLength = 256;

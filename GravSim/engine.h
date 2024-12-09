@@ -52,6 +52,8 @@ public:
 
 	bool lowPerformanceSetting;
 
+	float swapChainAspectRatio;
+
 private:
 	VkInstance instance;
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
@@ -95,6 +97,11 @@ private:
 	VkCommandPool transferCommandPool;
 	VkCommandPool computeCommandPool;
 
+	VkImage colourImage;
+	VkDeviceMemory colourImageMemory;
+	VkImageView colourImageView;
+
+	
 
 	VkImage depthImage;
 	VkDeviceMemory depthImageMemory;
@@ -111,6 +118,7 @@ private:
 
 	uint32_t frameIndex = 0;
 	
+	VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_8_BIT;
 
 	std::chrono::time_point<std::chrono::high_resolution_clock> pt = std::chrono::high_resolution_clock::now();
 	std::chrono::time_point<std::chrono::high_resolution_clock> ct = std::chrono::high_resolution_clock::now();
@@ -130,6 +138,7 @@ private:
 	void createImageViews();
 	void createRenderPass();
 	void createCommandPools();
+	void createColourResources();
 	void createDepthResources();
 	void createFramebuffers();
 	void createDescriptorPool();
@@ -153,7 +162,7 @@ private:
 
 	void readFiles(std::vector<std::string>, std::vector<std::vector<char>>*);
 
-	void createImage(uint32_t, uint32_t, VkFormat, VkImageTiling, VkImageUsageFlags, VkMemoryPropertyFlags, VkImage&, VkDeviceMemory&);
+	void createImage(uint32_t, uint32_t, VkSampleCountFlagBits, VkFormat, VkImageTiling, VkImageUsageFlags, VkMemoryPropertyFlags, VkImage&, VkDeviceMemory&);
 	VkImageView createImageView(VkImage, VkFormat, VkImageAspectFlags);
 	VkCommandBuffer beginSingleTimeCommands();
 	void endSingleTimeCommands(VkCommandBuffer);

@@ -40,9 +40,9 @@ public:
 	glm::vec3 viewDirection = {4, -27, 0 };
 	glm::vec3 viewFocus = { 0, 0, 0 };
 	glm::vec3 viewUp = { 0,0,1 };
-	float viewZoom = 1;
-	const float zoomMin = 0.01;
-	const float zoomMax = 100;
+	float viewZoom = 1.0f;
+	const float zoomMin = 0.01f;
+	const float zoomMax = 100.0f;
 
 	WindowManager winmanager;
 
@@ -59,8 +59,8 @@ public:
 	double anglexy = glm::pi<double>() * 5 / 4;
 	double scrollScale = 0.1;
 
-	float xscale = 0.005;
-	float yscale = 0.005;
+	float xscale = 0.005f;
+	float yscale = 0.005f;
 
 	double currentTime = glfwGetTime();;
 	double prevTime = glfwGetTime();
@@ -110,4 +110,8 @@ public:
 	static void keyCallback(GLFWwindow*, int, int, int, int);
 	static void scrollCallback(GLFWwindow*, double, double);
 	static void windowCloseCallback(GLFWwindow*);
+
+	std::vector<UIBox> boxes;
+	UIText texts[128];
+	std::string strings[64];
 };
