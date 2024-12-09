@@ -14,7 +14,9 @@ layout(push_constant) uniform pc {
     vec2 texDimensions;
     float texAdvance;
     uint renderStage;  
-    int instanceOffset;     
+    vec4 inColour;  
+    int instanceOffset;   
+    
 };
 
 
@@ -22,6 +24,8 @@ layout(location = 0) in vec2 inPosition;
 
 
 layout(location = 0) out vec2 fragTexCoord;
+layout(location = 1) out vec3 colour;
+layout(location = 2) out uint mode;
 
 int characters[11] = int[](72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100);
 
@@ -102,6 +106,9 @@ void main() {
         vec2 transofmedPosition = (boxPosition - vec2(0.5f,0.5f) ) * 2;
         gl_Position = vec4(transofmedPosition.xy, 0.0, 1.0);
         fragTexCoord = texPosition;
+        mode = 0;
+        colour = inColour.xyz;
+
     }
 
 

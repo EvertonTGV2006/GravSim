@@ -33,7 +33,9 @@ struct UIPushConstants {
 	glm::vec2 texDimensions;
 	float  texAdvance;
 	uint32_t renderStage;
+	glm::vec4 inColour;
 	int32_t instanceOffset;
+	
 };
 
 

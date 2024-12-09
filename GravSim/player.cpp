@@ -101,7 +101,7 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 	UIBox frameCounterBox{};
 	frameCounterBox.pos = glm::vec2(0.02f, 0.02f);
 	frameCounterBox.size = glm::vec2(0.9f, 0.9f);
-	frameCounterBox.colour = glm::vec3(0, 0, 0);
+	frameCounterBox.colour = glm::vec3(1.0f, 1.0f, 1.0f);
 	frameCounterBox.dataP = &(texts[0]);
 	frameCounterBox.textCount = 4;
 
