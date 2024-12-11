@@ -25,7 +25,7 @@ struct UIInit {
 	float* aspectRatio;
 
 	PlayerObject* player;
-
+	
 };
 
 struct UIPushConstants {

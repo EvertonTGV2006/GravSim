@@ -10,7 +10,7 @@
 #include <GLFW/glfw3.h>
 
 
-
+#include "cardEngine.h"
 #include "engine.h"
 #include "window.h"
 #include "geometry.h"
@@ -43,7 +43,9 @@ int main() {
 			//cellPos.z = ((((cID - cellPos.x) / GRID_DIMENSIONS.x) - cellPos.y) / GRID_DIMENSIONS.y) % GRID_DIMENSIONS.z;
 			//std::cout << cellPos.x << " " << cellPos.y << " " << cellPos.z << std::endl;
 
-
+			CardEngine cards;
+			cards.setupGame();
+			cards.processTurns();
 
 			PlayerObject player;
 			VulkanEngine engine;
