@@ -1,0 +1,144 @@
+#pragma once
+
+#include <vulkan/vulkan.h>
+
+#include <array>
+#include <vector>
+
+
+#define CARD_COUNT 52
+
+#include "structs.h"
+#include "player.h"
+#include "cardEngine.h"
+
+struct CardInit {
+	VkDevice device;
+	VkDescriptorPool descriptorPool;
+	VkRenderPass  renderPass;
+	VkSampleCountFlagBits msaaSamples;
+
+	VkPhysicalDeviceMemoryProperties memProperties;
+	std::array<std::vector<char>*, 2> shaderCode;
+
+	PlayerObject* player;
+	
+};
+
+struct CardPushConstants {
+	glm::vec2 charDimensions;
+	glm::vec2 screenPosition;
+	glm::vec2 texDimensions;
+	float  texAdvance;
+	uint32_t renderStage;
+	glm::vec4 inColour;
+	int32_t instanceOffset;
+};
+struct CardDataConstant {
+	glm::mat4 cardMat;
+};
+
+
+
+class CardRasterizer {
+public:
+	void initCard_A(CardInit);
+	void initCard_B();
+
+	void initMemory(std::array<MemInit, 4>);
+	
+	void getMemoryRequirements(std::vector<MemoryDetails>*, std::vector<uint16_t>*);
+
+	void cleanup();
+
+	uint32_t playerIndex = 0;
+
+	static const uint32_t MAX_STRING_LENGTH = 4096;
+
+	void drawElements(VkCommandBuffer, uint32_t);
+
+	static const uint32_t FRAMES_IN_FLIGHT = 3;
+
+	void initBufferData_A(MemoryDetails*);
+	void initBufferData_B(VkCommandBuffer, VkQueue, MemInit);
+	std::vector<std::string> shaderFiles = { "shaders/cardRasterizer/01.spv", "shaders/cardRasterizer/02.spv" };
+
+
+private:
+	VkDevice device;
+	VkDescriptorPool descriptorPool;
+	VkRenderPass renderPass;
+
+	VkSampleCountFlagBits msaaSamples;
+
+	VkPhysicalDeviceMemoryProperties memProperties;
+
+	VkPipeline pipeline;
+	VkPipelineLayout pipelineLayout;
+	std::array<VkDescriptorSet, FRAMES_IN_FLIGHT> descriptorSets;
+	VkDescriptorSetLayout descriptorSetLayout;
+
+	float* aspectRatio;
+
+	VkBuffer vertexBuffer;
+	MemInit vertexMemory;
+	std::array < VkImage, 2>  texImage;
+	std::array < VkImageView, 2>  texImageView;
+	std::array < VkSampler, 2>  texSampler;
+	std::array<MemInit, 2> texMemory;
+	std::array<std::string, 2> texPaths = { "textures/8BitDeck.png","Enhancers.png" };
+	std::array<VkDeviceSize, 2> texSizes;
+
+	VkBuffer stagingBuffer;
+	MemInit stagingMemory;
+
+
+	VkBuffer uniformBuffer;
+	MemInit uniformBufferMemory;
+	char* uniformBufferMapped;
+	uint32_t uniformBufferSize;
+	uint32_t uniformBufferRegion;
+	std::array<char*, FRAMES_IN_FLIGHT> uniformsMapped;
+
+	std::vector<std::vector<playingCard>*>* hands;
+	std::vector<std::vector<playingCard>*>* wins;
+	std::vector<std::vector<playingCard>>* table;
+	std::vector<playingCard>* stock;
+
+	std::array<glm::vec2, 8> tablePositions{};
+	glm::vec2 tableOffset;
+	std::array<glm::vec2, 2> handPositons;
+	std::array<glm::vec2, 4> handOffsets;
+	glm::vec2 winOffset;
+	std::array<glm::vec2, 2> winPositions;
+	glm::vec2 stockOffset;
+	glm::vec2 stockPosition;
+	float cardHeightOffset;
+	float cardHeightZero;
+
+	PlayerObject* player;
+
+	std::array<CardDataConstant, CARD_COUNT> cardData;
+
+
+	
+	std::array<std::vector<char>*, 2> shaderCode;
+
+	MemoryDetails vertexRequirements{};
+	MemoryDetails uniformRequirements{};
+	std::array<MemoryDetails, 2> texRequirements{};
+
+	
+	void createPipeline();
+	void createDescriptorSets();
+	void createBuffers();
+	void createImageView();
+	void createSampler();
+
+
+
+
+	std::vector<glm::vec2> vertices;
+
+
+};

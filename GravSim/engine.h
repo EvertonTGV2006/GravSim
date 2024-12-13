@@ -24,6 +24,7 @@
 #include "particleRasterizer.h"
 #include "grav.h"
 #include "uiRasterizer.h"
+#include "cardRasterizer.h"
 
 class VulkanEngine {
 public:
@@ -110,6 +111,7 @@ private:
 	particleRasterizer particleRasterizer;
 	GravEngine gravEngine;
 	UIRasterizer uiRasterizer;
+	CardRasterizer cardRasterizer;
 
 	std::vector<MemInit> memoryContainers;
 	std::vector<VkDeviceMemory> memory;

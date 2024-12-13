@@ -132,6 +132,16 @@ struct playingCard {
 			throw std::runtime_error("Invalid card rank");
 		}
 	}
+	uint8_t value() {
+		return suit() * 13 + rank() - 1;
+	}
+};
+
+struct gameTable {
+	std::vector<std::vector<playingCard>*>* hands;
+	std::vector<std::vector<playingCard>*>* wins;
+	std::vector<std::vector<playingCard>>* table;
+	std::vector<playingCard>* stock;
 };
 
 class CardEngine {
@@ -161,6 +171,7 @@ public:
 	std::vector<std::string> DScoreReasons;
 	std::vector<std::string> NDScoreReasons;
 
+	
 
 	void firstDeal();
 	void normalDeal();

@@ -39,7 +39,22 @@ void VulkanEngine::initEngine() {
     player->updateGLFWcallbacks();
     player->initUIElements(&frameCounter, &fpsVal);
 
-    
+
+    std::vector<Mesh> meshes;
+    meshes.resize(1);
+    meshes[0].vertices = &vertices;
+    meshes[0].indices = &indices;
+    SphereGeometry sphere{};
+    sphere.vertices = meshes[0].vertices;
+    sphere.indices = meshes[0].indices;
+
+    std::thread spheret(&SphereGeometry::createSphereIcosphere, &sphere, 0);
+
+    ParticleGeometry part{};
+    part.particles = &particles;
+    part.offsets = &offsets;
+
+    std::thread partt(&ParticleGeometry::createParticles, &part, partCount);
 
     createInstance();
     setupDebugMessenger();
@@ -60,21 +75,6 @@ void VulkanEngine::initEngine() {
     VkPhysicalDeviceProperties properties{};
     vkGetPhysicalDeviceProperties(physicalDevice, &properties);
 
-    std::vector<Mesh> meshes;
-    meshes.resize(1);
-    meshes[0].vertices = &vertices;
-    meshes[0].indices = &indices;
-    SphereGeometry sphere{};
-    sphere.vertices = meshes[0].vertices;
-    sphere.indices = meshes[0].indices;
-    
-    std::thread spheret(&SphereGeometry::createSphereIcosphere, &sphere, 0);
-
-    ParticleGeometry part{};
-    part.particles = &particles;
-    part.offsets = &offsets;
-
-    std::thread partt(&ParticleGeometry::createParticles, &part, partCount);
 
 
     std::vector<std::vector<char>> shaderCode;
@@ -83,7 +83,7 @@ void VulkanEngine::initEngine() {
     shaderFiles.insert(std::end(shaderFiles), std::begin(gravEngine.shaderFiles), std::end(gravEngine.shaderFiles));
     shaderFiles.insert(std::end(shaderFiles), std::begin(particleRasterizer.shaderFiles), std::end(particleRasterizer.shaderFiles));
     shaderFiles.insert(std::end(shaderFiles), std::begin(uiRasterizer.shaderFiles), std::end(uiRasterizer.shaderFiles));
-
+    shaderFiles.insert(std::end(shaderFiles), std::begin(cardRasterizer.shaderFiles), std::end(cardRasterizer.shaderFiles));
 
     partt.join();
 
@@ -109,8 +109,17 @@ void VulkanEngine::initEngine() {
     ui.aspectRatio = &swapChainAspectRatio;
     ui.shaderCode = { &shaderCode[8], &shaderCode[9] };
 
+    CardInit cardInit{};
+    cardInit.descriptorPool = descriptorPool;
+    cardInit.device = device;
+    cardInit.memProperties = memProperties;
+    cardInit.player = player;
+    cardInit.renderPass = renderPass;
+    cardInit.msaaSamples = msaaSamples;
+    cardInit.shaderCode = { &shaderCode[9], &shaderCode[10] };
 
     std::thread uitA(&UIRasterizer::initUI_A, &uiRasterizer, ui);
+    std::thread cardRA(&CardRasterizer::initCard_A, &cardRasterizer, cardInit);
     //uiRasterizer.initUI_A(ui);
 
 
@@ -142,11 +151,13 @@ void VulkanEngine::initEngine() {
     
     rasttA.join();
     uitA.join();
+    cardRA.join();
 
     particleRasterizer.storeGravStorageBuffer(gravEngine.getInterleavedStorageBuffer());
 
     allocateMemory();
 
+    cardRasterizer.initCard_B();
     uiRasterizer.initUI_B();
     particleRasterizer.initRast_B();
     gravEngine.initGrav_B();
@@ -839,6 +850,7 @@ void VulkanEngine::allocateMemory() {
     gravEngine.getMemoryRequirements(&memRequirements, &counts);
     particleRasterizer.getMemoryRequirements(&memRequirements, &counts);
     uiRasterizer.getMemoryRequirements(&memRequirements, &counts);
+    cardRasterizer.getMemoryRequirements(&memRequirements, &counts);
 
 
     //now filter and check for duplicate memory types and alignments
@@ -915,25 +927,28 @@ void VulkanEngine::allocateMemory() {
     gravEngine.initMemory({ memoryContainers[0], memoryContainers[1],memoryContainers[2],memoryContainers[3] });
     particleRasterizer.initMemory({ memoryContainers[4],memoryContainers[5],memoryContainers[6]});
     uiRasterizer.initMemory({ memoryContainers[7], memoryContainers[8], memoryContainers[9] });
+    cardRasterizer.initMemory({ memoryContainers[10], memoryContainers[11], memoryContainers[12], memoryContainers[13] });
 
 }
 void VulkanEngine::initSubclassData() {
 
     VkDeviceMemory stagingMemory;
 
-    std::array<MemoryDetails,3> memRequirements;
+    std::array<MemoryDetails,4> memRequirements;
     particleRasterizer.initBufferData_A(&memRequirements[0]);
     gravEngine.syncBufferData_A(&memRequirements[1]);
     uiRasterizer.initBufferData_A(&memRequirements[2]);
+    cardRasterizer.initBufferData_A(&memRequirements[3]);
+    
     //memRequirements[0].flags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
     VkMemoryAllocateInfo memoryInfo{};
     memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memoryInfo.allocationSize = memRequirements[0].requirements.size + memRequirements[1].requirements.size + memRequirements[2].requirements.size;
+    memoryInfo.allocationSize = memRequirements[0].requirements.size + memRequirements[1].requirements.size + memRequirements[2].requirements.size + memRequirements[3].requirements.size;
     memoryInfo.memoryTypeIndex = findMemoryType(memRequirements[0]);
     if (vkAllocateMemory(device, &memoryInfo, nullptr, &stagingMemory) != VK_SUCCESS) { throw std::runtime_error("Failed to allocated memory"); }
 
-    std::array<MemInit, 3> memInitStructs;
+    std::array<MemInit, 4> memInitStructs;
 
     memInitStructs[0].memory = stagingMemory;
     memInitStructs[0].offset = 0;
@@ -946,6 +961,10 @@ void VulkanEngine::initSubclassData() {
     memInitStructs[2].memory = stagingMemory;
     memInitStructs[2].offset = memInitStructs[1].offset + memInitStructs[1].range;
     memInitStructs[2].range = memRequirements[2].requirements.size;
+
+    memInitStructs[3].memory = stagingMemory;
+    memInitStructs[3].offset = memInitStructs[2].offset + memInitStructs[2].range;
+    memInitStructs[3].range = memRequirements[3].requirements.size;
 
     VkCommandBufferAllocateInfo commandInfo{};
     commandInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -961,7 +980,7 @@ void VulkanEngine::initSubclassData() {
     particleRasterizer.initBufferData_B(transferCommandBuffer, graphicsQueue, memInitStructs[0]);
     gravEngine.syncBufferData_B(true, memInitStructs[1]);
     uiRasterizer.initBufferData_B(transferCommandBuffer, graphicsQueue, memInitStructs[2]);
-
+    cardRasterizer.initBufferData_B(transferCommandBuffer, graphicsQueue, memInitStructs[3]);
 
     vkFreeMemory(device, stagingMemory, nullptr);
     vkFreeCommandBuffers(device, graphicsCommandPool, 1, &transferCommandBuffer);
