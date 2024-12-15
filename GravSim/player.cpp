@@ -96,7 +96,18 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 	frameCounterText1.dataP = fpsVal;
 	texts[3] = frameCounterText1;
 
-	
+	UIText commandText{};
+	commandText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_B | UI_NEWLINE_FALSE | UI_DATA_CHAR_VEC;
+	commandText.colour = glm::vec3(0.9f, 0.9f, 0.92f);
+	commandText.dataP = &inputString;
+	texts[4] = commandText;
+
+	UIBox commandBox{};
+	commandBox.pos = glm::vec2(0.02f, 0.02f);
+	commandBox.size = glm::vec2(0.9f, 0.9f);
+	commandBox.colour = glm::vec3(1.0f, 1.0f, 1.0f);;
+	commandBox.dataP = &(texts[4]);
+	commandBox.textCount = 1;
 
 	UIBox frameCounterBox{};
 	frameCounterBox.pos = glm::vec2(0.02f, 0.02f);
@@ -105,7 +116,9 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 	frameCounterBox.dataP = &(texts[0]);
 	frameCounterBox.textCount = 4;
 
-	boxes.push_back(frameCounterBox);
+	//boxes.push_back(frameCounterBox);
+	boxes.push_back(commandBox);
+	inputString.push_back('w');
 
 	
 }
@@ -185,14 +198,45 @@ void PlayerObject::keyCallback(GLFWwindow* window, int key, int scancode, int ac
 	else if (action == GLFW_PRESS && key == GLFW_KEY_Z) {
 		app->triggerStep = true;
 	}
-	else if (action == GLFW_PRESS) {
-			app->playerMoveFlags |= app->keyBindings[key];
-		}
-	else if (action == GLFW_RELEASE){
-		app->playerMoveFlags &= ~app->keyBindings[key];
-	}
+	//else if (action == GLFW_PRESS) {
+	//		app->playerMoveFlags |= app->keyBindings[key];
+	//	}
+	//else if (action == GLFW_RELEASE){
+	//	app->playerMoveFlags &= ~app->keyBindings[key];
+	//}
 	//std::cout << app->pos.x << " " << app->pos.y << " " << app->pos.z << std::endl;
 	//std::cout << app->playerMoveFlags << std::endl;
+	if (action == GLFW_PRESS || action == GLFW_REPEAT) {
+		if (64 < key && key < 91) {
+			if (mods & GLFW_MOD_SHIFT) {
+				app->inputString.push_back(key);
+			}
+			else {
+				app->inputString.push_back(key+32);
+			}
+		}
+		else if (47 < key && key < 58) {
+			if (mods & GLFW_MOD_SHIFT) {
+				app->inputString.push_back(key - 16);
+			}
+			else {
+				app->inputString.push_back(key);
+			}
+		}
+
+
+		else if (key < 256) {
+			app->inputString.push_back(key);
+		}
+		else if (key == GLFW_KEY_ENTER && action == GLFW_PRESS) {
+			app->commandSubmit = true;
+		}
+		else if (key == GLFW_KEY_BACKSPACE) {
+			if (app->inputString.size() > 0) {
+				app->inputString.pop_back();
+			}
+		}
+	}
 }
 void PlayerObject::scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));

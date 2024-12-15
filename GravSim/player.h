@@ -114,4 +114,8 @@ public:
 	std::vector<UIBox> boxes;
 	UIText texts[128];
 	std::string strings[64];
+
+	std::vector<char> inputString;
+	std::atomic_bool commandSubmit;
+	bool shiftModifier;
 };
