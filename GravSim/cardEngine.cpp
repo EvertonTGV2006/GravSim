@@ -21,7 +21,7 @@ void CardEngine::setupGame() {
 	std::random_device rd;
 	std::mt19937 gen{ rd() };
 	printCards(1);
-	std::ranges::shuffle(stock, gen);
+	//std::ranges::shuffle(stock, gen);
 
 	firstDeal();
 	printCards(0);
@@ -285,7 +285,7 @@ void CardEngine::processTurns() {
 	}
 }
 
-void CardEngine::countScore(uint8_t handIndex, uint8_t scoreIndex) {
+void CardEngine::countScore(uint8_t handIndex, uint8_t scoreIndex){
 	
 	std::vector<std::string>* localScoreReasons = playerScoreReasons[handIndex];
 	playingCard scoreCard;
@@ -326,4 +326,14 @@ void CardEngine::countScore(uint8_t handIndex, uint8_t scoreIndex) {
 	}
 
 	*playerScores[handIndex] = localScore + *playerSweeps[handIndex];
+}
+
+GameTable CardEngine::getTable() {
+	GameTable gt{};
+	gt.table = &table;
+	gt.stock = &stock;
+	gt.hands = &playerHands;
+	gt.wins = &playerWins;
+
+	return gt;
 }

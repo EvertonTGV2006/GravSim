@@ -76,6 +76,7 @@ void VulkanEngine::initEngine() {
     vkGetPhysicalDeviceProperties(physicalDevice, &properties);
 
 
+    cardEngine.setupGame();
 
     std::vector<std::vector<char>> shaderCode;
     std::vector<std::string> shaderFiles;
@@ -116,7 +117,9 @@ void VulkanEngine::initEngine() {
     cardInit.player = player;
     cardInit.renderPass = renderPass;
     cardInit.msaaSamples = msaaSamples;
-    cardInit.shaderCode = { &shaderCode[9], &shaderCode[10] };
+    cardInit.shaderCode = { &shaderCode[10], &shaderCode[11] };
+    cardInit.gameTable = cardEngine.getTable();
+
 
     std::thread uitA(&UIRasterizer::initUI_A, &uiRasterizer, ui);
     std::thread cardRA(&CardRasterizer::initCard_A, &cardRasterizer, cardInit);
@@ -288,6 +291,8 @@ void VulkanEngine::executeGraphics() {
     particleRasterizer.drawObjects(drawCommandBuffers[frameIndex], frameIndex, ubo);
 
     uiRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex);
+
+    cardRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex);
 
     vkCmdEndRenderPass(drawCommandBuffers[frameIndex]);
 
@@ -798,9 +803,9 @@ void VulkanEngine::createDescriptorPool() {
 
     std::array<VkDescriptorPoolSize, 3> poolSizes{};
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    poolSizes[0].descriptorCount = static_cast<uint32_t>(FRAMES_IN_FLIGHT);
+    poolSizes[0].descriptorCount = static_cast<uint32_t>(FRAMES_IN_FLIGHT*2);
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSizes[1].descriptorCount = static_cast<uint32_t>(FRAMES_IN_FLIGHT);
+    poolSizes[1].descriptorCount = static_cast<uint32_t>(FRAMES_IN_FLIGHT*3);
     poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     poolSizes[2].descriptorCount = static_cast<uint32_t>(FRAMES_IN_FLIGHT + 6*COMPUTE_STEPS);
 
@@ -809,7 +814,7 @@ void VulkanEngine::createDescriptorPool() {
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
     poolInfo.pPoolSizes = poolSizes.data();
-    poolInfo.maxSets = static_cast<uint32_t>(FRAMES_IN_FLIGHT +2* COMPUTE_STEPS);
+    poolInfo.maxSets = static_cast<uint32_t>(FRAMES_IN_FLIGHT +3 * COMPUTE_STEPS);
 
     if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool!");
@@ -1601,6 +1606,7 @@ void VulkanEngine::cleanup() {
     particleRasterizer.cleanup();
     gravEngine.cleanup();
     uiRasterizer.cleanup();
+    cardRasterizer.cleanup();
 
     writeOutSampleData();
 

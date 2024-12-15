@@ -3,14 +3,17 @@
 #include <array>
 #include <vector>
 
+#define STB_IMAGE_IMPLEMENTATION    
+#include "stb_image.h"
 
 #include <fstream>
 #include <charconv>
+#include <glm/gtx/string_cast.hpp>
 
 #include "cardRasterizer.h"
 #include "structs.h"
 #include "player.h"
-#include "stb_image.h"
+
 
 void CardRasterizer::initCard_A(CardInit details) {
 	device = details.device;
@@ -24,8 +27,29 @@ void CardRasterizer::initCard_A(CardInit details) {
 
 	player = details.player;
 
-	aspectRatio = details.aspectRatio;
+	table = details.gameTable.table;
+	hands = details.gameTable.hands;
+	wins = details.gameTable.wins;
+	stock = details.gameTable.stock;
 
+	//vertices = { glm::vec2(0, 0), glm::vec2(1, 0), glm::vec2(0, 1), glm::vec2(0, 1), glm::vec2(1, 0), glm::vec2(1, 1) };
+
+	tablePositions = { {} };
+	//front face counter clockwise 
+	vertices = {
+		{0.0f, 0.0f, 0.0f, 0.0f},
+		{0.0f, 1.0f, 0.0f, 0.0f},
+		{1.0f, 0.0f, 0.0f, 0.0f}, //triangle 1 bottom
+		{0.0f, 1.0f, 0.0f, 0.0f},
+		{1.0f, 1.0f, 0.0f, 0.0f},
+		{1.0f, 0.0f, 0.0f, 0.0f}, //traingle 2 bottom
+		{0.0f, 0.0f, 1.0f, 1.0f},
+		{1.0f, 0.0f, 1.0f, 1.0f},
+		{0.0f, 1.0f, 1.0f, 1.0f}, //traingle 3 top
+		{0.0f, 1.0f, 1.0f, 1.0f},
+		{1.0f, 0.0f, 1.0f, 1.0f},
+		{1.0f, 1.0f, 1.0f, 1.0f} //triangle 4 top, do the other sides later
+	};
 
 	createBuffers();
 
@@ -242,7 +266,7 @@ void CardRasterizer::createImageView() {
 		viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		viewInfo.image = texImage[i];
 		viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		viewInfo.format = VK_FORMAT_R8_UINT;
+		viewInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
 		viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		viewInfo.subresourceRange.baseMipLevel = 0;
 		viewInfo.subresourceRange.levelCount = 1;
@@ -328,23 +352,39 @@ void CardRasterizer::createDescriptorSets() {
 
 		descriptorWrites.push_back(bufferWrite);
 
-		for (size_t j = 0; j < texImage.size(); j++) {
+
 			VkDescriptorImageInfo imageInfo{};
 			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageInfo.imageView = texImageView[j];
-			imageInfo.sampler = texSampler[j];
+			imageInfo.imageView = texImageView[0];
+			imageInfo.sampler = texSampler[0];
 			imageInfos.push_back(imageInfo);
 
 			VkWriteDescriptorSet imageWrite{};
 			imageWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			imageWrite.dstSet = descriptorSets[i];
 			imageWrite.dstBinding = 1;
-			imageWrite.dstArrayElement = j;
+			imageWrite.dstArrayElement = 0;
 			imageWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 			imageWrite.descriptorCount = 1;
-			imageWrite.pImageInfo = &imageInfos[j];
+			imageWrite.pImageInfo = &imageInfo;
 			descriptorWrites.push_back(imageWrite);
-		}
+
+			VkDescriptorImageInfo imageInfo2{};
+			imageInfo2.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageInfo2.imageView = texImageView[1];
+			imageInfo2.sampler = texSampler[1];
+			imageInfos.push_back(imageInfo2);
+
+			VkWriteDescriptorSet imageWrite2{};
+			imageWrite2.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			imageWrite2.dstSet = descriptorSets[i];
+			imageWrite2.dstBinding = 1;
+			imageWrite2.dstArrayElement = 1;
+			imageWrite2.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			imageWrite2.descriptorCount = 1;
+			imageWrite2.pImageInfo = &imageInfo2;
+			descriptorWrites.push_back(imageWrite2);
+
 
 
 
@@ -379,7 +419,7 @@ void CardRasterizer::createPipeline() {
 	}
 	VkVertexInputAttributeDescription attributeDescription{};
 	attributeDescription.binding = 0;
-	attributeDescription.format = VK_FORMAT_R32G32_SFLOAT;
+	attributeDescription.format = VK_FORMAT_R32G32B32A32_SFLOAT;
 	attributeDescription.location = 0;
 	attributeDescription.offset = 0;
 
@@ -413,7 +453,8 @@ void CardRasterizer::createPipeline() {
 	rasterizer.polygonMode = VK_POLYGON_MODE_FILL; //for point rendering
 	rasterizer.lineWidth = 1.0f;
 	rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
-	rasterizer.cullMode = VK_CULL_MODE_NONE;
+	//rasterizer.cullMode = VK_CULL_MODE_NONE;
+	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
 	
 	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rasterizer.depthBiasEnable = VK_FALSE;
@@ -512,6 +553,14 @@ void CardRasterizer::getMemoryRequirements(std::vector<MemoryDetails>* details, 
 }
 
 void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameIndex) {
+
+	tableOffset = { 0.0f, 0.1f };
+	stockOffset = { 0.002f, 0.005f };
+	cardHeightZero = 0.03f;
+	cardHeightOffset = 0.02f;
+
+
+
 	glm::vec2 cardPos;
 	glm::mat4 cardMat;
 	float cardHeight;
@@ -527,7 +576,7 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 				{0.0f, 0.0f, 1.0f, cardHeight},
 				{0.0f, 0.0f, 0.0f, 1.0f} };
 			cardIndex = (*table)[i][j].value();
-			cardData[cardIndex].cardMat = cardMat;
+			cardData[cardIndex].cardMat = glm::transpose(cardMat);
 
 		}
 	}
@@ -537,10 +586,10 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 		cardMat = {
 			{1.0f, 0.0f, 0.0f, cardPos.x},
 			{0.0f, -1.0f, 0.0f, cardPos.y},
-			{0.0f, 0.0f, 1.0f, cardHeight},
+			{0.0f, 0.0f, -1.0f, cardHeight},
 			{0.0f, 0.0f, 0.0f, 1.0f} };
 		cardIndex = (*stock)[i].value();
-		cardData[cardIndex].cardMat = cardMat;
+		cardData[cardIndex].cardMat = glm::transpose(cardMat);
 	}
 	for (uint32_t i = 0; i < hands->size(); i++) {
 		for (uint32_t j = 0; j < (*hands)[i]->size(); j++) {
@@ -550,10 +599,10 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 			cardMat = {
 				{1.0f, 0.0f, 0.0f, cardPos.x},
 				{0.0f, faceDirection, 0.0f, cardPos.y},
-				{0.0f, 0.0f, 1.0f, cardHeight},
+				{0.0f, 0.0f, faceDirection, cardHeight},
 				{0.0f, 0.0f, 0.0f, 1.0f} };
 			cardIndex = (*(*hands)[i])[j].value();
-			cardData[cardIndex].cardMat = cardMat;
+			cardData[cardIndex].cardMat = glm::transpose(cardMat);
 
 		}
 	}
@@ -564,13 +613,34 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 			cardMat = {
 				{1.0f, 0.0f, 0.0f, cardPos.x},
 				{0.0f, -1.0f, 0.0f, cardPos.y},
-				{0.0f, 0.0f, 1.0f, cardHeight},
+				{0.0f, 0.0f, -1.0f, cardHeight},
 				{0.0f, 0.0f, 0.0f, 1.0f} };
 			cardIndex = (*(*wins)[i])[j].value();
-			cardData[cardIndex].cardMat = cardMat;
+			cardData[cardIndex].cardMat = glm::transpose(cardMat);
 
 		}
 	}
+	std::vector<glm::vec4> positions;
+	for (uint32_t i = 0; i < cardData.size(); i++) {
+		positions.push_back(cardData[i].cardMat[3]);
+		//std::cout << glm::to_string(cardData[i].cardMat) << std::endl;
+		glm::vec4 testVec = { 1.0f, 1.0f, 1.0f, 1.0f };
+		//std::cout << glm::to_string(cardData[i].cardMat * testVec) << std::endl;
+	}
+	//next step is instanced render of all cards.
+	//and also how to tell fragment shader which texture to use?
+	//probable easiest is a vertex attribute with texture index, so 0 is face, 1 is back, 2 is sides/no texture?
+	//also need to set card values and render table
+	//as well as view and projection matrices.
+	//std::cout << 2 << std::endl;
+
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[frameIndex], 0, nullptr);
+	VkDeviceSize offsets[] = { 0 };
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, offsets);
+	memcpy(uniformsMapped[frameIndex], cardData.data(), cardData.size() * sizeof(cardData[0]));
+
+	vkCmdDraw(commandBuffer, vertices.size(), 1, 0, 0);
 }
 
 

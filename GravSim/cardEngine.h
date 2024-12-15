@@ -66,7 +66,7 @@ struct playingCard {
 		return 3 & (data >> 4);
 	}
 	uint8_t rank() {
-		return data & 15;
+		return data & 15; // aces are low
 	}
 	void setSuit(uint8_t suit) {
 		data = (data & 15) | ((suit & 3 )<< 4);
@@ -133,11 +133,12 @@ struct playingCard {
 		}
 	}
 	uint8_t value() {
-		return suit() * 13 + rank() - 1;
+
+		return (rank() == 1) ? suit() * 13 + 12 : suit() * 13 + rank() - 2; //aces are high on the texture
 	}
 };
 
-struct gameTable {
+struct GameTable {
 	std::vector<std::vector<playingCard>*>* hands;
 	std::vector<std::vector<playingCard>*>* wins;
 	std::vector<std::vector<playingCard>>* table;
@@ -172,7 +173,7 @@ public:
 	std::vector<std::string> NDScoreReasons;
 
 	
-
+	GameTable getTable();
 	void firstDeal();
 	void normalDeal();
 

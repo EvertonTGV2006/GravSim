@@ -112,6 +112,7 @@ private:
 	GravEngine gravEngine;
 	UIRasterizer uiRasterizer;
 	CardRasterizer cardRasterizer;
+	CardEngine cardEngine;
 
 	std::vector<MemInit> memoryContainers;
 	std::vector<VkDeviceMemory> memory;

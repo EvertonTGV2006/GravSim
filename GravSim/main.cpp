@@ -44,8 +44,8 @@ int main() {
 			//std::cout << cellPos.x << " " << cellPos.y << " " << cellPos.z << std::endl;
 
 			CardEngine cards;
-			cards.setupGame();
-			cards.processTurns();
+			//cards.setupGame();
+			//cards.processTurns();
 
 			PlayerObject player;
 			VulkanEngine engine;

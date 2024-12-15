@@ -12,6 +12,7 @@
 #include "player.h"
 #include "cardEngine.h"
 
+
 struct CardInit {
 	VkDevice device;
 	VkDescriptorPool descriptorPool;
@@ -22,6 +23,8 @@ struct CardInit {
 	std::array<std::vector<char>*, 2> shaderCode;
 
 	PlayerObject* player;
+
+	GameTable gameTable;
 	
 };
 
@@ -86,7 +89,7 @@ private:
 	std::array < VkImageView, 2>  texImageView;
 	std::array < VkSampler, 2>  texSampler;
 	std::array<MemInit, 2> texMemory;
-	std::array<std::string, 2> texPaths = { "textures/8BitDeck.png","Enhancers.png" };
+	std::array<std::string, 2> texPaths = { "textures/Enhancers.png", "textures/8BitDeck.png" };
 	std::array<VkDeviceSize, 2> texSizes;
 
 	VkBuffer stagingBuffer;
@@ -138,7 +141,7 @@ private:
 
 
 
-	std::vector<glm::vec2> vertices;
+	std::vector<glm::vec4> vertices;
 
 
 };
