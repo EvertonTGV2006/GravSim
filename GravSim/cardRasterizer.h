@@ -54,7 +54,7 @@ public:
 
 	void cleanup();
 
-	uint32_t playerIndex = 0;
+	uint32_t playerIndex = 1;
 
 	static const uint32_t MAX_STRING_LENGTH = 4096;
 
@@ -123,7 +123,8 @@ private:
 
 	std::array<CardDataConstant, CARD_COUNT> cardData;
 
-
+	uint32_t frameCounter = 0;
+	uint32_t cardCounter = 0;
 	
 	std::array<std::vector<char>*, 2> shaderCode;
 

@@ -37,18 +37,18 @@ void CardRasterizer::initCard_A(CardInit details) {
 	tablePositions = { {} };
 	//front face counter clockwise 
 	vertices = {
-		{0.0f, 0.0f, 0.0f, 0.0f},
-		{0.0f, 1.0f, 0.0f, 0.0f},
-		{1.0f, 0.0f, 0.0f, 0.0f}, //triangle 1 bottom
-		{0.0f, 1.0f, 0.0f, 0.0f},
-		{1.0f, 1.0f, 0.0f, 0.0f},
-		{1.0f, 0.0f, 0.0f, 0.0f}, //traingle 2 bottom
-		{0.0f, 0.0f, 1.0f, 1.0f},
-		{1.0f, 0.0f, 1.0f, 1.0f},
-		{0.0f, 1.0f, 1.0f, 1.0f}, //traingle 3 top
-		{0.0f, 1.0f, 1.0f, 1.0f},
-		{1.0f, 0.0f, 1.0f, 1.0f},
-		{1.0f, 1.0f, 1.0f, 1.0f} //triangle 4 top, do the other sides later
+		{-0.5f, -0.5f, -0.5f, 0.0f},
+		{-0.5f, 0.5f, -0.5f, 0.0f},
+		{0.5f, -0.5f, -0.5f, 0.0f}, //triangle 1 bottom
+		{-0.5f, 0.5f, -0.5f, 0.0f},
+		{0.5f, 0.5f, -0.5f, 0.0f},
+		{0.5f, -0.5f, -0.5f, 0.0f}, //traingle 2 bottom
+		{-0.5f, -0.5f, 0.5f, 1.0f},
+		{0.5f, -0.5f, 0.5f, 1.0f},
+		{-0.5f, 0.5f, 0.5f, 1.0f}, //traingle 3 top
+		{-0.5f, 0.5f, 0.5f, 1.0f},
+		{0.5f, -0.5f, 0.5f, 1.0f},
+		{0.5f, 0.5f, 0.5f, 1.0f} //triangle 4 top, do the other sides later
 	};
 
 	createBuffers();
@@ -454,7 +454,7 @@ void CardRasterizer::createPipeline() {
 	rasterizer.lineWidth = 1.0f;
 	rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
 	//rasterizer.cullMode = VK_CULL_MODE_NONE;
-	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	//rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
 	
 	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rasterizer.depthBiasEnable = VK_FALSE;
@@ -555,10 +555,27 @@ void CardRasterizer::getMemoryRequirements(std::vector<MemoryDetails>* details, 
 void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameIndex) {
 
 	tableOffset = { 0.0f, 0.1f };
-	stockOffset = { 0.002f, 0.005f };
+	stockOffset = { 0.0002f, 0.0005f };
 	cardHeightZero = 0.03f;
-	cardHeightOffset = 0.02f;
-
+	cardHeightOffset = 0.002f;
+	tablePositions = {
+		glm::vec2(1.8f, 0.0f),
+		glm::vec2(0.6f, 0.0f),
+		glm::vec2(-0.6f, 0.0f),
+		glm::vec2(-1.8f, 0.0f),
+		glm::vec2(3.0f, 0.0f),
+		glm::vec2(-3.0f, 0.0f),
+		glm::vec2(4.2f, 0.0f),
+		glm::vec2(-4.2f, 0.0f) };
+	handOffsets = {
+		glm::vec2(0.7f, 0.0f),
+		glm::vec2(-0.7f, 0.0f),
+		glm::vec2(2.1f, 0.0f),
+		glm::vec2(-2.1f, 0.0f) };
+	handPositons = {
+		glm::vec2(0.0f, -1.3f),
+		glm::vec2(0.0f, 1.3f) };
+	stockPosition = glm::vec2(3.0f, 0.0f);
 
 
 	glm::vec2 cardPos;
@@ -640,7 +657,14 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, offsets);
 	memcpy(uniformsMapped[frameIndex], cardData.data(), cardData.size() * sizeof(cardData[0]));
 
-	vkCmdDraw(commandBuffer, vertices.size(), 1, 0, 0);
+	vkCmdDraw(commandBuffer, vertices.size(), 52, 0, 0);
+	frameCounter++;
+	if (frameCounter == 120) {
+		frameCounter = 0;
+		cardCounter++;
+	}
+
+
 }
 
 
