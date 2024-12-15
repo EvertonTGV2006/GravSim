@@ -552,30 +552,33 @@ void CardRasterizer::getMemoryRequirements(std::vector<MemoryDetails>* details, 
 	}
 }
 
-void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameIndex) {
+void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameIndex, bool newCommand) {
 
-	tableOffset = { 0.0f, 0.1f };
-	stockOffset = { 0.0002f, 0.0005f };
+	tableOffset = { 0.0f, 0.2f };
+	stockOffset = { 0.002f, 0.0005f };
 	cardHeightZero = 0.03f;
-	cardHeightOffset = 0.002f;
-	tablePositions = {
-		glm::vec2(1.8f, 0.0f),
-		glm::vec2(0.6f, 0.0f),
-		glm::vec2(-0.6f, 0.0f),
-		glm::vec2(-1.8f, 0.0f),
-		glm::vec2(3.0f, 0.0f),
+	cardHeightOffset = -0.002f;
+	tablePositions = {//need to redefine to be more flexible
+		glm::vec2(-4.2, 0.0f),
 		glm::vec2(-3.0f, 0.0f),
-		glm::vec2(4.2f, 0.0f),
-		glm::vec2(-4.2f, 0.0f) };
+		glm::vec2(-1.8f, 0.0f),
+		glm::vec2(-0.6f, 0.0f),
+		glm::vec2(0.6f, 0.0f),
+		glm::vec2(1.8f, 0.0f),
+		glm::vec2(3.0f, 0.0f),
+		glm::vec2(4.2f, 0.0f) };
 	handOffsets = {
-		glm::vec2(0.7f, 0.0f),
+		glm::vec2(-2.1f, 0.0f),
 		glm::vec2(-0.7f, 0.0f),
-		glm::vec2(2.1f, 0.0f),
-		glm::vec2(-2.1f, 0.0f) };
+		glm::vec2(0.7f, 0.0f),
+		glm::vec2(2.1f, 0.0f) };
 	handPositons = {
 		glm::vec2(0.0f, -1.3f),
 		glm::vec2(0.0f, 1.3f) };
-	stockPosition = glm::vec2(3.0f, 0.0f);
+	stockPosition = glm::vec2(4.4f, 0.0f);
+	winPositions = {
+		glm::vec2(-4.4f, -1.3f),
+		glm::vec2(-4.4f, 1.3f) };
 
 
 	glm::vec2 cardPos;
@@ -583,60 +586,104 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 	float cardHeight;
 	size_t cardIndex;
 	float faceDirection;
-	for (uint32_t i = 0; i < table->size(); i++) {
-		for (uint32_t j = 0; j < (*table)[i].size(); j++) {
-			cardPos = tablePositions[i] + tableOffset * float(j);
-			cardHeight = cardHeightZero + j * cardHeightOffset;
-			cardMat = {
-				{1.0f, 0.0f, 0.0f, cardPos.x},
-				{0.0f, 1.0f, 0.0f, cardPos.y},
-				{0.0f, 0.0f, 1.0f, cardHeight},
-				{0.0f, 0.0f, 0.0f, 1.0f} };
-			cardIndex = (*table)[i][j].value();
-			cardData[cardIndex].cardMat = glm::transpose(cardMat);
+	//newCommand = true;
 
-		}
-	}
-	for (uint32_t i = 0; i < stock->size(); i++) {
-		cardHeight = cardHeightZero + cardHeightOffset * i;
-		cardPos = stockPosition + float(i) * stockOffset;
-		cardMat = {
-			{1.0f, 0.0f, 0.0f, cardPos.x},
-			{0.0f, -1.0f, 0.0f, cardPos.y},
-			{0.0f, 0.0f, -1.0f, cardHeight},
-			{0.0f, 0.0f, 0.0f, 1.0f} };
-		cardIndex = (*stock)[i].value();
-		cardData[cardIndex].cardMat = glm::transpose(cardMat);
-	}
-	for (uint32_t i = 0; i < hands->size(); i++) {
-		for (uint32_t j = 0; j < (*hands)[i]->size(); j++) {
-			cardPos = handPositons[i] + handOffsets[j];
-			cardHeight = cardHeightZero;
-			faceDirection = (i == playerIndex) ? 1.0f : -1.0f;
-			cardMat = {
-				{1.0f, 0.0f, 0.0f, cardPos.x},
-				{0.0f, faceDirection, 0.0f, cardPos.y},
-				{0.0f, 0.0f, faceDirection, cardHeight},
-				{0.0f, 0.0f, 0.0f, 1.0f} };
-			cardIndex = (*(*hands)[i])[j].value();
-			cardData[cardIndex].cardMat = glm::transpose(cardMat);
+	if (newCommand) {
 
+
+		prevCardData = currentCardData;
+		commandSubmitTime = std::chrono::high_resolution_clock::now();
+
+
+		for (uint32_t i = 0; i < table->size(); i++) {
+			for (uint32_t j = 0; j < (*table)[i].size(); j++) {
+				cardPos = tablePositions[i] + tableOffset * float(j);
+				cardHeight = cardHeightZero + j * cardHeightOffset;
+				cardMat = {
+					{1.0f, 0.0f, 0.0f, cardPos.x},
+					{0.0f, 1.0f, 0.0f, cardPos.y},
+					{0.0f, 0.0f, 1.0f, cardHeight},
+					{0.0f, 0.0f, 0.0f, 1.0f} };
+				cardIndex = (*table)[i][j].value();
+				cardData[cardIndex].cardMat = glm::transpose(cardMat);
+				currentCardData[cardIndex] = glm::vec4(cardPos.x, cardPos.y, cardHeight, 0.0f);
+
+			}
 		}
-	}
-	for (uint32_t i = 0; i < wins->size(); i++) {
-		for (uint32_t j = 0; j < (*wins)[i]->size(); j++) {
-			cardPos = winPositions[i] +winOffset * float(j);
-			cardHeight = cardHeightZero + j * cardHeightOffset;
+		for (uint32_t i = 0; i < stock->size(); i++) {
+			cardHeight = cardHeightZero + cardHeightOffset * i;
+			cardPos = stockPosition + float(i) * stockOffset;
 			cardMat = {
 				{1.0f, 0.0f, 0.0f, cardPos.x},
 				{0.0f, -1.0f, 0.0f, cardPos.y},
 				{0.0f, 0.0f, -1.0f, cardHeight},
 				{0.0f, 0.0f, 0.0f, 1.0f} };
-			cardIndex = (*(*wins)[i])[j].value();
+			cardIndex = (*stock)[i].value();
 			cardData[cardIndex].cardMat = glm::transpose(cardMat);
+			currentCardData[cardIndex] = glm::vec4(cardPos.x, cardPos.y, cardHeight, glm::pi<float>());
+		}
+		for (uint32_t i = 0; i < hands->size(); i++) {
+			for (uint32_t j = 0; j < (*hands)[i]->size(); j++) {
+				cardPos = handPositons[i] + handOffsets[j];
+				cardHeight = cardHeightZero;
+				faceDirection = (i == playerIndex) ? 1.0f : -1.0f;
 
+				cardMat = {
+					{1.0f, 0.0f, 0.0f, cardPos.x},
+					{0.0f, faceDirection, 0.0f, cardPos.y},
+					{0.0f, 0.0f, faceDirection, cardHeight},
+					{0.0f, 0.0f, 0.0f, 1.0f} };
+				cardIndex = (*(*hands)[i])[j].value();
+				cardData[cardIndex].cardMat = glm::transpose(cardMat);
+				currentCardData[cardIndex] = glm::vec4(cardPos.x, cardPos.y, cardHeight, 0.5*glm::pi<float>() + (0.5*-glm::pi<float>() * faceDirection));
+
+			}
+		}
+		for (uint32_t i = 0; i < wins->size(); i++) {
+			for (uint32_t j = 0; j < (*wins)[i]->size(); j++) {
+				cardPos = winPositions[i] + winOffset * float(j);
+				cardHeight = cardHeightZero + j * cardHeightOffset;
+				cardMat = {
+					{1.0f, 0.0f, 0.0f, cardPos.x},
+					{0.0f, -1.0f, 0.0f, cardPos.y},
+					{0.0f, 0.0f, -1.0f, cardHeight},
+					{0.0f, 0.0f, 0.0f, 1.0f} };
+				cardIndex = (*(*wins)[i])[j].value();
+				cardData[cardIndex].cardMat = glm::transpose(cardMat);
+				currentCardData[cardIndex] = glm::vec4(cardPos.x, cardPos.y, cardHeight, glm::pi<float>());
+
+			}
 		}
 	}
+	currentTime = std::chrono::high_resolution_clock::now();
+	auto timeDuration = (std::chrono::duration<double>(currentTime - commandSubmitTime)).count();
+
+	//std::cout << timeDuration << std::endl;
+
+	double animationDuration = 1;
+	double animationSmoothness = 5;
+
+
+	float animationInterpolation = (timeDuration < animationDuration) ? 0.5f * glm::tanh(animationSmoothness * (timeDuration - (animationDuration / 2))) + 0.5f : 1.0f;
+	glm::vec4 interpolatedCardData;
+	glm::mat4 interpolatedMatData;
+	
+	for (uint32_t i = 0; i < currentCardData.size(); i++) {
+		interpolatedCardData = (1.0f - animationInterpolation) * prevCardData[i] + animationInterpolation * currentCardData[i];
+		interpolatedMatData = glm::mat4{
+			{1.0f, 0.0, 0.0f, interpolatedCardData.x},
+			{0.0f, glm::cos(interpolatedCardData.a), -glm::sin(interpolatedCardData.a), interpolatedCardData.y},
+			{0.0f, glm::sin(interpolatedCardData.a), glm::cos(interpolatedCardData.a), interpolatedCardData.z},
+			{0.0f, 0.0f, 0.0f, 1.0f} };
+		cardData[i].cardMat = glm::transpose(interpolatedMatData);
+		//std::cout << glm::to_string(cardData[i].cardMat) << std::endl;
+	}
+	
+
+
+
+
+
 	std::vector<glm::vec4> positions;
 	for (uint32_t i = 0; i < cardData.size(); i++) {
 		positions.push_back(cardData[i].cardMat[3]);

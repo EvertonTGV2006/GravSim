@@ -90,8 +90,7 @@ public:
 	std::vector<UIElement> elements;
 	uint32_t number = 42;
 	
-
-
+	
 	std::vector<char> str1 = { 'H','e','l','l','o',' ','W','o','r','l','d' };
 	//std::vector<char> str = { 'A', 'n', 'y', 't', 'h', 'i', 'n', 'g' };
 	 std::string str2 = "Anything";
@@ -110,6 +109,7 @@ public:
 	static void keyCallback(GLFWwindow*, int, int, int, int);
 	static void scrollCallback(GLFWwindow*, double, double);
 	static void windowCloseCallback(GLFWwindow*);
+	static void charCallback(GLFWwindow*, uint32_t);
 
 	std::vector<UIBox> boxes;
 	UIText texts[128];

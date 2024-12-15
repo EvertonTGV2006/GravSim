@@ -4,6 +4,7 @@
 
 #include <array>
 #include <vector>
+#include <chrono>
 
 
 #define CARD_COUNT 52
@@ -54,11 +55,11 @@ public:
 
 	void cleanup();
 
-	uint32_t playerIndex = 1;
+	uint32_t playerIndex = 0;
 
 	static const uint32_t MAX_STRING_LENGTH = 4096;
 
-	void drawElements(VkCommandBuffer, uint32_t);
+	void drawElements(VkCommandBuffer, uint32_t, bool);
 
 	static const uint32_t FRAMES_IN_FLIGHT = 3;
 
@@ -122,6 +123,11 @@ private:
 	PlayerObject* player;
 
 	std::array<CardDataConstant, CARD_COUNT> cardData;
+	std::array<glm::vec4, CARD_COUNT> currentCardData;
+	std::array<glm::vec4, CARD_COUNT> prevCardData;
+
+	std::chrono::time_point<std::chrono::high_resolution_clock> currentTime;
+	std::chrono::time_point<std::chrono::high_resolution_clock> commandSubmitTime = std::chrono::high_resolution_clock::now(); 
 
 	uint32_t frameCounter = 0;
 	uint32_t cardCounter = 0;

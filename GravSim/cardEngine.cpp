@@ -21,7 +21,7 @@ void CardEngine::setupGame() {
 	std::random_device rd;
 	std::mt19937 gen{ rd() };
 	printCards(1);
-	//std::ranges::shuffle(stock, gen);
+	std::ranges::shuffle(stock, gen);
 
 	firstDeal();
 	printCards(0);
@@ -113,6 +113,16 @@ void CardEngine::printCards(uint8_t opt) {
 }
 
 uint32_t CardEngine::cardCommand(std::vector<char> command) {
+	printCards(0);
+
+	for (uint32_t i = 0; i < command.size(); i++) {
+		std::cout << command[i];
+	}
+	std::cout << std::endl;
+
+	if (command.size() < 3) {
+		return COMMAND_ERROR_BAD_HAND_INDEX;
+	}
 
 	char handIndex = command[COMMAND_BIT_HAND_INDEX];
 	if (handIndex != 0 && handIndex != 1) { return COMMAND_ERROR_BAD_HAND_INDEX; }
@@ -171,7 +181,7 @@ uint32_t CardEngine::cardCommand(std::vector<char> command) {
 		uint8_t addedStacksValue = 0;
 		char targetStackIndexRaw = 0;
 		uint8_t targetStackIndex = 0;
-
+	
 		//1st step check every combo is legitimate
 		for (uint8_t i = COMMAND_BIT_TABLE_INDEX_START; i < command.size(); i++) {
 			if ((i - COMMAND_BIT_TABLE_INDEX_START) % 2 == 0) {
@@ -225,6 +235,7 @@ uint32_t CardEngine::cardCommand(std::vector<char> command) {
 			}
 		}
 		currentWin->push_back(heldCard);
+		lastWin = handIndex;
 		currentHand->erase(currentHand->begin() + heldCardIndex);
 		if (table.size() == 0) {
 			(*(playerSweeps[handIndex]))++;
@@ -233,12 +244,27 @@ uint32_t CardEngine::cardCommand(std::vector<char> command) {
 
 	}
 	else {
+		
 		return COMMAND_ERROR_FIRST_ACTION_NOT_FOUND;
+	}
+	if (DHand.size() == 0) {
+		if (stock.size() == 0) {
+			for (uint8_t i = 0; i < table.size(); i++) {
+				while (table[i].size() > 0) {
+					playerWins[handIndex]->push_back(table[i].back());
+					table[i].pop_back();
+				}
+			}
+			countScore(0, 0);
+			countScore(1, 1);
+		}
+		else {
+			normalDeal();
+		}
 	}
 
 
-
-
+	printCards(0);
 	return COMMAND_SUCCESS;
 
 
@@ -326,6 +352,8 @@ void CardEngine::countScore(uint8_t handIndex, uint8_t scoreIndex){
 	}
 
 	*playerScores[handIndex] = localScore + *playerSweeps[handIndex];
+
+	std::cout << handIndex << ": " << uint32_t(*playerScores[handIndex]) << std::endl;
 }
 
 GameTable CardEngine::getTable() {

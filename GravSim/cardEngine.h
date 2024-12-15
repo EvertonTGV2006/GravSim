@@ -6,10 +6,10 @@
 #include <iostream>
 
 enum cardSuit {
-	CARD_SUIT_DIAMONDS = 0,
+	CARD_SUIT_DIAMONDS = 2,
 	CARD_SUIT_CLUBS = 1,
-	CARD_SUIT_SPADES = 2,
-	CARD_SUIT_HEARTS = 3
+	CARD_SUIT_SPADES = 3,
+	CARD_SUIT_HEARTS = 0
 };
 enum cardRank {
 	CARD_RANK_ACE = 1,
@@ -157,6 +157,7 @@ public:
 	uint8_t DScore;
 	uint8_t NDScore;
 	std::vector<std::vector<playingCard>> table;
+	uint32_t lastWin = 0;
 
 	playingCard nullStack[8] = { 0,0,0,0,0,0,0,0 };
 

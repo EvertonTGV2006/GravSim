@@ -47,7 +47,7 @@ void main() {
         mode = 1;
         //colour = vec3(inPosition.x*0.6f, inPosition.y * 0.4f, 0.2f);
         colour = vec3(1);
-        colour = vec3(fragTexCoord.x, fragTexCoord.y, 0.0f);
+        //colour = vec3(fragTexCoord.x, fragTexCoord.y, 0.0f);
     }
     if(inPosition.w==0.0f){
         fragTexCoord.x = (backCardLoc.x + inPosition.x+0.5f) * backCardDim.x;

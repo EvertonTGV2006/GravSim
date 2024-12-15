@@ -224,6 +224,28 @@ void VulkanEngine::runGraphics() {
     }
 }
 void VulkanEngine::executeGraphics() {
+    bool commandSubmitFrame = false;
+
+    if (player->commandSubmit == true) {
+        player->commandSubmit = false;
+        std::vector<char> commandString;
+        commandString.push_back(cardRasterizer.playerIndex);
+        for (uint32_t i = 0; i < player->inputString.size(); i++) {
+            commandString.push_back(player->inputString[i]);
+        }
+        uint32_t errCode = cardEngine.cardCommand(commandString);
+        if (errCode == COMMAND_SUCCESS) {
+            player->inputString.clear();
+            cardRasterizer.playerIndex = (cardRasterizer.playerIndex + 1) % 2;
+            commandSubmitFrame = true;
+        }
+        else {
+            std::cout << errCode << std::endl;
+        }
+    }
+    if (firstFrame) {
+        commandSubmitFrame = true;
+    }
 
 
 
@@ -292,7 +314,7 @@ void VulkanEngine::executeGraphics() {
 
     uiRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex);
 
-    cardRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex);
+    cardRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex, commandSubmitFrame);
 
     vkCmdEndRenderPass(drawCommandBuffers[frameIndex]);
 
@@ -374,12 +396,12 @@ void VulkanEngine::executeGraphics() {
 
     frameTimes.push_back(dt);
 
-    if (frameTimes.size() % 200 == 0) {
-        std::cout << "Player Pos: ";
-        glm::vec3 v = player->pos;
-        std::cout << v.x << ", " << v.y << ", " << v.z;
-        std::cout << std::endl;
-    }
+    //if (frameTimes.size() % 200 == 0) {
+    //    std::cout << "Player Pos: ";
+    //    glm::vec3 v = player->pos;
+    //    std::cout << v.x << ", " << v.y << ", " << v.z;
+    //    std::cout << std::endl;
+    //}
 
     if (gravEngine.endTrigger) {
         glfwSetWindowShouldClose(winmanager.window, GLFW_TRUE);

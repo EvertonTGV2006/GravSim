@@ -46,6 +46,7 @@ void PlayerObject::updateGLFWcallbacks() {
 	glfwSetKeyCallback(winmanager.window, keyCallback);
 	glfwSetScrollCallback(winmanager.window, scrollCallback);
 	glfwSetWindowCloseCallback(winmanager.window, windowCloseCallback);
+	glfwSetCharCallback(winmanager.window, charCallback);
 
 }
 
@@ -168,36 +169,36 @@ void PlayerObject::keyCallback(GLFWwindow* window, int key, int scancode, int ac
 		glfwSetWindowShouldClose(window, GLFW_TRUE);
 		//std::cout << "Close Window!" << std::endl;
 	}
-	else if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
-		if (app->timePause == false) { app->timePause = true; }
-		else if (app->timePause == true) { app->timePause = false; }
-	}
-	else if (key == GLFW_KEY_K && action == GLFW_PRESS) {
-		app->triggerStep = true;
-	}
-	else if (key == GLFW_KEY_TAB && action == GLFW_PRESS) {
-		app->timeAccel = true;
-	}
-	else if (key == GLFW_KEY_TAB && action == GLFW_RELEASE) {
-		app->timeAccel = false;	
-	}
-	else if (key == GLFW_KEY_V && action == GLFW_PRESS) {
-		app->validateParticles = true; //validate particles
-	}
-	else if (action == GLFW_PRESS && key == GLFW_KEY_P) {
-		if (glfwGetWindowMonitor(window) == NULL) {
-			glfwGetWindowPos(window, &app->windowxpos, &app->windowypos);
-			glfwSetWindowMonitor(window, glfwGetPrimaryMonitor(), 0, 0, 1920, 1080, GLFW_DONT_CARE);
-		}
-	}
-	else if (action == GLFW_PRESS && key == GLFW_KEY_O) {
-		if (glfwGetWindowMonitor(window) != NULL) {
-			glfwSetWindowMonitor(window, NULL, app->windowxpos, app->windowypos, 800, 600, GLFW_DONT_CARE);
-		}
-	}
-	else if (action == GLFW_PRESS && key == GLFW_KEY_Z) {
-		app->triggerStep = true;
-	}
+	//else if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
+	//	if (app->timePause == false) { app->timePause = true; }
+	//	else if (app->timePause == true) { app->timePause = false; }
+	//}
+	//else if (key == GLFW_KEY_K && action == GLFW_PRESS) {
+	//	app->triggerStep = true;
+	//}
+	//else if (key == GLFW_KEY_TAB && action == GLFW_PRESS) {
+	//	app->timeAccel = true;
+	//}
+	//else if (key == GLFW_KEY_TAB && action == GLFW_RELEASE) {
+	//	app->timeAccel = false;	
+	//}
+	//else if (key == GLFW_KEY_V && action == GLFW_PRESS) {
+	//	app->validateParticles = true; //validate particles
+	//}
+	//else if (action == GLFW_PRESS && key == GLFW_KEY_P) {
+	//	if (glfwGetWindowMonitor(window) == NULL) {
+	//		glfwGetWindowPos(window, &app->windowxpos, &app->windowypos);
+	//		glfwSetWindowMonitor(window, glfwGetPrimaryMonitor(), 0, 0, 1920, 1080, GLFW_DONT_CARE);
+	//	}
+	//}
+	//else if (action == GLFW_PRESS && key == GLFW_KEY_O) {
+	//	if (glfwGetWindowMonitor(window) != NULL) {
+	//		glfwSetWindowMonitor(window, NULL, app->windowxpos, app->windowypos, 800, 600, GLFW_DONT_CARE);
+	//	}
+	//}
+	//else if (action == GLFW_PRESS && key == GLFW_KEY_Z) {
+	//	app->triggerStep = true;
+	//}
 	//else if (action == GLFW_PRESS) {
 	//		app->playerMoveFlags |= app->keyBindings[key];
 	//	}
@@ -207,28 +208,7 @@ void PlayerObject::keyCallback(GLFWwindow* window, int key, int scancode, int ac
 	//std::cout << app->pos.x << " " << app->pos.y << " " << app->pos.z << std::endl;
 	//std::cout << app->playerMoveFlags << std::endl;
 	if (action == GLFW_PRESS || action == GLFW_REPEAT) {
-		if (64 < key && key < 91) {
-			if (mods & GLFW_MOD_SHIFT) {
-				app->inputString.push_back(key);
-			}
-			else {
-				app->inputString.push_back(key+32);
-			}
-		}
-		else if (47 < key && key < 58) {
-			if (mods & GLFW_MOD_SHIFT) {
-				app->inputString.push_back(key - 16);
-			}
-			else {
-				app->inputString.push_back(key);
-			}
-		}
-
-
-		else if (key < 256) {
-			app->inputString.push_back(key);
-		}
-		else if (key == GLFW_KEY_ENTER && action == GLFW_PRESS) {
+		if (key == GLFW_KEY_ENTER && action == GLFW_PRESS) {
 			app->commandSubmit = true;
 		}
 		else if (key == GLFW_KEY_BACKSPACE) {
@@ -250,6 +230,10 @@ void PlayerObject::scrollCallback(GLFWwindow* window, double xoffset, double yof
 		app->viewZoom = app->zoomMin;
 	}
 	std::cout << app->viewZoom << std::endl;
+}
+void PlayerObject::charCallback(GLFWwindow* window, uint32_t code) {
+	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
+	app->inputString.push_back(code);
 }
 void PlayerObject::updatePlayerMovement() {
 	
