@@ -314,7 +314,9 @@ void VulkanEngine::executeGraphics() {
 
     uiRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex);
 
-    cardRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex, commandSubmitFrame);
+    ubo.view = glm::lookAt(glm::vec3(0.0f, -0.5f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f ), glm::vec3(0.0f, 0.0f, 1.0f));
+
+    cardRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex, commandSubmitFrame, ubo.proj * ubo.view);
 
     vkCmdEndRenderPass(drawCommandBuffers[frameIndex]);
 

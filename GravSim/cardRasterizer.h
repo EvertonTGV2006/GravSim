@@ -30,13 +30,8 @@ struct CardInit {
 };
 
 struct CardPushConstants {
-	glm::vec2 charDimensions;
-	glm::vec2 screenPosition;
-	glm::vec2 texDimensions;
-	float  texAdvance;
-	uint32_t renderStage;
-	glm::vec4 inColour;
-	int32_t instanceOffset;
+	float aspectRatio;
+	glm::mat4 viewPojectionMatrix;
 };
 struct CardDataConstant {
 	glm::mat4 cardMat;
@@ -59,7 +54,7 @@ public:
 
 	static const uint32_t MAX_STRING_LENGTH = 4096;
 
-	void drawElements(VkCommandBuffer, uint32_t, bool);
+	void drawElements(VkCommandBuffer, uint32_t, bool, glm::mat4);
 
 	static const uint32_t FRAMES_IN_FLIGHT = 3;
 
@@ -109,7 +104,7 @@ private:
 	std::vector<std::vector<playingCard>>* table;
 	std::vector<playingCard>* stock;
 
-	std::array<glm::vec2, 8> tablePositions{};
+	std::vector<glm::vec2> tablePositions{};
 	glm::vec2 tableOffset;
 	std::array<glm::vec2, 2> handPositons;
 	std::array<glm::vec2, 4> handOffsets;

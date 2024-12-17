@@ -39,7 +39,7 @@ public:
 	glm::vec3 pos = { -4,27,0 };
 	glm::vec3 viewDirection = {4, -27, 0 };
 	glm::vec3 viewFocus = { 0, 0, 0 };
-	glm::vec3 viewUp = { 0,0,1 };
+	glm::vec3 viewUp = { 0,1,0 };
 	float viewZoom = 1.0f;
 	const float zoomMin = 0.01f;
 	const float zoomMax = 100.0f;
@@ -82,7 +82,7 @@ public:
 	std::atomic_bool triggerStep = false;
 
 
-	std::map<int, uint64_t> keyBindings = { {GLFW_KEY_W, PL_MOVE_FORWARD}, {GLFW_KEY_S, PL_MOVE_BACKWARD}, {GLFW_KEY_A, PL_MOVE_LEFT}, {GLFW_KEY_D, PL_MOVE_RIGHT} };
+	std::map<int, uint64_t> keyBindings = { {GLFW_KEY_UP, PL_MOVE_FORWARD}, {GLFW_KEY_DOWN, PL_MOVE_BACKWARD}, {GLFW_KEY_LEFT, PL_MOVE_LEFT}, {GLFW_KEY_RIGHT, PL_MOVE_RIGHT} };
 
 	int windowxpos = 0;
 	int windowypos = 0;

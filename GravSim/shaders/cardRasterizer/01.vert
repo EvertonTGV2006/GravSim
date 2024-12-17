@@ -5,14 +5,8 @@ layout(binding = 0) uniform UniformBufferObject{
 } ubo;
 
 layout(push_constant) uniform pc {
-    vec2 charDimensions;
-    vec2 screenPosition;
-    vec2 texDimensions;
-    float texAdvance;
-    uint renderStage;  
-    vec4 inColour;  
-    int instanceOffset;   
-    
+    mat4 viewProjMat;
+    float newAspectRatio;
 };
 float aspectRatio = 4.0f / 3.0f;
 
@@ -20,8 +14,9 @@ layout(location = 0) in vec4 inPosition;
 
 
 layout(location = 0) out vec2 fragTexCoord;
-layout(location = 1) out vec3 colour;
-layout(location = 2) out uint mode;
+layout(location = 1) out vec2 cardCoord;
+layout(location = 2) out vec3 colour;
+layout(location = 3) out uint mode;
 
 int characters[11] = int[](72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100);
 
@@ -57,6 +52,10 @@ void main() {
         colour = vec3(1);
 
     }
+
+    cardCoord = vec2(inPosition.x, inPosition.y)
+
+
     float scale = 0.2f;
     mat4 scaleMat = {{scale, 0, 0, 0}, {0, scale * 95.0f / 71.0f * aspectRatio, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}};
     gl_Position = scaleMat * outPosition;

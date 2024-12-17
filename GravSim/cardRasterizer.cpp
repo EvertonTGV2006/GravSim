@@ -53,6 +53,12 @@ void CardRasterizer::initCard_A(CardInit details) {
 
 	createBuffers();
 
+	glm::vec4 initialPos = glm::vec4(stockPosition.x, stockPosition.y, cardHeightZero, glm::pi<float>());
+	for (uint32_t i = 0; i < currentCardData.size(); i++) {
+		currentCardData[i] = initialPos;
+		prevCardData[i] = initialPos;
+	}
+
 }
 
 void CardRasterizer::initCard_B() {
@@ -490,7 +496,7 @@ void CardRasterizer::createPipeline() {
 	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 	depthStencil.depthTestEnable = VK_TRUE;
 	depthStencil.depthWriteEnable = VK_TRUE;
-	depthStencil.depthCompareOp = VK_COMPARE_OP_ALWAYS;
+	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
 	depthStencil.depthBoundsTestEnable = VK_FALSE;
 	depthStencil.stencilTestEnable = VK_FALSE;
 
@@ -552,33 +558,9 @@ void CardRasterizer::getMemoryRequirements(std::vector<MemoryDetails>* details, 
 	}
 }
 
-void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameIndex, bool newCommand) {
+void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameIndex, bool newCommand, glm::mat4 viewProjMat) {
 
-	tableOffset = { 0.0f, 0.2f };
-	stockOffset = { 0.002f, 0.0005f };
-	cardHeightZero = 0.03f;
-	cardHeightOffset = -0.002f;
-	tablePositions = {//need to redefine to be more flexible
-		glm::vec2(-4.2, 0.0f),
-		glm::vec2(-3.0f, 0.0f),
-		glm::vec2(-1.8f, 0.0f),
-		glm::vec2(-0.6f, 0.0f),
-		glm::vec2(0.6f, 0.0f),
-		glm::vec2(1.8f, 0.0f),
-		glm::vec2(3.0f, 0.0f),
-		glm::vec2(4.2f, 0.0f) };
-	handOffsets = {
-		glm::vec2(-2.1f, 0.0f),
-		glm::vec2(-0.7f, 0.0f),
-		glm::vec2(0.7f, 0.0f),
-		glm::vec2(2.1f, 0.0f) };
-	handPositons = {
-		glm::vec2(0.0f, -1.3f),
-		glm::vec2(0.0f, 1.3f) };
-	stockPosition = glm::vec2(4.4f, 0.0f);
-	winPositions = {
-		glm::vec2(-4.4f, -1.3f),
-		glm::vec2(-4.4f, 1.3f) };
+
 
 
 	glm::vec2 cardPos;
@@ -589,6 +571,44 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 	//newCommand = true;
 
 	if (newCommand) {
+
+		tableOffset = { 0.0f, 0.2f };
+		stockOffset = { 0.002f, 0.0005f };
+		cardHeightZero = 0.03f;
+		cardHeightOffset = -0.002f;
+		//tablePositions = {//need to redefine to be more flexible
+		//	glm::vec2(-4.2, 0.0f),
+		//	glm::vec2(-3.0f, 0.0f),
+		//	glm::vec2(-1.8f, 0.0f),
+		//	glm::vec2(-0.6f, 0.0f),
+		//	glm::vec2(0.6f, 0.0f),
+		//	glm::vec2(1.8f, 0.0f),
+		//	glm::vec2(3.0f, 0.0f),
+		//	glm::vec2(4.2f, 0.0f) };
+		handOffsets = {
+			glm::vec2(-2.1f, 0.0f),
+			glm::vec2(-0.7f, 0.0f),
+			glm::vec2(0.7f, 0.0f),
+			glm::vec2(2.1f, 0.0f) };
+		handPositons = {
+			glm::vec2(0.0f, -1.3f),
+			glm::vec2(0.0f, 1.3f) };
+		stockPosition = glm::vec2(4.4f, 0.0f);
+		winPositions = {
+			glm::vec2(-4.4f, -1.3f),
+			glm::vec2(-4.4f, 1.3f) };
+
+
+		glm::vec2 tableLeft = glm::vec2(-0.6f * table->size(), 0.0f);
+		glm::vec2 tableRight = glm::vec2(0.6f * table->size(), 0.0f);
+		glm::vec2 tableTraverse = (tableRight - tableLeft) / float(table->size());
+		tablePositions.clear();
+
+		for (uint32_t i = 0; i < table->size(); i++) {
+			tablePositions.push_back(tableLeft + float(i) * tableTraverse);
+		}
+
+
 
 
 		prevCardData = currentCardData;
@@ -698,11 +718,17 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 	//as well as view and projection matrices.
 	//std::cout << 2 << std::endl;
 
+	CardPushConstants pc{};
+	pc.aspectRatio = 0.0f;
+	pc.viewPojectionMatrix = viewProjMat;
+
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[frameIndex], 0, nullptr);
 	VkDeviceSize offsets[] = { 0 };
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, offsets);
 	memcpy(uniformsMapped[frameIndex], cardData.data(), cardData.size() * sizeof(cardData[0]));
+
+	vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(CardPushConstants), &pc);
 
 	vkCmdDraw(commandBuffer, vertices.size(), 52, 0, 0);
 	frameCounter++;

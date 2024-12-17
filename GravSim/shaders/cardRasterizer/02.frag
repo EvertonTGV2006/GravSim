@@ -3,10 +3,14 @@
 layout(binding = 1) uniform sampler2D[2] texSampler;
 
 layout(location = 0) in vec2 fragTexCoord;
-layout(location = 1) in vec3 colour;
-layout(location = 2) flat in uint mode;
+layout(location = 1) in vec2 cardCoord;
+layout(location = 2) in vec3 colour;
+layout(location = 3) flat in uint mode;
 
 layout(location = 0) out vec4 outColour;
+
+float cornerBlendRadius;
+float cardHeight;
 
 void main(){
     if (mode == 0){

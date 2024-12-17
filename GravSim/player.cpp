@@ -119,7 +119,6 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 
 	//boxes.push_back(frameCounterBox);
 	boxes.push_back(commandBox);
-	inputString.push_back('w');
 
 	
 }
@@ -199,12 +198,12 @@ void PlayerObject::keyCallback(GLFWwindow* window, int key, int scancode, int ac
 	//else if (action == GLFW_PRESS && key == GLFW_KEY_Z) {
 	//	app->triggerStep = true;
 	//}
-	//else if (action == GLFW_PRESS) {
-	//		app->playerMoveFlags |= app->keyBindings[key];
-	//	}
-	//else if (action == GLFW_RELEASE){
-	//	app->playerMoveFlags &= ~app->keyBindings[key];
-	//}
+	else if (action == GLFW_PRESS) {
+			app->playerMoveFlags |= app->keyBindings[key];
+		}
+	else if (action == GLFW_RELEASE){
+		app->playerMoveFlags &= ~app->keyBindings[key];
+	}
 	//std::cout << app->pos.x << " " << app->pos.y << " " << app->pos.z << std::endl;
 	//std::cout << app->playerMoveFlags << std::endl;
 	if (action == GLFW_PRESS || action == GLFW_REPEAT) {
