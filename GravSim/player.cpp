@@ -117,8 +117,11 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 	frameCounterBox.dataP = &(texts[0]);
 	frameCounterBox.textCount = 4;
 
-	//boxes.push_back(frameCounterBox);
 	boxes.push_back(commandBox);
+	boxes.push_back(frameCounterBox);
+
+	//inputString.push_back('w');
+	
 
 	
 }

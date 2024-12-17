@@ -649,7 +649,7 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 	tBox.textCount = 6;
 	tBox.dataP = &tTexts[0];
 
-	player->boxes.resize(1);
+	//player->boxes.resize(1);
 	//player->boxes.push_back(tBox);
 
 	float px;
@@ -669,6 +669,8 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 
 	UIPushConstants pc{};
 
+	std::vector<uint32_t> boxCountc;
+	boxCountc.push_back(0);
 
 	for (uint32_t i = 0; i < player->boxes.size(); i++) {
 		//blockCounts.clear();
@@ -709,6 +711,15 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 		//		}
 		//	}
 		//}
+		vBlockCount.clear();
+		nBlockCount.clear();
+		hBlockCount.clear();
+		hBlockCountc.clear();
+		nBlockCounth.clear();
+		vBlockCountn.clear();
+
+
+		
 
 		vBlockCount.push_back(0);
 		nBlockCount.push_back(0);
@@ -859,7 +870,7 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 			pc.renderStage = 3;
 			pc.texAdvance = texAdvance;
 			pc.texDimensions = glm::vec2(1.0f / charCount, 1);
-			pc.instanceOffset = charIndex;
+			pc.instanceOffset = charIndex + boxCountc[i];
 			pc.inColour = glm::vec4(workingText->colour.x, workingText->colour.y, workingText->colour.z, 0.0f);
 			vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &pc);
 			vkCmdDraw(commandBuffer, vertices.size(), hBlockCountc[k], 0, 0);
@@ -881,6 +892,7 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 			}
 
 		}
+		boxCountc.push_back(charVec.size());
 
 	}
 	memcpy(uniformsMapped[frameIndex], charVec.data(), charVec.size() * sizeof(charVec[0]));
