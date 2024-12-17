@@ -2,8 +2,8 @@
 
 layout(binding = 1) uniform sampler2D[2] texSampler;
 
-layout(location = 0) in vec2 fragTexCoord;
-layout(location = 1) in vec2 cardCoord;
+layout(location = 0) in vec2 cardBaseCoord;
+layout(location = 1) in vec2 cardValCoord;
 layout(location = 2) in vec3 colour;
 layout(location = 3) flat in uint mode;
 
@@ -14,13 +14,14 @@ float cardHeight;
 
 void main(){
     if (mode == 0){
-        outColour = texture(texSampler[0], fragTexCoord);
+        outColour = texture(texSampler[0], cardBaseCoord);
     }
     else if (mode==1){
-        vec4 sampleColor = texture(texSampler[1], fragTexCoord);
+        vec4 sampleColor = texture(texSampler[1], cardValCoord);
+        vec4 baseColor = texture(texSampler[0], cardBaseCoord);
         //outColour = sampleColor * sampleColor.w + vec4(colour, 1.0f) * (1-sampleColor.w);
         //outColour = (sampleColor * sampleColor.a) + (vec4(colour, 1.0f) * 0.0f * (0.0f-sampleColor.a));
-        outColour = vec4(sampleColor.xyz * sampleColor.a + colour * (1.0f - sampleColor.a), 1.0f);
+        outColour = vec4(sampleColor.xyz * sampleColor.a + baseColor.xyz * (1.0f - sampleColor.a), baseColor.a);
         //outColour = vec4(sampleColor.a, 0.0f, 0.0f, 1.0f);
 
         //outColour = vec4(sampleColor.xyz, 1.0f);

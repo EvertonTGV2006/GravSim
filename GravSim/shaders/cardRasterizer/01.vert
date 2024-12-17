@@ -13,8 +13,8 @@ float aspectRatio = 4.0f / 3.0f;
 layout(location = 0) in vec4 inPosition;
 
 
-layout(location = 0) out vec2 fragTexCoord;
-layout(location = 1) out vec2 cardCoord;
+layout(location = 0) out vec2 cardBaseCoord;
+layout(location = 1) out vec2 cardValCoord;
 layout(location = 2) out vec3 colour;
 layout(location = 3) out uint mode;
 
@@ -30,13 +30,16 @@ void main() {
     vec2 texDimensions = vec2(1.0f / 13.0f, 1.0f / 4.0f);
 
     vec2 backCardLoc = vec2(6, 2);
-    vec2 backCardDim = vec2(1.0f / 7.0f, 1.0f / 5.0f);
+    vec2 baseCardLoc = vec2(1, 0);
+    vec2 baseCardDim = vec2(1.0f / 7.0f, 1.0f / 5.0f);
     vec4 outPosition;
 
     if (inPosition.w == 1.0f){
         //card is top surface, so calculate texCoords accordingly
-        fragTexCoord.x = (float(rank) + inPosition.x+0.5f) * texDimensions.x;
-        fragTexCoord.y = (float(suit) + inPosition.y+0.5f) * texDimensions.y;
+        cardValCoord.x = (float(rank) + inPosition.x+0.5f) * texDimensions.x;
+        cardValCoord.y = (float(suit) + inPosition.y+0.5f) * texDimensions.y;
+        cardBaseCoord.x = (baseCardLoc.x + inPosition.x+0.5f) * baseCardDim.x;
+        cardBaseCoord.y = (baseCardLoc.y + inPosition.y+0.5f) * baseCardDim.y;
 
         outPosition = vec4((ubo.cardMat[i] * vec4(cardDimensions.x * inPosition.x, cardDimensions.y * inPosition.y, cardDimensions.z * inPosition.z, 1.0f)).xyz, 1.0f);
         mode = 1;
@@ -45,15 +48,15 @@ void main() {
         //colour = vec3(fragTexCoord.x, fragTexCoord.y, 0.0f);
     }
     if(inPosition.w==0.0f){
-        fragTexCoord.x = (backCardLoc.x + inPosition.x+0.5f) * backCardDim.x;
-        fragTexCoord.y = (backCardLoc.y + inPosition.y+0.5f) * backCardDim.y;
+        cardBaseCoord.x = (backCardLoc.x + inPosition.x+0.5f) * baseCardDim.x;
+        cardBaseCoord.y = (backCardLoc.y + inPosition.y+0.5f) * baseCardDim.y;
+        cardValCoord = vec2(0.0f,0.0f);
+
         outPosition = vec4((ubo.cardMat[i] * vec4(cardDimensions.x * inPosition.x, cardDimensions.y * inPosition.y, cardDimensions.z * inPosition.z, 1.0f)).xyz, 1.0f);
         mode = 0;
         colour = vec3(1);
 
     }
-
-    cardCoord = vec2(inPosition.x, inPosition.y)
 
 
     float scale = 0.2f;
