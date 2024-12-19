@@ -602,7 +602,8 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 
 		glm::vec2 tableLeft = glm::vec2(-0.35f * (table->size()+2), 0.0f);
 		glm::vec2 tableRight = glm::vec2(0.35f * (table->size()+2), 0.0f);
-		glm::vec2 tableTraverse = (tableRight - tableLeft) / float(table->size()-1);
+		float tableTraverseStep = (table->size() > 1) ? table->size() - 1 : 1;
+		glm::vec2 tableTraverse = (tableRight - tableLeft) / tableTraverseStep;
 		tablePositions.clear();
 
 		for (uint32_t i = 0; i < table->size(); i++) {
@@ -699,15 +700,34 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 			{1.0f, 0.0, 0.0f, interpolatedCardData.x},
 			{0.0f, glm::cos(interpolatedCardData.a), -glm::sin(interpolatedCardData.a), interpolatedCardData.y},
 			{0.0f, glm::sin(interpolatedCardData.a), glm::cos(interpolatedCardData.a), interpolatedCardData.z},
-			{0.0f, 0.0f, 0.0f, 1.0f} };
+			{0.0f, 0.0f, 0.0f, 0.0f} };
 		cardData[i].cardMat = glm::transpose(interpolatedMatData);
 		//std::cout << glm::to_string(cardData[i].cardMat) << std::endl;
 	}
 
 	//for highlighted cards
-	for (uint32_t i = 0; i < player->inputString.size(); i++) {
-		if ((i & 1) > 0) {
-
+	//hand
+	if (player->inputString.size() > 0) {
+		char inputChar = player->inputString[0];
+		if (inputChar == 'q' && ((*hands)[playerIndex])->size() > 0) {
+			cardData[(*(*hands)[playerIndex])[0].value()].cardMat[3][3] = 2.0f;
+		}
+		if (inputChar == 'w' && ((*hands)[playerIndex])->size() > 1) {
+			cardData[(*(*hands)[playerIndex])[1].value()].cardMat[3][3] = 2.0f;
+		}
+		if (inputChar == 'e' && ((*hands)[playerIndex])->size() > 2) {
+			cardData[(*(*hands)[playerIndex])[2].value()].cardMat[3][3] = 2.0f;
+		}
+		if (inputChar == 'r' && ((*hands)[playerIndex])->size() > 3) {
+			cardData[(*(*hands)[playerIndex])[3].value()].cardMat[3][3] = 2.0f;
+		}
+	}
+	for (uint32_t i = 2; i < player->inputString.size(); i += 2) {
+		uint32_t inputIndex = player->inputString[i] - 49;
+		if (inputIndex < table->size()) {
+			for (uint32_t j = 0; j < (*table)[inputIndex].size(); j++) {
+				cardData[(*table)[inputIndex][j].value()].cardMat[3][3] = 1.0f;
+			}
 		}
 	}
 	

@@ -31,13 +31,17 @@ void main() {
 
     vec2 backCardLoc = vec2(6, 2);
     vec2 baseCardLoc = vec2(1, 0);
-    vec2 baseCardBlendLoc = vec2(4,1);
+    vec2 baseCardBlendLoc = vec2(6,0);
     vec2 baseCardDim = vec2(1.0f / 7.0f, 1.0f / 5.0f);
     vec4 outPosition;
 
     mat4 cardMat = ubo.cardMat[i];
     cardMat[3][3] = 1.0f;
     blendConstant = ubo.cardMat[i][3][3];
+    if (blendConstant > 1.0f){
+        blendConstant = blendConstant - 1.0f;
+        baseCardBlendLoc = vec2(6,1);
+    }
 
     //viewProjMat[3][3] = 1.0f;
 
