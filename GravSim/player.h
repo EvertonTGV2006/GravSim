@@ -36,10 +36,10 @@ public:
 	std::atomic_bool windowShouldClose;
 	bool validateParticles = false;
 
-	glm::vec3 pos = { -4,27,0 };
-	glm::vec3 viewDirection = {4, -27, 0 };
+	glm::vec3 pos = { 0,-0.3,-1.8 };
+	glm::vec3 viewDirection = {0, 0.3, 1.8 };
 	glm::vec3 viewFocus = { 0, 0, 0 };
-	glm::vec3 viewUp = { 0,1,0 };
+	glm::vec3 viewUp = { 0,0,1 };
 	float viewZoom = 1.0f;
 	const float zoomMin = 0.01f;
 	const float zoomMax = 100.0f;
@@ -55,8 +55,8 @@ public:
 	double xpos = 0;
 	double ypos = 0;
 
-	double anglez = glm::asin(-1 / sqrt(3));
-	double anglexy = glm::pi<double>() * 5 / 4;
+	double anglez = glm::atan(viewDirection.z / sqrt(viewDirection.x * viewDirection.x + viewDirection.y * viewDirection.y));
+	double anglexy = glm::atan(viewDirection.y / viewDirection.x) - glm::pi<double>() * 0.5;
 	double scrollScale = 0.1;
 
 	float xscale = 0.005f;

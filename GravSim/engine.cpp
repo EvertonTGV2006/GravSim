@@ -312,11 +312,15 @@ void VulkanEngine::executeGraphics() {
 
     particleRasterizer.drawObjects(drawCommandBuffers[frameIndex], frameIndex, ubo);
 
+    
+    cardRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex, commandSubmitFrame, ubo.proj * ubo.view);
+
     uiRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex);
 
-    ubo.view = glm::lookAt(glm::vec3(0.0f, -0.5f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f ), glm::vec3(0.0f, 0.0f, 1.0f));
+    //ubo.view = glm::lookAt(glm::vec3(0.0f, -0.5f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f ), glm::vec3(0.0f, 0.0f, 1.0f));
 
-    cardRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex, commandSubmitFrame, ubo.proj * ubo.view);
+    glm::mat4 newProj = glm::perspective(glm::radians(60.0f), 1.0f, 1.0f, -1.0f);
+
 
     vkCmdEndRenderPass(drawCommandBuffers[frameIndex]);
 

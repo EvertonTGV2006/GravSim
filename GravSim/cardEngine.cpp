@@ -152,7 +152,7 @@ uint32_t CardEngine::cardCommand(std::vector<char> command) {
 	}
 	else if (commandAction == COMMAND_ACTION_STACK_ON_TABLE) {
 		char targetStackIndexRaw = command[COMMAND_BIT_TABLE_INDEX_START];
-		uint8_t targetStackIndex = targetStackIndexRaw - 48;
+		uint8_t targetStackIndex = targetStackIndexRaw - 49;
 
 		if (targetStackIndex >= table.size()) {
 			return COMMAND_ERROR_BAD_TABLE_INDEX;
@@ -186,7 +186,7 @@ uint32_t CardEngine::cardCommand(std::vector<char> command) {
 		for (uint8_t i = COMMAND_BIT_TABLE_INDEX_START; i < command.size(); i++) {
 			if ((i - COMMAND_BIT_TABLE_INDEX_START) % 2 == 0) {
 				targetStackIndexRaw = command[i];
-				targetStackIndex = targetStackIndexRaw - 48;
+				targetStackIndex = targetStackIndexRaw - 49;
 				if (targetStackIndex >= table.size()) {
 					return COMMAND_ERROR_BAD_TABLE_INDEX;
 				}
@@ -220,7 +220,7 @@ uint32_t CardEngine::cardCommand(std::vector<char> command) {
 		for (uint8_t i = COMMAND_BIT_TABLE_INDEX_START; i < command.size(); i++) {
 			if ((i - COMMAND_BIT_TABLE_INDEX_START) % 2 == 0) {
 				targetStackIndexRaw = command[i];
-				targetStackIndex = targetStackIndexRaw - 48;
+				targetStackIndex = targetStackIndexRaw - 49;
 				while (table[targetStackIndex].size() > 0) {
 					currentWin->push_back(table[targetStackIndex].back());
 					table[targetStackIndex].pop_back();

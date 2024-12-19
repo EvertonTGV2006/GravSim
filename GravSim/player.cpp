@@ -143,11 +143,11 @@ void PlayerObject::mouseMotionCallback(GLFWwindow* window, double xpos, double y
 	}
 	app->anglez += dy * app->yscale;
 	app->anglexy += dx * app->xscale;
-	if (app->anglez < -glm::half_pi<double>()) {
-		app->anglez = -glm::half_pi<double>();
+	if (app->anglez <= -glm::half_pi<double>()+0.001) {
+		app->anglez = -glm::half_pi<double>() + 0.001;
 	}
-	if (app->anglez > glm::half_pi<double>()) {
-		app->anglez=glm::half_pi<double>();
+	if (app->anglez >= glm::half_pi<double>()-0.001) {
+		app->anglez=glm::half_pi<double>() - 0.001;
 	}
 	app->viewDirection.z = glm::sin(app->anglez);
 	app->viewDirection.x = glm::sin(app->anglexy) * glm::sqrt(1 - glm::pow(app->viewDirection.z, 2));

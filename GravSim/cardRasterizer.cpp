@@ -562,7 +562,7 @@ void CardRasterizer::getMemoryRequirements(std::vector<MemoryDetails>* details, 
 void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameIndex, bool newCommand, glm::mat4 viewProjMat) {
 
 
-
+	//std::cout << glm::to_string(viewProjMat) << std::endl;
 
 	glm::vec2 cardPos;
 	glm::mat4 cardMat;
@@ -573,9 +573,9 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 
 	if (newCommand) {
 
-		tableOffset = { 0.0f, 0.2f };
+		tableOffset = { 0.0f, -0.2f };
 		stockOffset = { 0.002f, 0.0005f };
-		cardHeightZero = 0.03f;
+		cardHeightZero = -0.03f;
 		cardHeightOffset = -0.002f;
 		//tablePositions = {//need to redefine to be more flexible
 		//	glm::vec2(-4.2, 0.0f),
@@ -600,9 +600,9 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 			glm::vec2(-4.4f, 1.3f) };
 
 
-		glm::vec2 tableLeft = glm::vec2(-0.6f * table->size(), 0.0f);
-		glm::vec2 tableRight = glm::vec2(0.6f * table->size(), 0.0f);
-		glm::vec2 tableTraverse = (tableRight - tableLeft) / float(table->size());
+		glm::vec2 tableLeft = glm::vec2(-0.35f * (table->size()+2), 0.0f);
+		glm::vec2 tableRight = glm::vec2(0.35f * (table->size()+2), 0.0f);
+		glm::vec2 tableTraverse = (tableRight - tableLeft) / float(table->size()-1);
 		tablePositions.clear();
 
 		for (uint32_t i = 0; i < table->size(); i++) {
@@ -615,6 +615,7 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 		prevCardData = currentCardData;
 		commandSubmitTime = std::chrono::high_resolution_clock::now();
 
+		constexpr float cardFlipValue = glm::pi<float>();
 
 		for (uint32_t i = 0; i < table->size(); i++) {
 			for (uint32_t j = 0; j < (*table)[i].size(); j++) {
@@ -627,7 +628,7 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 					{0.0f, 0.0f, 0.0f, 1.0f} };
 				cardIndex = (*table)[i][j].value();
 				cardData[cardIndex].cardMat = glm::transpose(cardMat);
-				currentCardData[cardIndex] = glm::vec4(cardPos.x, cardPos.y, cardHeight, 0.0f);
+				currentCardData[cardIndex] = glm::vec4(cardPos.x, cardPos.y, cardHeight, 0.0f + cardFlipValue);
 
 			}
 		}
@@ -641,7 +642,7 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 				{0.0f, 0.0f, 0.0f, 1.0f} };
 			cardIndex = (*stock)[i].value();
 			cardData[cardIndex].cardMat = glm::transpose(cardMat);
-			currentCardData[cardIndex] = glm::vec4(cardPos.x, cardPos.y, cardHeight, glm::pi<float>());
+			currentCardData[cardIndex] = glm::vec4(cardPos.x, cardPos.y, cardHeight, glm::pi<float>() + cardFlipValue);
 		}
 		for (uint32_t i = 0; i < hands->size(); i++) {
 			for (uint32_t j = 0; j < (*hands)[i]->size(); j++) {
@@ -656,7 +657,7 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 					{0.0f, 0.0f, 0.0f, 1.0f} };
 				cardIndex = (*(*hands)[i])[j].value();
 				cardData[cardIndex].cardMat = glm::transpose(cardMat);
-				currentCardData[cardIndex] = glm::vec4(cardPos.x, cardPos.y, cardHeight, 0.5*glm::pi<float>() + (0.5*-glm::pi<float>() * faceDirection));
+				currentCardData[cardIndex] = glm::vec4(cardPos.x, cardPos.y, cardHeight, 0.5*glm::pi<float>() + (0.5*-glm::pi<float>() * faceDirection) + cardFlipValue);
 
 			}
 		}
@@ -670,8 +671,9 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 					{0.0f, 0.0f, -1.0f, cardHeight},
 					{0.0f, 0.0f, 0.0f, 1.0f} };
 				cardIndex = (*(*wins)[i])[j].value();
+
 				cardData[cardIndex].cardMat = glm::transpose(cardMat);
-				currentCardData[cardIndex] = glm::vec4(cardPos.x, cardPos.y, cardHeight, glm::pi<float>());
+				currentCardData[cardIndex] = glm::vec4(cardPos.x, cardPos.y, cardHeight, 0.0f + cardFlipValue);
 
 			}
 		}
@@ -688,9 +690,11 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 	float animationInterpolation = (timeDuration < animationDuration) ? 0.5f * glm::tanh(animationSmoothness * (timeDuration - (animationDuration / 2))) + 0.5f : 1.0f;
 	glm::vec4 interpolatedCardData;
 	glm::mat4 interpolatedMatData;
+	float animationLiftHeight = -0.2f;
 	
 	for (uint32_t i = 0; i < currentCardData.size(); i++) {
 		interpolatedCardData = (1.0f - animationInterpolation) * prevCardData[i] + animationInterpolation * currentCardData[i];
+		interpolatedCardData.z = animationLiftHeight * pow(glm::sin(glm::pi<float>() * animationInterpolation), 2.0f);
 		interpolatedMatData = glm::mat4{
 			{1.0f, 0.0, 0.0f, interpolatedCardData.x},
 			{0.0f, glm::cos(interpolatedCardData.a), -glm::sin(interpolatedCardData.a), interpolatedCardData.y},
@@ -698,6 +702,13 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 			{0.0f, 0.0f, 0.0f, 1.0f} };
 		cardData[i].cardMat = glm::transpose(interpolatedMatData);
 		//std::cout << glm::to_string(cardData[i].cardMat) << std::endl;
+	}
+
+	//for highlighted cards
+	for (uint32_t i = 0; i < player->inputString.size(); i++) {
+		if ((i & 1) > 0) {
+
+		}
 	}
 	
 
@@ -720,7 +731,6 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 	//std::cout << 2 << std::endl;
 
 	CardPushConstants pc{};
-	pc.aspectRatio = 0.0f;
 	pc.viewPojectionMatrix = viewProjMat;
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);

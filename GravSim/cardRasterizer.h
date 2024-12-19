@@ -30,7 +30,6 @@ struct CardInit {
 };
 
 struct CardPushConstants {
-	float aspectRatio;
 	glm::mat4 viewPojectionMatrix;
 };
 struct CardDataConstant {
