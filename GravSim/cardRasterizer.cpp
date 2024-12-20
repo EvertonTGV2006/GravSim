@@ -695,7 +695,7 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 	
 	for (uint32_t i = 0; i < currentCardData.size(); i++) {
 		interpolatedCardData = (1.0f - animationInterpolation) * prevCardData[i] + animationInterpolation * currentCardData[i];
-		interpolatedCardData.z = animationLiftHeight * pow(glm::sin(glm::pi<float>() * animationInterpolation), 2.0f);
+		interpolatedCardData.z = animationLiftHeight * pow(glm::sin(glm::pi<float>() * animationInterpolation), 2.0f) + interpolatedCardData.z;
 		interpolatedMatData = glm::mat4{
 			{1.0f, 0.0, 0.0f, interpolatedCardData.x},
 			{0.0f, glm::cos(interpolatedCardData.a), -glm::sin(interpolatedCardData.a), interpolatedCardData.y},
