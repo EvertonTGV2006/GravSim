@@ -161,6 +161,8 @@ void UIRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer, VkQue
 	vkResetFences(device, 1, &transferFence);
 	vkResetCommandBuffer(transferCommandBuffer, 0);
 
+	vkUnmapMemory(device, memory.memory);
+
 	vkDestroyFence(device, transferFence, nullptr);
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
