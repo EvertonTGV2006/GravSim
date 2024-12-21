@@ -473,7 +473,7 @@ void UIRasterizer::initFreetype() {
 
 	if (FT_New_Face(library, "C:/Windows/Fonts/CascadiaCode.ttf", 0, &face)) { throw std::runtime_error("Failed to load Font"); }
 
-	FT_Set_Pixel_Sizes(face, 0, 48);
+	FT_Set_Pixel_Sizes(face, 0, 128);
 
 
 	char character = 22;

@@ -55,8 +55,8 @@ public:
 	double xpos = 0;
 	double ypos = 0;
 
-	double anglez = glm::asin(-1 / sqrt(3));
-	double anglexy = glm::pi<double>() * 5 / 4;
+	double anglez = glm::atan(viewDirection.z / sqrt(viewDirection.x * viewDirection.x + viewDirection.y * viewDirection.y));
+	double anglexy = glm::atan(viewDirection.y / viewDirection.x) - glm::pi<double>() * 0.5;
 	double scrollScale = 0.1;
 
 	float xscale = 0.005f;
