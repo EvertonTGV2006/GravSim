@@ -118,4 +118,11 @@ public:
 	std::vector<char> inputString;
 	std::atomic_bool commandSubmit;
 	bool shiftModifier;
+
+	void initScoreBoxes(std::vector<std::vector<std::string>*>*, std::vector<uint32_t*>*, std::vector<std::string>);
+	void destroyScoreBoxes();
+
+	std::vector<std::string> playerNames;
+	std::array<char, 8> usrn;
+	std::array<char, 8> oppn;
 };

@@ -29,8 +29,94 @@
 #include <cstdint> // Necessary for uint32_t
 #include <limits> // Necessary for std::numeric_limits
 #include <algorithm> // Necessary for std::clamp
+#include "toml.hpp"
+#include "networking.h"
 
 
+void VulkanEngine::initNetworking() {
+    std::string filename = "profiles/default.toml";
+
+    auto config = toml::parse_file(filename);
+    std::optional<std::string> usrStr = config["usrn"].value<std::string>();
+    std::array<char, 8> usrn{};
+    for (size_t i = 0; i < usrStr.value().size(); i++) {
+        usrn[i] = usrStr.value()[i];
+    }
+    nc.usrn = usrn;
+    nc.versionMajor = 1;
+    nc.versionMinor = 0;
+
+    nc.initWinsock(); /*we have now connected to the server and have an opponent*/
+
+    player->usrn = nc.usrn;
+    player->oppn = nc.oppn;
+
+    serverConfig = nc.serverConfig;
+
+    
+
+    handleStock();
+    if (isDealer == true) {
+        cardRasterizer.playerIndex = 0;
+    }
+    else {
+        cardRasterizer.playerIndex = 1;
+    }
+
+    netThread = std::thread(&VulkanEngine::handleNetworking, this);
+
+}
+void VulkanEngine::handleStock() {
+    if (swapDealers == false) {
+        if ((serverConfig & SVRCNF_HC_BITS) == SVRCNF_HOST_BIT) {
+            cardEngine.initStock();
+            nc.sendStock(&cardEngine.stock);
+            isDealer = true;
+            isPlayerTurn = true;
+        }
+        else if ((serverConfig & SVRCNF_HC_BITS) == SVRCNF_CLIENT_BIT) {
+            nc.recvStock(&cardEngine.stock);
+            isDealer = false;
+            isPlayerTurn = false;
+        }
+        else {
+            throw std::runtime_error("Invalid Server Config Received");
+        }
+    }
+    else {
+        if ((serverConfig & SVRCNF_HC_BITS) == SVRCNF_CLIENT_BIT) {
+            cardEngine.initStock();
+            nc.sendStock(&cardEngine.stock);
+            isDealer = true;
+            isPlayerTurn = true;
+        }
+        else if ((serverConfig & SVRCNF_HC_BITS) == SVRCNF_HOST_BIT) {
+            nc.recvStock(&cardEngine.stock);
+            isDealer = false;
+            isPlayerTurn = false;
+        }
+        else {
+            throw std::runtime_error("Invalid Server Config Received");
+        }
+    }
+}
+void VulkanEngine::handleNetworking() {
+    while (player->windowShouldClose == false) {
+        if (isPlayerTurn) {
+            while (commandReady == false) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            std::lock_guard<std::mutex> guard(commandMutex);
+            nc.sendCmd(&commandString);
+            commandReady = false;
+        }
+        else {
+            std::lock_guard<std::mutex> guard(commandMutex);
+            nc.recvCmd(&commandString);
+            commandReady = true;
+        }
+    }
+}
 
 void VulkanEngine::initEngine() {
     std::chrono::time_point startTime = std::chrono::high_resolution_clock::now();
@@ -227,25 +313,74 @@ void VulkanEngine::runGraphics() {
 void VulkanEngine::executeGraphics() {
     bool commandSubmitFrame = false;
 
-    if (player->commandSubmit == true) {
+    if (player->commandSubmit == true && isPlayerTurn == true) {
+        std::lock_guard<std::mutex> guard(commandMutex);
         player->commandSubmit = false;
-        std::vector<char> commandString;
         commandString.push_back(cardRasterizer.playerIndex);
         for (uint32_t i = 0; i < player->inputString.size(); i++) {
             commandString.push_back(player->inputString[i]);
         }
+
         uint32_t errCode = cardEngine.cardCommand(commandString);
         if (errCode == COMMAND_SUCCESS) {
             player->inputString.clear();
-            cardRasterizer.playerIndex = (cardRasterizer.playerIndex + 1) % 2;
+            //cardRasterizer.playerIndex = (cardRasterizer.playerIndex + 1) % 2;
             commandSubmitFrame = true;
+            isPlayerTurn = false;
+            commandReady = true;
+        }
+        else if (errCode == COMMAND_DISCONNECT) {
+            player->windowShouldClose = true;
+            std::cout << "Received disconnect command" << std::endl;
+        }
+        else if (errCode == COMMAND_NEWGAME_SWAP) {
+            swapDealers = !swapDealers;
+            handleStock();
+            cardEngine.setupGame();
+            player->destroyScoreBoxes();
+        }
+        else if (errCode == COMMAND_NEWGAME_STICK) {
+            handleStock();
+            cardEngine.setupGame();
+            player->destroyScoreBoxes();
         }
         else {
             std::cout << errCode << std::endl;
         }
     }
+    else if (player->commandSubmit == true && isPlayerTurn == false) {
+        player->commandSubmit = false;
+        std::cout << "Not your turn!" << std::endl;
+        player->inputString.clear();
+    }
+    if (isPlayerTurn == false) {
+        if (commandReady) {
+            std::lock_guard<std::mutex> guard(commandMutex);
+            uint32_t errCode = cardEngine.cardCommand(commandString);
+            if (errCode == COMMAND_SUCCESS) {
+                commandReady = false;
+                isPlayerTurn = true;
+                commandSubmitFrame = true;
+            }
+            else {
+                throw std::runtime_error("Received Invalid Command from server!");
+            }
+        }
+    }
     if (firstFrame) {
         commandSubmitFrame = true;
+    }
+    if (commandSubmitFrame == true && cardEngine.gameFinished == true) {
+        std::vector<std::string> playerNames;
+        if (isDealer) {
+            playerNames.push_back("Gareth");
+            playerNames.push_back("Beth");
+        }
+        else {
+            playerNames.push_back("Beth");
+            playerNames.push_back("Gareth");
+        }
+        player->initScoreBoxes(&cardEngine.playerScoreReasons, &cardEngine.playerScores, playerNames);
     }
 
 
@@ -1311,7 +1446,7 @@ VkPresentModeKHR VulkanEngine::chooseSwapPresentMode(const std::vector<VkPresent
     return VK_PRESENT_MODE_FIFO_KHR;
 }
 VkExtent2D VulkanEngine::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
-    if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
+    if (capabilities.currentExtent.width != UINT32_MAX) {
         return capabilities.currentExtent;
     }
     else {
@@ -1632,10 +1767,12 @@ void VulkanEngine::cleanupSwapChain() {
 }
 void VulkanEngine::cleanup() {
     vkDeviceWaitIdle(device);
+    netThread.join();
     particleRasterizer.cleanup();
     gravEngine.cleanup();
     uiRasterizer.cleanup();
     cardRasterizer.cleanup();
+    nc.cleanup();
 
     writeOutSampleData();
 

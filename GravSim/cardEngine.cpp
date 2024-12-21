@@ -8,6 +8,26 @@
 #include <random>
 #include <algorithm>
 
+
+void CardEngine::initStock() {
+	stock.clear();
+	uint8_t cardIndex = 0;
+	for (uint8_t suit = 0; suit < 4; suit++) {
+		for (uint8_t rank = 1; rank < 14; rank++) {
+			playingCard card{};
+			card.setSuit(suit);
+			card.setRank(rank);
+			stock.push_back(card);
+		}
+	}
+	std::random_device rd;
+	std::mt19937 gen{ rd() };
+	//printCards(1);
+	std::ranges::shuffle(stock, gen);
+
+}
+
+
 void CardEngine::setupGame() {
 
 	playerHands.clear();
@@ -21,7 +41,7 @@ void CardEngine::setupGame() {
 	DHand.clear();
 	NDWin.clear();
 	DWin.clear();
-	stock.clear();
+
 
 	NDScore = 0;
 	DScore = 0;
@@ -34,22 +54,10 @@ void CardEngine::setupGame() {
 
 
 
-	uint8_t cardIndex = 0;
-	for (uint8_t suit = 0; suit < 4; suit++){
-		for (uint8_t rank = 1; rank < 14; rank++) {
-			playingCard card{};
-			card.setSuit(suit);
-			card.setRank(rank);
-			stock.push_back(card);
-		}
-	}
-	std::random_device rd;
-	std::mt19937 gen{ rd() };
-	printCards(1);
-	std::ranges::shuffle(stock, gen);
+
 
 	firstDeal();
-	printCards(0);
+	//printCards(0);
 
 	playerHands.push_back(&NDHand);
 	playerHands.push_back(&DHand);
@@ -291,6 +299,7 @@ uint32_t CardEngine::cardCommand(std::vector<char> command) {
 			}
 			countScore(0, 0);
 			countScore(1, 1);
+			gameFinished = true;
 		}
 		else {
 			normalDeal();
@@ -298,7 +307,7 @@ uint32_t CardEngine::cardCommand(std::vector<char> command) {
 	}
 
 
-	printCards(0);
+	//printCards(0);
 	return COMMAND_SUCCESS;
 
 

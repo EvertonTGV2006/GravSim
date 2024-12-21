@@ -1,0 +1,4 @@
+mode = "host"
+usrn = "Gareth"
+port  = 80
+server = "127.0.0.1"

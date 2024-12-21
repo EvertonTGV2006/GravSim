@@ -125,6 +125,57 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 
 	
 }
+void PlayerObject::initScoreBoxes(std::vector<std::vector<std::string>*>* playerScoreReasons, std::vector<uint32_t*>* playerScores, std::vector<std::string>pNames) {
+	playerNames = pNames;
+
+	uint32_t textZero = 5;
+	uint32_t minScore = std::min(playerScoreReasons[0].size(), playerScoreReasons[1].size());
+	uint32_t maxScore = std::max(playerScoreReasons[0].size(), playerScoreReasons[1].size());
+	uint32_t maxIndex = (playerScoreReasons[0].size() > playerScoreReasons[1].size()) ? 0 : 1;
+
+	UIText commandText{};
+	commandText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_STRING;
+	commandText.colour = glm::vec3(0.9f, 0.9f, 0.92f);
+	commandText.dataP = &playerNames[0];
+	texts[textZero] = commandText;
+	commandText.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_STRING;
+	commandText.dataP = &playerNames[1];
+	texts[textZero + 1];
+
+
+	for (uint32_t i = 0; i < minScore; i++) {
+		commandText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_TRUE | UI_DATA_STRING;
+		commandText.dataP = &playerScoreReasons[0][i];
+		texts[textZero + 2 * i + 2] = commandText;
+		commandText.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_STRING;
+		commandText.dataP = &playerScoreReasons[1][i];
+		texts[textZero + 2 * i + 3] = commandText;
+	}
+	for (uint32_t i = minScore; i < maxScore; i++) {
+		if (maxIndex == 0) {
+			commandText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_TRUE | UI_DATA_STRING;
+			commandText.dataP = &playerScoreReasons[0][i];
+		}
+		else if (maxIndex == 1) {
+			commandText.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_T | UI_NEWLINE_TRUE | UI_DATA_STRING;
+			commandText.dataP = &playerScoreReasons[0][i];
+		}
+
+
+		texts[textZero + 2 + 2 * minScore + i] = commandText;
+	}
+	UIBox commandBox{};
+	commandBox.pos = glm::vec2(0.02f, 0.02f);
+	commandBox.size = glm::vec2(0.9f, 0.9f);
+	commandBox.colour = glm::vec3(1.0f, 1.0f, 1.0f);
+	commandBox.dataP = &(texts[textZero]);
+	commandBox.textCount = 2 + minScore + maxScore;
+	boxes.push_back(commandBox);
+	
+}
+void PlayerObject::destroyScoreBoxes() {
+	boxes.pop_back();
+}
 
 void PlayerObject::framebufferResizeCallback(GLFWwindow* window, int width, int height){
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));

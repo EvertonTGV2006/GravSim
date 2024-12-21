@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include <glm/glm.hpp>
 #include <atomic>
+#include <mutex>
 #include <chrono>
 
 #include "window.h"
@@ -25,12 +26,26 @@
 #include "grav.h"
 #include "uiRasterizer.h"
 #include "cardRasterizer.h"
+#include "networking.h"
 
 class VulkanEngine {
 public:
 	WindowManager winmanager;
 	PlayerObject* player;
+	NetworkingClient nc;
+	uint32_t serverConfig;
 
+	std::thread netThread;
+
+	std::atomic_bool isDealer = false;
+	std::atomic_bool isPlayerTurn = false;
+	std::atomic_bool commandReady = false;
+	std::mutex commandMutex;
+	std::vector<char> commandString;
+
+
+	void initNetworking();
+	
 	void initEngine();
 
 	void startDraw();
@@ -113,6 +128,7 @@ private:
 	UIRasterizer uiRasterizer;
 	CardRasterizer cardRasterizer;
 	CardEngine cardEngine;
+	bool swapDealers = false;
 
 	std::vector<MemInit> memoryContainers;
 	std::vector<VkDeviceMemory> memory;
@@ -162,6 +178,9 @@ private:
 	void cleanupSwapChain();
 
 	void writeOutSampleData();
+
+	void handleNetworking();
+	void handleStock();
 
 	void readFiles(std::vector<std::string>, std::vector<std::vector<char>>*);
 

@@ -47,7 +47,10 @@ enum commandError {
 	COMMAND_ERROR_SECOND_ACTION_NOT_FOUND = 5,
 	COMMAND_ERROR_FIRST_ACTION_NOT_FOUND = 6,
 	COMMAND_ERROR_BAD_TABLE_INDEX = 7,
-	COMMAND_ERROR_BAD_COMMAND_STRING = 8
+	COMMAND_ERROR_BAD_COMMAND_STRING = 8,
+	COMMAND_DISCONNECT = 9,
+	COMMAND_NEWGAME_SWAP = 10,
+	COMMAND_NEWGAME_STICK = 11
 };
 enum  commmandAction {
 	COMMAND_ACTION_ADD_TO_TABLE = 'a',
@@ -155,15 +158,17 @@ struct GameTableData {
 
 class CardEngine {
 public:
+	bool gameFinished = false;
+
 	std::vector<playingCard> stock;
 	std::vector<playingCard> DHand;
 	std::vector<playingCard> DWin;
 	std::vector<playingCard> NDHand;
 	std::vector<playingCard> NDWin;
-	uint8_t DSweeps;
-	uint8_t NDSweeps;
-	uint8_t DScore;
-	uint8_t NDScore;
+	uint32_t DSweeps;
+	uint32_t NDSweeps;
+	uint32_t DScore;
+	uint32_t NDScore;
 	std::vector<std::vector<playingCard>> table;
 	uint32_t lastWin = 0;
 
@@ -171,10 +176,11 @@ public:
 
 	std::vector<std::vector<playingCard>*> playerHands;
 	std::vector<std::vector<playingCard>*> playerWins;
-	std::vector<uint8_t*> playerSweeps;
-	std::vector<uint8_t*> playerScores;
+	std::vector<uint32_t*> playerSweeps;
+	std::vector<uint32_t*> playerScores;
 	std::vector<std::vector<std::string>*> playerScoreReasons;
 
+	void initStock();
 	void setupGame();
 	void countScore(uint8_t, uint8_t);
 	
