@@ -33,11 +33,52 @@ void NetworkingClient::initWinsock() {
 	/* inet_addr converts a string with an IP address in dotted format to
 	   a long value which is the IP in network byte order.
 	   sin_addr.S_un.S_addr specifies the long value in the address union */
-	//sockAddr1.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
+	inet_pton(AF_INET, "127.0.0.1", &sockAddr1.sin_addr.S_un.S_addr);
+
 
 	if (connect(hSocket, (sockaddr*)(&sockAddr1), sizeof(sockAddr1)) != 0)
 	{
 		throw std::runtime_error("Failed to connect socket");
 	}
+
+
+	iResult = send(hSocket, sendbuf, (int)strlen(sendbuf), 0);
+	if (iResult == SOCKET_ERROR) {
+		printf("send failed with error: %d\n", WSAGetLastError());
+		closesocket(hSocket);
+		WSACleanup();
+		throw std::runtime_error("Failed to send packet");
+	}
+
+	iResult = shutdown(hSocket, SD_SEND);
+	if (iResult == SOCKET_ERROR) {
+		printf("shutdown failed with error: %d\n", WSAGetLastError());
+		closesocket(hSocket);
+		WSACleanup();
+
+		throw std::runtime_error("Failed to shutdown socket");
+	}
+
+	do {
+
+		iResult = recv(hSocket, recvbuf, recvbuflen, 0);
+		if (iResult > 0)
+			printf("Bytes received: %d\n", iResult);
+		else if (iResult == 0)
+			printf("Connection closed\n");
+		else
+			printf("recv failed with error: %d\n", WSAGetLastError());
+		throw std::runtime_error("Failed receive error socket");
+
+	} while (iResult > 0);
+
+	for (uint32_t i = 0; i < DEFAULT_BUFLEN; i++) {
+		std::cout << recvbuf[i];
+	}
+
+
+	closesocket(hSocket);
+	WSACleanup();
+
 
 }
