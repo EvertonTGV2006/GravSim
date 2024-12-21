@@ -21,7 +21,7 @@ void SphereGeometry::createSphereLongLat(uint16_t LOD) {
 
 
 
-	std::cout << sectors << " | " << stacks << std::endl;
+	//std::cout << sectors << " | " << stacks << std::endl;
 
 	double sectorStep = glm::two_pi<double>() / sectors;
 	double stackStep = glm::pi<double>() / stacks;
@@ -734,11 +734,11 @@ void SphereGeometry::iterateIcosphere(bool edgeToggle) {
 
 	std::chrono::duration<double, std::milli> duration = end - start;
 
-	std::cout << "This iteration took: " << duration << " to make "<<vertices->size()<<" vertices with "<<indices->size() <<" indices" << std::endl;
+	//std::cout << "This iteration took: " << duration << " to make "<<vertices->size()<<" vertices with "<<indices->size() <<" indices" << std::endl;
 }
 
 void SphereGeometry::cleanGeometry(uint16_t safeValue, std::vector<Vertex>* cleanVertices, std::vector<uint16_t>* cleanIndices) { // does not work
-	std::cout << "Unclean: Vertices: " << cleanVertices->size() << " Indices: " << cleanIndices->size() << std::endl;
+	//std::cout << "Unclean: Vertices: " << cleanVertices->size() << " Indices: " << cleanIndices->size() << std::endl;
 	for (uint16_t iterator = safeValue; iterator < cleanVertices->size(); iterator++) {
 		glm::vec3 searchKey = (*vertices)[iterator].pos;
 		for (uint16_t cursor = safeValue; cursor < cleanVertices->size(); cursor++) {
@@ -746,7 +746,7 @@ void SphereGeometry::cleanGeometry(uint16_t safeValue, std::vector<Vertex>* clea
 				for (uint16_t indexCursor = 0; indexCursor < cleanIndices->size(); indexCursor++) {
 					if ((*cleanIndices)[indexCursor] == cursor) {
 						(*cleanIndices)[indexCursor] = iterator;
-						std::cout << "Changing index at "<<indexCursor<<" from " << cursor << " to " << iterator << std::endl;
+						//std::cout << "Changing index at "<<indexCursor<<" from " << cursor << " to " << iterator << std::endl;
 						//break;
 					}
 				}
@@ -756,7 +756,7 @@ void SphereGeometry::cleanGeometry(uint16_t safeValue, std::vector<Vertex>* clea
 			}
 		}
 	}
-	std::cout << "Cleaned: Vertices: " << cleanVertices->size() << " Indices: " << cleanIndices->size() << std::endl;
+	//std::cout << "Cleaned: Vertices: " << cleanVertices->size() << " Indices: " << cleanIndices->size() << std::endl;
 }
 
 
@@ -836,7 +836,7 @@ void ParticleGeometry::createParticles(uint32_t size) {
 		//part.mass = glm::gaussRand<float>(500.0f, 60.0f);
 		particles->push_back(part);
 	}
-	std::cout << particles->size();
+	//std::cout << particles->size();
 	
 	std::sort(particles->begin(), particles->end(), [](Particle a, Particle b) {return a.cell < b.cell; });
 

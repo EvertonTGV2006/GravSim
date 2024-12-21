@@ -425,7 +425,7 @@ void GravEngine::initMemory(std::array<MemInit, 4> details) {
 	storageMemOffset = details[0].offset;
 	if (storageRequirements.requirements.size != details[0].range) { throw std::runtime_error("Mismatch in GravStorageMemory size"); }
 
-	std::cout << details[0].range << " | " << storageRequirements.requirements.size << std::endl;
+	//std::cout << details[0].range << " | " << storageRequirements.requirements.size << std::endl;
 
 	vkBindBufferMemory(device, storageBuffer, storageMemory, storageMemOffset);
 
@@ -888,13 +888,13 @@ void GravEngine::createRandomData() {
 	vkUnmapMemory(device, scanMem.memory);
 
 
-
+	//std::cout << std::endl;
 
 	for (size_t i = 0; i < 27 * 2; i++) {
 		for (size_t j = 0; j < 12; j++) {
-			std::cout <<offsets[12 * i + j]<<" -> "<< newOffsets[12 * i + j] << "\t| ";
+			//std::cout <<offsets[12 * i + j]<<" -> "<< newOffsets[12 * i + j] << "\t| ";
 		}
-		std::cout << std::endl;
+		//std::cout << std::endl;
 	}
 
 
@@ -911,9 +911,9 @@ void GravEngine::runCommands() {
 
 
 
-	std::cout << vkGetFenceStatus(device, transferFence) << std::endl;
+	//std::cout << vkGetFenceStatus(device, transferFence) << std::endl;
 
-	std::cout << 0 << std::endl;
+	//std::cout << 0 << std::endl;
 	VkCommandBufferBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = 0;
@@ -923,7 +923,7 @@ void GravEngine::runCommands() {
 	vkCmdBindPipeline(gravCommandBuffers[computeIndex], VK_PIPELINE_BIND_POINT_COMPUTE, sortPipelines[0]);
 	vkCmdBindDescriptorSets(gravCommandBuffers[computeIndex], VK_PIPELINE_BIND_POINT_COMPUTE, sortPipelineLayout, 0, 1, &sortDescriptorSets[computeIndex], 0, nullptr);
 
-	std::cout << vkGetFenceStatus(device, transferFence) << std::endl;
+	//std::cout << vkGetFenceStatus(device, transferFence) << std::endl;
 	vkCmdDispatch(gravCommandBuffers[computeIndex], (GRID_CELL_COUNT/2) / 1024, 1, 1);
 	//vkCmdDispatch(gravCommandBuffers[computeIndex], 1, 1, 1);
 
@@ -935,13 +935,13 @@ void GravEngine::runCommands() {
 	submitInfo.pCommandBuffers = &gravCommandBuffers[computeIndex];
 	submitInfo.signalSemaphoreCount = 0;
 	submitInfo.waitSemaphoreCount = 0;
-	std::cout << vkGetFenceStatus(device, transferFence) << std::endl;
+	//std::cout << vkGetFenceStatus(device, transferFence) << std::endl;
 	auto result = vkQueueSubmit(gravQueue, 1, &submitInfo, transferFence);
-	std::cout << vkGetFenceStatus(device, transferFence) << std::endl;
-	std::cout << 1 << std::endl;
+	//std::cout << vkGetFenceStatus(device, transferFence) << std::endl;
+	//std::cout << 1 << std::endl;
 	auto result2 = vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
-	std::cout <<"Result1: "<< result << std::endl;
-	std::cout <<"Result2: "<< result2 << std::endl;
+	//std::cout <<"Result1: "<< result << std::endl;
+	//std::cout <<"Result2: "<< result2 << std::endl;
 	vkResetFences(device, 1, &transferFence);
 	
 
@@ -963,7 +963,7 @@ void GravEngine::runCommands() {
 	vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
 	vkResetFences(device, 1, &transferFence);
 
-	std::cout << 2 << std::endl;
+	//std::cout << 2 << std::endl;
 	vkResetCommandBuffer(gravCommandBuffers[computeIndex], 0);
 	if (vkBeginCommandBuffer(gravCommandBuffers[computeIndex], &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to begin simGrav"); }
 	vkCmdBindPipeline(gravCommandBuffers[computeIndex], VK_PIPELINE_BIND_POINT_COMPUTE, sortPipelines[2]);
@@ -980,7 +980,7 @@ void GravEngine::runCommands() {
 	vkQueueSubmit(gravQueue, 1, &submitInfo, transferFence);
 	vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
 	vkDestroyFence(device, transferFence, nullptr);
-	std::cout << 3 << std::endl;
+	//std::cout << 3 << std::endl;
 
 
 

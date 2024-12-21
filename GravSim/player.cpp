@@ -147,7 +147,7 @@ void PlayerObject::mouseMotionCallback(GLFWwindow* window, double xpos, double y
 }
 void PlayerObject::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
-	std::cout << "Key: " << key << " | Action: " << action << std::endl;
+	//std::cout << "Key: " << key << " | Action: " << action << std::endl;
 
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		//std::cout << "Window should close cmd";
@@ -205,7 +205,7 @@ void PlayerObject::scrollCallback(GLFWwindow* window, double xoffset, double yof
 	else if (app->viewZoom < app->zoomMin) {
 		app->viewZoom = app->zoomMin;
 	}
-	std::cout << app->viewZoom << std::endl;
+	//std::cout << app->viewZoom << std::endl;
 }
 void PlayerObject::updatePlayerMovement() {
 	
