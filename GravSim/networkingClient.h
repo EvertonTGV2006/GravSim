@@ -7,7 +7,7 @@
 
 #define DEFAULT_BUFLEN 512
 
-struct sockaddr_in
+struct sockaddr_in2
 {
 	short   sin_family;
 	u_short sin_port;
@@ -24,7 +24,7 @@ private:
 	char recvbuf[DEFAULT_BUFLEN];
 	int iResult;
 	int recvbuflen = DEFAULT_BUFLEN;
-	sockaddr_in sockAddr1;
+	sockaddr_in2 sockAddr1;
 
 	void initWinsock();
 	

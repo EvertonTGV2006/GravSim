@@ -33,7 +33,7 @@ void NetworkingClient::initWinsock() {
 	/* inet_addr converts a string with an IP address in dotted format to
 	   a long value which is the IP in network byte order.
 	   sin_addr.S_un.S_addr specifies the long value in the address union */
-	sockAddr1.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
+	//sockAddr1.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
 
 	if (connect(hSocket, (sockaddr*)(&sockAddr1), sizeof(sockAddr1)) != 0)
 	{
