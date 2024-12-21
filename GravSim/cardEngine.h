@@ -46,7 +46,8 @@ enum commandError {
 	COMMAND_ERROR_CARD_TAKE_VALUE_NOT_FOUND = 4,
 	COMMAND_ERROR_SECOND_ACTION_NOT_FOUND = 5,
 	COMMAND_ERROR_FIRST_ACTION_NOT_FOUND = 6,
-	COMMAND_ERROR_BAD_TABLE_INDEX = 7
+	COMMAND_ERROR_BAD_TABLE_INDEX = 7,
+	COMMAND_ERROR_BAD_COMMAND_STRING = 8
 };
 enum  commmandAction {
 	COMMAND_ACTION_ADD_TO_TABLE = 'a',
@@ -138,11 +139,18 @@ struct playingCard {
 	}
 };
 
-struct GameTable {
+struct GameTablePtr {
 	std::vector<std::vector<playingCard>*>* hands;
 	std::vector<std::vector<playingCard>*>* wins;
 	std::vector<std::vector<playingCard>>* table;
 	std::vector<playingCard>* stock;
+};
+
+struct GameTableData {
+	std::vector<std::vector<playingCard>>hands;
+	std::vector < std::vector<playingCard>> wins;
+	std::vector<std::vector<playingCard>> table;
+	std::vector<playingCard> stock;
 };
 
 class CardEngine {
@@ -174,7 +182,7 @@ public:
 	std::vector<std::string> NDScoreReasons;
 
 	
-	GameTable getTable();
+	GameTablePtr getTable();
 	void firstDeal();
 	void normalDeal();
 
@@ -184,4 +192,6 @@ public:
 	uint32_t cardCommand(std::vector<char>);
 
 	void printCards(uint8_t);
+
+	void populateGameTableData(GameTableData*);
 };

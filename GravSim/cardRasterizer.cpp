@@ -315,7 +315,7 @@ void CardRasterizer::createDescriptorSets() {
 
 	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
 	samplerLayoutBinding.binding = 1;
-	samplerLayoutBinding.descriptorCount = texImage.size();
+	samplerLayoutBinding.descriptorCount = static_cast<uint32_t>(texImage.size());
 	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	samplerLayoutBinding.pImmutableSamplers = nullptr;
@@ -551,7 +551,7 @@ void CardRasterizer::createPipeline() {
 }
 
 void CardRasterizer::getMemoryRequirements(std::vector<MemoryDetails>* details, std::vector<uint16_t>* count) {
-	count->push_back(2 + texRequirements.size());
+	count->push_back(2 + static_cast<uint16_t>(texRequirements.size()));
 	details->push_back(vertexRequirements);
 	details->push_back(uniformRequirements);
 	for (uint32_t i = 0; i < texImage.size(); i++) {

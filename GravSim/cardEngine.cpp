@@ -9,6 +9,31 @@
 #include <algorithm>
 
 void CardEngine::setupGame() {
+
+	playerHands.clear();
+	playerWins.clear();
+	playerScoreReasons.clear();
+	playerScores.clear();
+	playerSweeps.clear();
+
+	table.clear();
+	NDHand.clear();
+	DHand.clear();
+	NDWin.clear();
+	DWin.clear();
+	stock.clear();
+
+	NDScore = 0;
+	DScore = 0;
+	lastWin = 0;
+
+	DScoreReasons.clear();
+	NDScoreReasons.clear();
+
+
+
+
+
 	uint8_t cardIndex = 0;
 	for (uint8_t suit = 0; suit < 4; suit++){
 		for (uint8_t rank = 1; rank < 14; rank++) {
@@ -135,6 +160,15 @@ uint32_t CardEngine::cardCommand(std::vector<char> command) {
 	else if (heldCardIndexRaw == HAND_INDEX_1) { heldCardIndex = 1; }
 	else if (heldCardIndexRaw == HAND_INDEX_2) { heldCardIndex = 2; }
 	else if (heldCardIndexRaw == HAND_INDEX_3) { heldCardIndex = 3; }
+	else if (heldCardIndexRaw == '/') {
+		std::string commandString(command.begin() + 2, command.end());
+		if (commandString == "newgame") {
+			setupGame();
+			return COMMAND_SUCCESS;
+		}
+		return COMMAND_ERROR_BAD_COMMAND_STRING;
+
+	}
 	else { return COMMAND_ERROR_BAD_HELD_CARD_INDEX; }
 
 	if (heldCardIndex >= currentHand->size()) {
@@ -356,12 +390,25 @@ void CardEngine::countScore(uint8_t handIndex, uint8_t scoreIndex){
 	std::cout << handIndex << ": " << uint32_t(*playerScores[handIndex]) << std::endl;
 }
 
-GameTable CardEngine::getTable() {
-	GameTable gt{};
+GameTablePtr CardEngine::getTable() {
+	GameTablePtr gt{};
 	gt.table = &table;
 	gt.stock = &stock;
 	gt.hands = &playerHands;
 	gt.wins = &playerWins;
 
 	return gt;
+}
+
+void CardEngine::populateGameTableData(GameTableData* gt) {
+	gt->hands.clear();
+	gt->wins.clear();
+	gt->table.clear();
+	gt->stock.clear();
+	gt->hands.push_back(NDHand);
+	gt->hands.push_back(DHand);
+	gt->wins.push_back(NDWin);
+	gt->wins.push_back(DWin);
+	gt->table = table;
+	gt->stock = stock;
 }

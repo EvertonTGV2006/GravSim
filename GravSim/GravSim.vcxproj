@@ -111,6 +111,8 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <Optimization>Disabled</Optimization>
+      <DisableSpecificWarnings>
+      </DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -130,6 +132,8 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <AdditionalIncludeDirectories>C:\Users\garet\Documents\Visual Studio 2022\Libraries\glm;C:\VulkanSDK\1.3.296.0\Include;C:\Users\garet\Documents\Visual Studio 2022\Libraries\glfw-3.4.bin.WIN64\include;C:\Users\garet\Documents\Visual Studio 2022\Libraries\stb-master;C:\Users\garet\Documents\Visual Studio 2022\Libraries\freetype-2.13.3\include</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>
+      </DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -143,6 +147,7 @@
   <ItemGroup>
     <ClCompile Include="cardEngine.cpp" />
     <ClCompile Include="cardRasterizer.cpp" />
+    <ClCompile Include="networkingClient.cpp" />
     <ClCompile Include="particleRasterizer.cpp" />
     <ClCompile Include="engine.cpp" />
     <ClCompile Include="geometry.cpp" />
@@ -156,6 +161,7 @@
   <ItemGroup>
     <ClInclude Include="cardEngine.h" />
     <ClInclude Include="cardRasterizer.h" />
+    <ClInclude Include="networkingClient.h" />
     <ClInclude Include="particleRasterizer.h" />
     <ClInclude Include="engine.h" />
     <ClInclude Include="geometry.h" />

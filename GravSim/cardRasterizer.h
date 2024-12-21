@@ -25,7 +25,7 @@ struct CardInit {
 
 	PlayerObject* player;
 
-	GameTable gameTable;
+	GameTablePtr gameTable;
 	
 };
 

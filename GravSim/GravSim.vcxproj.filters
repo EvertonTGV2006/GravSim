@@ -12,6 +12,7 @@
     <ClCompile Include="uiRasterizer.cpp" />
     <ClCompile Include="cardEngine.cpp" />
     <ClCompile Include="cardRasterizer.cpp" />
+    <ClCompile Include="networkingClient.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="engine.h" />
@@ -24,5 +25,6 @@
     <ClInclude Include="uiRasterizer.h" />
     <ClInclude Include="cardEngine.h" />
     <ClInclude Include="cardRasterizer.h" />
+    <ClInclude Include="networkingClient.h" />
   </ItemGroup>
 </Project>
