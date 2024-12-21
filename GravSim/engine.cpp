@@ -195,7 +195,6 @@ void VulkanEngine::readFiles(std::vector<std::string> files, std::vector<std::ve
     for (size_t i = 0; i < files.size(); i++) {
         std::ifstream file(files[i], std::ios::ate | std::ios::binary);
 
-        std::cout << files[i] << std::endl;
         if (!file.is_open()) {
             throw std::runtime_error("failed to open file");
         }
@@ -204,6 +203,8 @@ void VulkanEngine::readFiles(std::vector<std::string> files, std::vector<std::ve
         file.seekg(0);
         file.read((*code)[i].data(), fileSize);
         file.close();
+
+        std::cout << "Loaded " << files[i] << std::endl;
     }
 }
 
@@ -935,7 +936,7 @@ void VulkanEngine::allocateMemory() {
     VkMemoryAllocateInfo memoryInfo{};
     memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     for (size_t i = 0; i < mergedMemRequirements.size(); i++) {
-        std::cout << "Size: " << mergedMemRequirements[i].requirements.size << " Flags: " << mergedMemRequirements[i].flags << std::endl;
+        //std::cout << "Size: " << mergedMemRequirements[i].requirements.size << " Flags: " << mergedMemRequirements[i].flags << std::endl;
         memoryInfo.allocationSize = mergedMemRequirements[i].requirements.size;
         memoryInfo.memoryTypeIndex = findMemoryType(mergedMemRequirements[i]);
         if (vkAllocateMemory(device, &memoryInfo, nullptr, &memory[i]) != VK_SUCCESS) { throw std::runtime_error("Failed to allocated memory"); }
@@ -1085,7 +1086,7 @@ void VulkanEngine::pickPhysicalDevice() {
             VkPhysicalDeviceProperties prop;
             vkGetPhysicalDeviceProperties(devices[i], &prop);
             std::cout << "Device Picked is " << prop.deviceName << std::endl;
-            std::cout << "Max vulkan version is" << prop.apiVersion << std::endl;
+            std::cout << "Max vulkan version is " << prop.apiVersion << std::endl;
         }
     }
 }
@@ -1110,13 +1111,13 @@ QueueFamilyIndices VulkanEngine::findGraphicsQueueFamilies(VkPhysicalDevice devi
     std::bitset<32> g(VK_QUEUE_GRAPHICS_BIT);
     std::bitset<32> c(VK_QUEUE_COMPUTE_BIT);
     std::bitset<32> t(VK_QUEUE_TRANSFER_BIT);
-    std::cout << "GRAPHICS: " << g <<  " COMPUTE: " << c << " TRANSFER : " << t << std::endl;
+    //std::cout << "GRAPHICS: " << g <<  " COMPUTE: " << c << " TRANSFER : " << t << std::endl;
 
 
 
     for (const auto& queueFamily : queueFamilies) {
         std::bitset<32> flags(queueFamily.queueFlags);
-        std::cout << "Index: "<<i<<" Flags: "<<flags <<" Count: " << queueFamily.queueCount <<std::endl;
+        //std::cout << "Index: "<<i<<" Flags: "<<flags <<" Count: " << queueFamily.queueCount <<std::endl;
         VkBool32 presentSupport = false;
         vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
 
@@ -1164,7 +1165,7 @@ uint32_t VulkanEngine::findComputeQueueFamily(VkPhysicalDevice device) {
         }
     }
     if (max != 0) {
-        std::cout << "Compute: " << index << std::endl;
+        //std::cout << "Compute: " << index << std::endl;
         return index;
     }
     else {
@@ -1205,7 +1206,7 @@ uint32_t VulkanEngine::findTransferQueueFamily(VkPhysicalDevice device) {
         }
     }
     if (max != 0) {
-        std::cout << "Transfer: " << index << std::endl;
+        //std::cout << "Transfer: " << index << std::endl;
         return index;
     }
     else {
@@ -1250,7 +1251,7 @@ int VulkanEngine::isDeviceSuitable(VkPhysicalDevice device) {
     vkGetPhysicalDeviceProperties(device, &deviceProperties);
     vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
 
-    std::cout << "Subgroup Size: " << subgroupProperties.subgroupSize << std::endl;
+    //std::cout << "Subgroup Size: " << subgroupProperties.subgroupSize << std::endl;
 
 
     if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
