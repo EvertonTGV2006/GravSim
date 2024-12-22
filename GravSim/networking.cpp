@@ -343,10 +343,12 @@ void NetworkingServer::handleConnection(SOCKET s, int index) {
 			std::cout << "Waiting for Command" << std::endl;
 			readPacket(s, command.data(), CMD_PKTLEN);
 			commandReady = true;
-			playerTurn = (playerTurn + 1) % 2;
 			std::string str(command.begin() + 1, command.end());
 			if (str == "/disconnect") {
 				gameRunning = false;
+			}
+			while (commandReady == true) {
+				std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			}
 		}
 		else {
@@ -361,6 +363,8 @@ void NetworkingServer::handleConnection(SOCKET s, int index) {
 				WSACleanup();
 				throw std::runtime_error("Failed to send packet");
 			}
+			playerTurn = (playerTurn + 1) % 2;
+			commandReady = false;
 		}
 	}
 	sharedMutex.lock();

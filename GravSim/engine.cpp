@@ -72,12 +72,12 @@ void VulkanEngine::handleStock() {
             cardEngine.initStock();
             nc.sendStock(&cardEngine.stock);
             isDealer = true;
-            isPlayerTurn = true;
+            isPlayerTurn = false;
         }
         else if ((serverConfig & SVRCNF_HC_BITS) == SVRCNF_CLIENT_BIT) {
             nc.recvStock(&cardEngine.stock);
             isDealer = false;
-            isPlayerTurn = false;
+            isPlayerTurn = true;
         }
         else {
             throw std::runtime_error("Invalid Server Config Received");
@@ -88,12 +88,12 @@ void VulkanEngine::handleStock() {
             cardEngine.initStock();
             nc.sendStock(&cardEngine.stock);
             isDealer = true;
-            isPlayerTurn = true;
+            isPlayerTurn = false;
         }
         else if ((serverConfig & SVRCNF_HC_BITS) == SVRCNF_HOST_BIT) {
             nc.recvStock(&cardEngine.stock);
             isDealer = false;
-            isPlayerTurn = false;
+            isPlayerTurn = true;
         }
         else {
             throw std::runtime_error("Invalid Server Config Received");
@@ -103,17 +103,27 @@ void VulkanEngine::handleStock() {
 void VulkanEngine::handleNetworking() {
     while (player->windowShouldClose == false) {
         if (isPlayerTurn) {
+            std::cout << "Waiting to send command..." << std::endl;
             while (commandReady == false) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
             std::lock_guard<std::mutex> guard(commandMutex);
+            
             nc.sendCmd(&commandString);
+            std::cout << "Sent command" << std::endl;
+            isPlayerTurn = false;
             commandReady = false;
         }
         else {
-            std::lock_guard<std::mutex> guard(commandMutex);
+            std::cout << "Waiting to receive command..." << std::endl;;
+            commandMutex.lock();
             nc.recvCmd(&commandString);
+            commandMutex.unlock();
+            std::cout << "Received command" << std::endl;
             commandReady = true;
+            while (commandReady == true) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
         }
     }
 }
@@ -313,48 +323,63 @@ void VulkanEngine::runGraphics() {
 void VulkanEngine::executeGraphics() {
     bool commandSubmitFrame = false;
 
+    uint32_t caseValue = 0;
     if (player->commandSubmit == true && isPlayerTurn == true) {
-        std::lock_guard<std::mutex> guard(commandMutex);
-        player->commandSubmit = false;
-        commandString.push_back(cardRasterizer.playerIndex);
-        for (uint32_t i = 0; i < player->inputString.size(); i++) {
-            commandString.push_back(player->inputString[i]);
-        }
-
-        uint32_t errCode = cardEngine.cardCommand(commandString);
-        if (errCode == COMMAND_SUCCESS) {
-            player->inputString.clear();
-            //cardRasterizer.playerIndex = (cardRasterizer.playerIndex + 1) % 2;
-            commandSubmitFrame = true;
-            isPlayerTurn = false;
-            commandReady = true;
-        }
-        else if (errCode == COMMAND_DISCONNECT) {
-            player->windowShouldClose = true;
-            std::cout << "Received disconnect command" << std::endl;
-        }
-        else if (errCode == COMMAND_NEWGAME_SWAP) {
-            swapDealers = !swapDealers;
-            handleStock();
-            cardEngine.setupGame();
-            player->destroyScoreBoxes();
-        }
-        else if (errCode == COMMAND_NEWGAME_STICK) {
-            handleStock();
-            cardEngine.setupGame();
-            player->destroyScoreBoxes();
-        }
-        else {
-            std::cout << errCode << std::endl;
-        }
+        caseValue = 1;
     }
     else if (player->commandSubmit == true && isPlayerTurn == false) {
+        caseValue = 2;
+    }
+    else if (isPlayerTurn == false) {
+        caseValue = 3;
+    }
+
+
+    if (caseValue==1) {
+        if (commandReady == false) {
+            std::lock_guard<std::mutex> guard(commandMutex);
+            player->commandSubmit = false;
+            commandString.clear();
+            commandString.push_back(cardRasterizer.playerIndex);
+            for (uint32_t i = 0; i < player->inputString.size(); i++) {
+                commandString.push_back(player->inputString[i]);
+            }
+
+            uint32_t errCode = cardEngine.cardCommand(commandString);
+            if (errCode == COMMAND_SUCCESS) {
+                player->inputString.clear();
+                //cardRasterizer.playerIndex = (cardRasterizer.playerIndex + 1) % 2;
+                commandSubmitFrame = true;
+                commandReady = true;
+            }
+            else if (errCode == COMMAND_DISCONNECT) {
+                player->windowShouldClose = true;
+                std::cout << "Received disconnect command" << std::endl;
+            }
+            else if (errCode == COMMAND_NEWGAME_SWAP) {
+                swapDealers = !swapDealers;
+                handleStock();
+                cardEngine.setupGame();
+                player->destroyScoreBoxes();
+            }
+            else if (errCode == COMMAND_NEWGAME_STICK) {
+                handleStock();
+                cardEngine.setupGame();
+                player->destroyScoreBoxes();
+            }
+            else {
+                std::cout << errCode << std::endl;
+            }
+        }
+    }
+    else if (caseValue==2) {
         player->commandSubmit = false;
         std::cout << "Not your turn!" << std::endl;
         player->inputString.clear();
     }
-    if (isPlayerTurn == false) {
+    else if (caseValue==3) {
         if (commandReady) {
+            std::cout << "Reading Command: " << std::endl;
             std::lock_guard<std::mutex> guard(commandMutex);
             uint32_t errCode = cardEngine.cardCommand(commandString);
             if (errCode == COMMAND_SUCCESS) {
