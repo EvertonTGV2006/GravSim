@@ -31,12 +31,12 @@ void NetworkingClient::initWinsock() {
 
 	/* Convert port number 80 to network byte order and assign it to
 	   the right structure member. */
-	sockAddr1.sin_port = htons(80);
+	sockAddr1.sin_port = htons(25566);
 
 	/* inet_addr converts a string with an IP address in dotted format to
 	   a long value which is the IP in network byte order.
 	   sin_addr.S_un.S_addr specifies the long value in the address union */
-	inet_pton(AF_INET, "127.0.0.1", &sockAddr1.sin_addr.S_un.S_addr);
+	inet_pton(AF_INET, "77.100.95.113", &sockAddr1.sin_addr.S_un.S_addr);
 
 
 	if (connect(hSocket, (sockaddr*)(&sockAddr1), sizeof(sockAddr1)) != 0)
@@ -231,7 +231,7 @@ void NetworkingServer::initWinsock() {
 
 
 	sockAddr1.sin_family = AF_INET;
-	sockAddr1.sin_port = htons(80);
+	sockAddr1.sin_port = htons(25566);
 	sockAddr1.sin_addr.S_un.S_addr = INADDR_ANY; // use default
 
 	// Bind socket to port 80
