@@ -67,6 +67,7 @@ public:
 	uint32_t fpsIndex;
 
 	bool lowPerformanceSetting;
+	bool onlineGame;
 
 	float swapChainAspectRatio;
 

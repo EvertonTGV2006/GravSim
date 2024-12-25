@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <array>
 #include <vector>
+#include <fstream>
+#include <string>
 
 #include <random>
 #include <algorithm>
@@ -172,6 +174,14 @@ uint32_t CardEngine::cardCommand(std::vector<char> command) {
 		std::string commandString(command.begin() + 2, command.end());
 		if (commandString == "newgame") {
 			setupGame();
+			return COMMAND_SUCCESS;
+		}
+		if (commandString == "save") {
+			writeGameState("game.txt");
+			return COMMAND_NOACTION;
+		}
+		if (commandString == "load") {
+			readGameState("game.txt");
 			return COMMAND_SUCCESS;
 		}
 		return COMMAND_ERROR_BAD_COMMAND_STRING;
@@ -420,4 +430,70 @@ void CardEngine::populateGameTableData(GameTableData* gt) {
 	gt->wins.push_back(DWin);
 	gt->table = table;
 	gt->stock = stock;
+}
+
+void CardEngine::readGameState(std::string path) {
+	std::ifstream file(path);
+	if (file.is_open() == false) {
+		return;
+	}
+	parseNextLine(&file, &NDHand);
+	parseNextLine(&file, &DHand);
+	parseNextLine(&file, &NDWin);
+	parseNextLine(&file, &DWin);
+	parseNextLine(&file, &stock);
+	std::vector<playingCard> tableStack{};
+	table.clear();
+	while (file.peek() != EOF) {
+		parseNextLine(&file, &tableStack);
+		table.push_back(tableStack);
+	}
+
+	file.close();
+}
+void CardEngine::parseNextLine(std::ifstream* file, std::vector<playingCard>* data) {
+	std::string value;
+	playingCard card;
+	char readChar;
+	data->clear();
+	while (true) {
+		readChar = file->get();
+		if (readChar == ',') {
+			card.data = std::stoi(value);
+			data->push_back(card);
+			value.clear();
+		}
+		else if (readChar == '\n') {
+			if (value.empty() == true) {
+				return;
+			}
+			card.data = std::stoi(value);
+			data->push_back(card);
+			value.clear();
+		}
+		else {
+			value.push_back(readChar);
+		}
+	}
+}
+void CardEngine::writeGameState(std::string path) {
+	std::ofstream file(path);
+	if (file.is_open() == false) {
+		throw std::runtime_error("Failed to write gameState");
+	}
+	writeNextLine(&file, &NDHand);
+	writeNextLine(&file, &DHand);
+	writeNextLine(&file, &NDWin);
+	writeNextLine(&file, &DWin);
+	writeNextLine(&file, &stock);
+	for (uint8_t i = 0; i < table.size(); i++) {
+		writeNextLine(&file, &table[i]);
+	}
+	file.close();
+}
+void CardEngine::writeNextLine(std::ofstream* file, std::vector<playingCard>* data) {
+	for (uint8_t i = 0; i < data->size(); i++) {
+		*file << static_cast<int>((*data)[i].data) << ',';
+	}
+	*file << '\n';
 }

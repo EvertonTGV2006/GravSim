@@ -46,6 +46,15 @@ void VulkanEngine::initNetworking() {
     nc.versionMajor = 1;
     nc.versionMinor = 0;
 
+    std::optional<std::string> ipaddropt = config["server"].value<std::string>();
+    std::optional<int> portaddropt = config["port"].value<int>();
+
+    if (portaddropt.has_value() == false || ipaddropt.has_value() == false) {
+        throw std::runtime_error("Invalid networking config");
+    }
+    nc.ipaddr = ipaddropt.value();
+    nc.portaddr = portaddropt.value();
+
     nc.initWinsock(); /*we have now connected to the server and have an opponent*/
 
     player->usrn = nc.usrn;
@@ -134,6 +143,7 @@ void VulkanEngine::initEngine() {
     player->winmanager = winmanager;
     player->updateGLFWcallbacks();
     player->initUIElements(&frameCounter, &fpsVal);
+    
 
 
     std::vector<Mesh> meshes;
@@ -172,6 +182,7 @@ void VulkanEngine::initEngine() {
     vkGetPhysicalDeviceProperties(physicalDevice, &properties);
 
 
+    if (!onlineGame) { cardEngine.initStock(); }
     cardEngine.setupGame();
 
     std::vector<std::vector<char>> shaderCode;
@@ -323,21 +334,80 @@ void VulkanEngine::runGraphics() {
 void VulkanEngine::executeGraphics() {
     bool commandSubmitFrame = false;
 
-    uint32_t caseValue = 0;
-    if (player->commandSubmit == true && isPlayerTurn == true) {
-        caseValue = 1;
-    }
-    else if (player->commandSubmit == true && isPlayerTurn == false) {
-        caseValue = 2;
-    }
-    else if (isPlayerTurn == false) {
-        caseValue = 3;
-    }
+    if (onlineGame) {
+
+        uint32_t caseValue = 0;
+        if (player->commandSubmit == true && isPlayerTurn == true) {
+            caseValue = 1;
+        }
+        else if (player->commandSubmit == true && isPlayerTurn == false) {
+            caseValue = 2;
+        }
+        else if (isPlayerTurn == false) {
+            caseValue = 3;
+        }
 
 
-    if (caseValue==1) {
-        if (commandReady == false) {
-            std::lock_guard<std::mutex> guard(commandMutex);
+        if (caseValue == 1) {
+            if (commandReady == false) {
+                std::lock_guard<std::mutex> guard(commandMutex);
+                player->commandSubmit = false;
+                commandString.clear();
+                commandString.push_back(cardRasterizer.playerIndex);
+                for (uint32_t i = 0; i < player->inputString.size(); i++) {
+                    commandString.push_back(player->inputString[i]);
+                }
+
+                uint32_t errCode = cardEngine.cardCommand(commandString);
+                if (errCode == COMMAND_SUCCESS) {
+                    player->inputString.clear();
+                    //cardRasterizer.playerIndex = (cardRasterizer.playerIndex + 1) % 2;
+                    commandSubmitFrame = true;
+                    commandReady = true;
+                }
+                else if (errCode == COMMAND_DISCONNECT) {
+                    player->windowShouldClose = true;
+                    std::cout << "Received disconnect command" << std::endl;
+                }
+                else if (errCode == COMMAND_NEWGAME_SWAP) {
+                    swapDealers = !swapDealers;
+                    handleStock();
+                    cardEngine.setupGame();
+                    player->destroyScoreBoxes();
+                }
+                else if (errCode == COMMAND_NEWGAME_STICK) {
+                    handleStock();
+                    cardEngine.setupGame();
+                    player->destroyScoreBoxes();
+                }
+                else {
+                    std::cout << errCode << std::endl;
+                }
+            }
+        }
+        else if (caseValue == 2) {
+            player->commandSubmit = false;
+            std::cout << "Not your turn!" << std::endl;
+            player->inputString.clear();
+        }
+        else if (caseValue == 3) {
+            if (commandReady) {
+                std::cout << "Reading Command: " << std::endl;
+                std::lock_guard<std::mutex> guard(commandMutex);
+                uint32_t errCode = cardEngine.cardCommand(commandString);
+                if (errCode == COMMAND_SUCCESS) {
+                    commandReady = false;
+                    isPlayerTurn = true;
+                    commandSubmitFrame = true;
+                }
+                else {
+                    throw std::runtime_error("Received Invalid Command from server!");
+                }
+            }
+        }
+    }
+    else {
+        if (player->commandSubmit == true) {
             player->commandSubmit = false;
             commandString.clear();
             commandString.push_back(cardRasterizer.playerIndex);
@@ -348,50 +418,14 @@ void VulkanEngine::executeGraphics() {
             uint32_t errCode = cardEngine.cardCommand(commandString);
             if (errCode == COMMAND_SUCCESS) {
                 player->inputString.clear();
-                //cardRasterizer.playerIndex = (cardRasterizer.playerIndex + 1) % 2;
+                cardRasterizer.playerIndex = (cardEngine.DHand.size() + cardEngine.NDHand.size() + cardEngine.stock.size()) % 2;
                 commandSubmitFrame = true;
-                commandReady = true;
-            }
-            else if (errCode == COMMAND_DISCONNECT) {
-                player->windowShouldClose = true;
-                std::cout << "Received disconnect command" << std::endl;
-            }
-            else if (errCode == COMMAND_NEWGAME_SWAP) {
-                swapDealers = !swapDealers;
-                handleStock();
-                cardEngine.setupGame();
-                player->destroyScoreBoxes();
-            }
-            else if (errCode == COMMAND_NEWGAME_STICK) {
-                handleStock();
-                cardEngine.setupGame();
-                player->destroyScoreBoxes();
-            }
-            else {
-                std::cout << errCode << std::endl;
             }
         }
     }
-    else if (caseValue==2) {
-        player->commandSubmit = false;
-        std::cout << "Not your turn!" << std::endl;
-        player->inputString.clear();
-    }
-    else if (caseValue==3) {
-        if (commandReady) {
-            std::cout << "Reading Command: " << std::endl;
-            std::lock_guard<std::mutex> guard(commandMutex);
-            uint32_t errCode = cardEngine.cardCommand(commandString);
-            if (errCode == COMMAND_SUCCESS) {
-                commandReady = false;
-                isPlayerTurn = true;
-                commandSubmitFrame = true;
-            }
-            else {
-                throw std::runtime_error("Received Invalid Command from server!");
-            }
-        }
-    }
+
+
+
     if (firstFrame) {
         commandSubmitFrame = true;
     }
@@ -1668,7 +1702,7 @@ void VulkanEngine::transitionImageLayout(VkImage image, VkFormat format, VkImage
         destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     }
     else {
-        throw std::invalid_argument("unsupported layout transition!");
+        throw std::runtime_error("unsupported layout transition!");
     }
 
     vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
@@ -1792,12 +1826,16 @@ void VulkanEngine::cleanupSwapChain() {
 }
 void VulkanEngine::cleanup() {
     vkDeviceWaitIdle(device);
-    netThread.join();
+
     particleRasterizer.cleanup();
     gravEngine.cleanup();
     uiRasterizer.cleanup();
     cardRasterizer.cleanup();
-    nc.cleanup();
+
+    if (onlineGame) {
+        netThread.join();
+        nc.cleanup();
+    }
 
     writeOutSampleData();
 

@@ -50,7 +50,8 @@ enum commandError {
 	COMMAND_ERROR_BAD_COMMAND_STRING = 8,
 	COMMAND_DISCONNECT = 9,
 	COMMAND_NEWGAME_SWAP = 10,
-	COMMAND_NEWGAME_STICK = 11
+	COMMAND_NEWGAME_STICK = 11,
+	COMMAND_NOACTION = 12
 };
 enum  commmandAction {
 	COMMAND_ACTION_ADD_TO_TABLE = 'a',
@@ -194,6 +195,10 @@ public:
 
 	void processTurns();
 
+	void readGameState(std::string);
+	void parseNextLine(std::ifstream*, std::vector<playingCard>*);
+	void writeGameState(std::string);
+	void writeNextLine(std::ofstream*, std::vector<playingCard>*);
 
 	uint32_t cardCommand(std::vector<char>);
 

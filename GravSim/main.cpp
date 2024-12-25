@@ -1,10 +1,13 @@
 #pragma once
 
+#define NOMINMAX
+
+#include <limits>
 #include <iostream>
 #include <stdexcept>
-#include <cstdlib>
 #include <vector>
 #include <fstream>
+
 
 
 #include <vulkan/vulkan.h>
@@ -82,6 +85,7 @@ int main() {
 
 			engine.player = &player;
 			engine.runNumber = 0;
+			engine.onlineGame = true;
 			engine.initNetworking();
 			engine.initEngine();
 			engine.startDraw();
@@ -106,6 +110,7 @@ int main() {
 
 			engine.player = &player;
 			engine.runNumber = 0;
+			engine.onlineGame = false;
 			engine.initEngine();
 			engine.startDraw();
 			engine.cleanup();
@@ -113,11 +118,15 @@ int main() {
 	}
 	catch (const std::exception& e) {
 		std::cerr << e.what() << std::endl;
-		file.open("cmd_dmp.txt");
-		file << e.what() << std::endl;
-		file.close();
+		std::cout << "Press ENTER to continue...";
+		std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 		return EXIT_FAILURE;
 	}
+	std::cout << 1 << std::endl;
+	std::cout << "Press ENTER to continue...";
+	std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+	return EXIT_SUCCESS;
+
 }
 
 //int main() {

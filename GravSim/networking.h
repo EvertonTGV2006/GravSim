@@ -53,6 +53,9 @@ public:
 	std::array<char, 8> oppn;
 	uint32_t serverConfig;
 
+	std::string ipaddr;
+	int portaddr;
+
 
 private:
 	WSADATA wsaData;
@@ -68,6 +71,18 @@ private:
 	
 	void readPacket(SOCKET, char*, size_t);
 
+};
+
+struct NetworkServerPair {
+	std::array<SOCKET, 2> sockets;
+	std::array<bool, 2> connections;
+
+	std::array<playingCard, 52> initialStock;
+	std::array<std::string, 2> playerNames;
+
+	uint32_t playerTurn;
+
+	
 };
 
 class NetworkingServer

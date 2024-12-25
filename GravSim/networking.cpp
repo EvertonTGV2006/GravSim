@@ -13,7 +13,7 @@
 
 void NetworkingClient::initWinsock() {
 	fout.open("netout.txt");
-
+	std::cout << "Initialisng networking..." << std::endl;
 	iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 
 	if (iResult != 0) {
@@ -31,13 +31,14 @@ void NetworkingClient::initWinsock() {
 
 	/* Convert port number 80 to network byte order and assign it to
 	   the right structure member. */
-	sockAddr1.sin_port = htons(25566);
+	sockAddr1.sin_port = htons(portaddr);
 
 	/* inet_addr converts a string with an IP address in dotted format to
 	   a long value which is the IP in network byte order.
 	   sin_addr.S_un.S_addr specifies the long value in the address union */
-	inet_pton(AF_INET, "77.100.95.113", &sockAddr1.sin_addr.S_un.S_addr);
+	inet_pton(AF_INET, ipaddr.c_str(), &sockAddr1.sin_addr.S_un.S_addr);
 
+	std::cout << "Attempting to connect to " << ipaddr << " on port " << portaddr << std::endl;
 
 	if (connect(hSocket, (sockaddr*)(&sockAddr1), sizeof(sockAddr1)) != 0)
 	{

@@ -362,3 +362,4 @@ FodyWeavers.xsd
 /GravSim/x64
 /x64
 /GravSim/cmd_dmp.txt
+*.txt
