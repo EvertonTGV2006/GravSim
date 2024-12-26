@@ -270,15 +270,15 @@ void particleRasterizer::createBuffers() {
 			indexOffsets[i] = 0;
 		}
 		else {
-			vertexOffsets[i] = vertexRequirements.requirements.size;
-			indexOffsets[i] = indexRequirements.requirements.size;
+			vertexOffsets[i] = static_cast<uint32_t>(vertexRequirements.requirements.size);
+			indexOffsets[i] = static_cast<uint32_t>(indexRequirements.requirements.size);
 
 			vertexRequirements.requirements.size += vertexMem.size;
 			indexRequirements.requirements.size += indexMem.size;
 		}
 	}
-	vertexOffsets.push_back(vertexRequirements.requirements.size);
-	indexOffsets.push_back(indexRequirements.requirements.size);
+	vertexOffsets.push_back(static_cast<uint32_t>(vertexRequirements.requirements.size));
+	indexOffsets.push_back(static_cast<uint32_t>(indexRequirements.requirements.size));
 
 	//now make uniform buffer
 	VkDeviceSize bufferSize = sizeof(UniformBufferObject) * FRAMES_IN_FLIGHT;

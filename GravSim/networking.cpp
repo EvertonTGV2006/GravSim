@@ -210,6 +210,7 @@ void NetworkingClient::readPacket(SOCKET s, char* buf, size_t len) {
 	} while (receivedDataLen < len);
 }
 void NetworkingClient::cleanup() {
+	shutdown(hSocket, SD_BOTH);
 	closesocket(hSocket);
 	WSACleanup();
 }

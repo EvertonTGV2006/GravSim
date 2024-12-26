@@ -155,7 +155,7 @@ void GravEngine::createDescriptorSets() {
 
 		//then update them with relevant accesses to the storage buffers
 		for (size_t i = 0; i < COMPUTE_STEPS; i++) {
-			uint32_t readIndex = i;
+			uint32_t readIndex = static_cast<uint32_t>(i);
 			uint32_t writeIndex = (i + 1) % COMPUTE_STEPS;
 
 			uint32_t range = static_cast<uint32_t>(particles->size()) * sizeof(Particle);
@@ -268,7 +268,7 @@ void GravEngine::createSortDescriptorSets() {
 		uint32_t deltaRange = GRID_CELL_COUNT * sizeof(uint32_t);
 		uint32_t offsetRange = GRID_CELL_COUNT * sizeof(uint32_t);
 		uint32_t scanRange = GRID_CELL_COUNT * sizeof(uint32_t) / WORKSIZE;
-		uint32_t partRange = particles->size() * sizeof(Particle);
+		uint32_t partRange = static_cast<uint32_t>(particles->size()) * sizeof(Particle);
 
 		VkDescriptorBufferInfo deltaInfo{};
 		deltaInfo.buffer = deltaBuffer;
@@ -387,7 +387,7 @@ void GravEngine::createCommandBuffers() {
 }
 
 void GravEngine::createStorageBuffers() {
-	uint32_t dataSize = particles->size() * sizeof((*particles)[0]);
+	uint32_t dataSize = static_cast<uint32_t>(particles->size()) * sizeof((*particles)[0]);
 	uint32_t bufferSize = dataSize * COMPUTE_STEPS;
 
 	VkBufferCreateInfo createInfo{};
@@ -485,7 +485,7 @@ void GravEngine::syncBufferData_B(bool direction, MemInit memory) {
 
 	vkBeginCommandBuffer(transferCommandBuffer, &beginInfo);
 
-	uint32_t dataSize = sizeof(Particle) * particles->size();
+	uint32_t dataSize = sizeof(Particle) * static_cast<uint32_t>(particles->size());
 
 	VkBufferCopy copyInfo{};
 	copyInfo.size = dataSize;
@@ -695,7 +695,7 @@ void GravEngine::simGrav(double dt) {
 
 		vkCmdPushConstants(gravCommandBuffers[computeIndex], gravPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ComputeConstants), &constants);
 
-		vkCmdDispatch(gravCommandBuffers[computeIndex], particles->size(), 1, 1);
+		vkCmdDispatch(gravCommandBuffers[computeIndex], static_cast<uint32_t>(particles->size()), 1, 1);
 	}
 	else {
 
@@ -819,7 +819,7 @@ void GravEngine::cleanup() {
 		vkDestroySemaphore(device, renderGravSemaphores[i], nullptr);
 		vkDestroyFence(device, gravFinishedFences[i], nullptr);
 	}
-	vkFreeCommandBuffers(device, commandPool, gravCommandBuffers.size(), gravCommandBuffers.data());
+	vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(gravCommandBuffers.size()), gravCommandBuffers.data());
 	//vkFreeDescriptorSets(device, descriptorPool, gravDescriptorSets.size(), gravDescriptorSets.data());
 	vkDestroyBuffer(device, offsetBuffer, nullptr);
 	vkDestroyBuffer(device, deltaBuffer, nullptr);
@@ -1004,9 +1004,9 @@ void GravEngine::validateParticles() {
 			boundaryViolation = 1;
 		}
 		glm::ivec3 cellPos;
-		cellPos.x = floor(p.position.x * GRID_DIMENSIONS.x / DOMAIN_DIMENSIONS.x);
-		cellPos.y = floor(p.position.y * GRID_DIMENSIONS.y / DOMAIN_DIMENSIONS.y);
-		cellPos.z = floor(p.position.z * GRID_DIMENSIONS.z / DOMAIN_DIMENSIONS.z);
+		cellPos.x = int(floor(p.position.x * GRID_DIMENSIONS.x / DOMAIN_DIMENSIONS.x));
+		cellPos.y = int(floor(p.position.y * GRID_DIMENSIONS.y / DOMAIN_DIMENSIONS.y));
+		cellPos.z = int(floor(p.position.z * GRID_DIMENSIONS.z / DOMAIN_DIMENSIONS.z));
 		uint32_t cell = cellPos.x + GRID_DIMENSIONS.x * cellPos.y + GRID_DIMENSIONS.x * GRID_DIMENSIONS.y * cellPos.z;
 		uint8_t cellViolation = (cell != p.cell) ? 2 : 0;
 

@@ -104,14 +104,14 @@
             charPointer = reinterpret_cast<std::vector<char>*>(dataPointer);
             data->resize(data->size() + charPointer->size());
             std::memcpy(data->data() + data->size() - charPointer->size(), charPointer->data(), charPointer->size());
-            charCounts->push_back(charPointer->size());
+            charCounts->push_back(static_cast<uint32_t>(charPointer->size()));
         }
         else if (UI_REFERENCE_MODE_STRING & referenceConfig) {
             std::string* str = reinterpret_cast<std::string*>(dataPointer);
             for (uint32_t i = 0; i < str->size(); i++) {
                 data->push_back((*str)[i]);
             }
-            charCounts->push_back(str->size());
+            charCounts->push_back(static_cast<uint32_t>(str->size()));
         }
         else if (UI_REFERENCE_MODE_LABEL_CHAR_VALUE & referenceConfig) {
             charPointer = reinterpret_cast<std::vector<char>*>(labelPointer);
@@ -129,7 +129,7 @@
                 }
             }
             data->resize(data->size() - endLimit);
-            charCounts->push_back(endLimit + charPointer->size());
+            charCounts->push_back(endLimit + static_cast<uint32_t>(charPointer->size()));
         }
         else if (UI_REFERENCE_MODE_LABEL_STR_VALUE & referenceConfig) {
             std::string* str = reinterpret_cast<std::string*>(labelPointer);
@@ -149,7 +149,7 @@
                 }
             }
             data->resize(data->size() - endLimit);
-            charCounts->push_back(10 - endLimit + str->size());
+            charCounts->push_back(10 - endLimit + static_cast<uint32_t>(str->size()));
         }
     }
     

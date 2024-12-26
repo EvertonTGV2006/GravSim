@@ -604,7 +604,7 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 
 		glm::vec2 tableLeft = glm::vec2(-0.35f * (table->size()+2), 0.0f);
 		glm::vec2 tableRight = glm::vec2(0.35f * (table->size()+2), 0.0f);
-		float tableTraverseStep = (table->size() > 1) ? table->size() - 1 : 1;
+		float tableTraverseStep = float((table->size() > 1) ? table->size() - 1 : 1);
 		glm::vec2 tableTraverse = (tableRight - tableLeft) / tableTraverseStep;
 		tablePositions.clear();
 
@@ -690,7 +690,7 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 	double animationSmoothness = 5;
 
 
-	float animationInterpolation = (timeDuration < animationDuration) ? 0.5f * glm::tanh(animationSmoothness * (timeDuration - (animationDuration / 2))) + 0.5f : 1.0f;
+	float animationInterpolation = (timeDuration < animationDuration) ? 0.5f * float(glm::tanh(animationSmoothness * (timeDuration - (animationDuration / 2)))) + 0.5f : 1.0f;
 	glm::vec4 interpolatedCardData;
 	glm::mat4 interpolatedMatData;
 	float animationLiftHeight = -0.2f;
@@ -763,7 +763,7 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 
 	vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(CardPushConstants), &pc);
 
-	vkCmdDraw(commandBuffer, vertices.size(), 52, 0, 0);
+	vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 52, 0, 0);
 	frameCounter++;
 	if (frameCounter == 120) {
 		frameCounter = 0;

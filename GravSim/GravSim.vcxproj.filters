@@ -12,7 +12,7 @@
     <ClCompile Include="uiRasterizer.cpp" />
     <ClCompile Include="cardEngine.cpp" />
     <ClCompile Include="cardRasterizer.cpp" />
-    <ClCompile Include="networkingClient.cpp" />
+    <ClCompile Include="networking.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="engine.h" />
@@ -25,6 +25,40 @@
     <ClInclude Include="uiRasterizer.h" />
     <ClInclude Include="cardEngine.h" />
     <ClInclude Include="cardRasterizer.h" />
-    <ClInclude Include="networkingClient.h" />
+    <ClInclude Include="networking.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="textures\8BitDeck.png" />
+    <Image Include="textures\Enhancers.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\cardRasterizer\01.spv" />
+    <None Include="shaders\cardRasterizer\02.spv" />
+    <None Include="shaders\GravEngine\SortShaders\01.comp" />
+    <None Include="shaders\GravEngine\SortShaders\02.comp" />
+    <None Include="shaders\GravEngine\SortShaders\01.spv" />
+    <None Include="shaders\GravEngine\SortShaders\02.spv" />
+    <None Include="shaders\GravEngine\SortShaders\03.comp" />
+    <None Include="shaders\GravEngine\SortShaders\03.spv" />
+    <None Include="shaders\GravEngine\SortShaders\04.comp" />
+    <None Include="shaders\GravEngine\SortShaders\04.spv" />
+    <None Include="shaders\GravEngine\SortShaders\05.comp" />
+    <None Include="shaders\GravEngine\SortShaders\05.spv" />
+    <None Include="shaders\GravEngine\SortShaders\06.comp" />
+    <None Include="shaders\GravEngine\SortShaders\07.comp" />
+    <None Include="shaders\GravEngine\SortShaders\08.comp" />
+    <None Include="shaders\GravEngine\SortShaders\09.comp" />
+    <None Include="shaders\GravEngine\SortShaders\10.comp" />
+    <None Include="shaders\GravEngine\01.comp" />
+    <None Include="shaders\GravEngine\01.spv" />
+    <None Include="shaders\particleRasterizer\01.spv" />
+    <None Include="shaders\particleRasterizer\01_1.vert" />
+    <None Include="shaders\particleRasterizer\02.frag" />
+    <None Include="shaders\particleRasterizer\02.spv" />
+    <None Include="shaders\uiRasterizer\01.spv" />
+    <None Include="shaders\uiRasterizer\01.vert" />
+    <None Include="shaders\uiRasterizer\02.frag" />
+    <None Include="shaders\uiRasterizer\02.spv" />
+    <None Include="profiles\default.toml" />
   </ItemGroup>
 </Project>

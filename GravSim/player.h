@@ -55,26 +55,26 @@ public:
 	double xpos = 0;
 	double ypos = 0;
 
-	double anglez = glm::atan(viewDirection.z / sqrt(viewDirection.x * viewDirection.x + viewDirection.y * viewDirection.y));
-	double anglexy = glm::atan(viewDirection.y / viewDirection.x) - glm::pi<double>() * 0.5;
-	double scrollScale = 0.1;
+	float anglez = glm::atan(viewDirection.z / sqrt(viewDirection.x * viewDirection.x + viewDirection.y * viewDirection.y));
+	float anglexy = glm::atan(viewDirection.y / viewDirection.x) - glm::pi<float>() * 0.5f;
+	float scrollScale = 0.1f;
 
 	float xscale = 0.005f;
 	float yscale = 0.005f;
 
 	double currentTime = glfwGetTime();;
 	double prevTime = glfwGetTime();
-	double deltaTime = 0;
+	float deltaTime = 0;
 
 	uint64_t playerMoveFlags;
 	glm::vec3 playerVelocityDirection = { 0,0,0 };
 	float playerVelocityScale = 2;
 	float forwardVelocityScale = 0;
-	const float forwardVelocityMax = 0.2;
-	float acrossVelocityScale = 0;
-	const float acrossVelocityMax = 0.2;
-	const float accelerationScale = 0.1;
-	const float negAccelerationScale = 0.4;
+	const float forwardVelocityMax = 0.2f;
+	float acrossVelocityScale = 0.0f;
+	const float acrossVelocityMax = 0.2f;
+	const float accelerationScale = 0.1f;
+	const float negAccelerationScale = 0.4f;
 
 	std::atomic_bool timeAccel = false;
 	std::atomic_bool timeStep = true;

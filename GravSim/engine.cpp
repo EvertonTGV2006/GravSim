@@ -238,8 +238,8 @@ void VulkanEngine::initEngine() {
 
     spheret.join();
 
-    meshes[0].vertexCount = meshes[0].vertices->size();
-    meshes[0].indexCount = meshes[0].indices->size();
+    meshes[0].vertexCount = static_cast<uint32_t>(meshes[0].vertices->size());
+    meshes[0].indexCount = static_cast<uint32_t>(meshes[0].indices->size());
     //gravt.join();
 
     RastInit rast{};
@@ -622,7 +622,7 @@ void VulkanEngine::executeGraphics() {
     for (uint32_t i = 0; i < fpsAverage.size(); i++) {
         fpsSum += fpsAverage[i];
     }
-    fpsVal = 10 / fpsSum;
+    fpsVal = uint32_t(10 / fpsSum);
 
 
 
@@ -1093,7 +1093,7 @@ void VulkanEngine::allocateMemory() {
         if (orderedFlags[i] == false) {
             //if hasn't been flagged already, do a sweep
             uint16_t flagCount = 1;
-            orderedMappings.push_back(i);
+            orderedMappings.push_back(static_cast<uint32_t>(i));
             orderedMemRequirements.push_back(memRequirements[i]);
             for (size_t j = 0; j < memRequirements.size(); j++) {
                 if (memRequirements[i].requirements.memoryTypeBits == memRequirements[j].requirements.memoryTypeBits &&
@@ -1102,7 +1102,7 @@ void VulkanEngine::allocateMemory() {
                     memRequirements[j].flags != (VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) &&
                     i != j &&
                     orderedFlags[j] == false /*this one shouldn't be needed*/) {
-                    orderedMappings.push_back(j);
+                    orderedMappings.push_back(static_cast<uint32_t>(j));
                     orderedMemRequirements.push_back(memRequirements[j]);
                     orderedFlags[j] = true;
                     flagCount++;
@@ -1145,9 +1145,9 @@ void VulkanEngine::allocateMemory() {
         for (size_t j = k; j < orderedMemCounts[i] + k; j++) {
             uint16_t mappedIndex = orderedMappings[j];
             memoryContainers[mappedIndex].memory = memory[i];
-            memoryContainers[mappedIndex].range = orderedMemRequirements[j].requirements.size;
+            memoryContainers[mappedIndex].range = static_cast<uint32_t>(orderedMemRequirements[j].requirements.size);
             memoryContainers[mappedIndex].offset = offsetCounter;
-            offsetCounter += orderedMemRequirements[j].requirements.size;
+            offsetCounter += static_cast<uint32_t>(orderedMemRequirements[j].requirements.size);
         }
         k += orderedMemCounts[i];
     }
@@ -1180,19 +1180,19 @@ void VulkanEngine::initSubclassData() {
 
     memInitStructs[0].memory = stagingMemory;
     memInitStructs[0].offset = 0;
-    memInitStructs[0].range = memRequirements[0].requirements.size;
+    memInitStructs[0].range = static_cast<uint32_t>(memRequirements[0].requirements.size);
 
     memInitStructs[1].memory = stagingMemory;
     memInitStructs[1].offset = memInitStructs[0].offset + memInitStructs[0].range;
-    memInitStructs[1].range = memRequirements[1].requirements.size;
+    memInitStructs[1].range = static_cast<uint32_t>(memRequirements[1].requirements.size);
 
     memInitStructs[2].memory = stagingMemory;
     memInitStructs[2].offset = memInitStructs[1].offset + memInitStructs[1].range;
-    memInitStructs[2].range = memRequirements[2].requirements.size;
+    memInitStructs[2].range = static_cast<uint32_t>(memRequirements[2].requirements.size);
 
     memInitStructs[3].memory = stagingMemory;
     memInitStructs[3].offset = memInitStructs[2].offset + memInitStructs[2].range;
-    memInitStructs[3].range = memRequirements[3].requirements.size;
+    memInitStructs[3].range = static_cast<uint32_t>(memRequirements[3].requirements.size);
 
     VkCommandBufferAllocateInfo commandInfo{};
     commandInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1232,7 +1232,7 @@ void VulkanEngine::particleDataFetch() {
 
     memInitStructs.memory = stagingMemory;
     memInitStructs.offset = 0;
-    memInitStructs.range = memRequirements.requirements.size;
+    memInitStructs.range = static_cast<uint32_t>(memRequirements.requirements.size);
 
 
 

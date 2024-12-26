@@ -129,8 +129,8 @@ void PlayerObject::initScoreBoxes(std::vector<std::vector<std::string>*>* player
 	playerNames = pNames;
 
 	uint32_t textZero = 5;
-	uint32_t minScore = std::min((*playerScoreReasons)[0]->size(), (*playerScoreReasons)[1]->size());
-	uint32_t maxScore = std::max((*playerScoreReasons)[0]->size(), (*playerScoreReasons)[1]->size());
+	uint32_t minScore = static_cast<uint32_t>(std::min((*playerScoreReasons)[0]->size(), (*playerScoreReasons)[1]->size()));
+	uint32_t maxScore = static_cast<uint32_t>(std::max((*playerScoreReasons)[0]->size(), (*playerScoreReasons)[1]->size()));
 	uint32_t maxIndex = (playerScoreReasons[0].size() > playerScoreReasons[1].size()) ? 0 : 1;
 
 	UIText commandText{};
@@ -185,8 +185,8 @@ void PlayerObject::mouseMotionCallback(GLFWwindow* window, double xpos, double y
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
 	//std::cout << "Mouse callback" << std::endl;
 
-	double dx = xpos - app->xpos;
-	double dy = ypos - app->ypos;
+	float dx = float(xpos - app->xpos);
+	float dy = float(ypos - app->ypos);
 	app->xpos = xpos;
 	app->ypos = ypos;
 	if (app->playerOptions & PL_VIEW_INVERT_Y_AXIS) {
@@ -194,15 +194,15 @@ void PlayerObject::mouseMotionCallback(GLFWwindow* window, double xpos, double y
 	}
 	app->anglez += dy * app->yscale;
 	app->anglexy += dx * app->xscale;
-	if (app->anglez <= -glm::half_pi<double>()+0.001) {
-		app->anglez = -glm::half_pi<double>() + 0.001;
+	if (app->anglez <= -glm::half_pi<float>()+0.001f) {
+		app->anglez = -glm::half_pi<float>() + 0.001f;
 	}
-	if (app->anglez >= glm::half_pi<double>()-0.001) {
-		app->anglez=glm::half_pi<double>() - 0.001;
+	if (app->anglez >= glm::half_pi<float>()-0.001f) {
+		app->anglez=glm::half_pi<float>() - 0.001f;
 	}
 	app->viewDirection.z = glm::sin(app->anglez);
-	app->viewDirection.x = glm::sin(app->anglexy) * glm::sqrt(1 - glm::pow(app->viewDirection.z, 2));
-	app->viewDirection.y = glm::cos(app->anglexy) * glm::sqrt(1 - glm::pow(app->viewDirection.z, 2));
+	app->viewDirection.x = glm::sin(app->anglexy) * glm::sqrt(1.0f - glm::pow(app->viewDirection.z, 2.0f));
+	app->viewDirection.y = glm::cos(app->anglexy) * glm::sqrt(1.0f - glm::pow(app->viewDirection.z, 2.0f));
 
 	//std::cout << "sin + cos" << glm::pow(glm::sin(app->anglexy),2) + glm::cos(app->anglexy) << std::endl;;
 
@@ -275,7 +275,7 @@ void PlayerObject::scrollCallback(GLFWwindow* window, double xoffset, double yof
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
 
 
-	app->viewZoom += yoffset* app->scrollScale * app->viewZoom;
+	app->viewZoom += float(yoffset)* app->scrollScale * app->viewZoom;
 	if (app->viewZoom > app->zoomMax) {
 		app->viewZoom = app->zoomMax;
 	}	
@@ -291,7 +291,7 @@ void PlayerObject::charCallback(GLFWwindow* window, uint32_t code) {
 void PlayerObject::updatePlayerMovement() {
 	
 	currentTime = glfwGetTime();
-	deltaTime = currentTime - prevTime;
+	deltaTime = float(currentTime - prevTime);
 	prevTime = currentTime;
 
 

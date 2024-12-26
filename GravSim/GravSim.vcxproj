@@ -51,6 +51,7 @@
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -71,7 +72,12 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <CopyLocalDeploymentContent>false</CopyLocalDeploymentContent>
+    <CopyLocalDeploymentContent>true</CopyLocalDeploymentContent>
+    <CopyCppRuntimeToOutputDir>true</CopyCppRuntimeToOutputDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <CopyLocalDeploymentContent>true</CopyLocalDeploymentContent>
+    <CopyCppRuntimeToOutputDir>true</CopyCppRuntimeToOutputDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -183,6 +189,76 @@ CALL compile.bat</Command>
     <ClInclude Include="structs.h" />
     <ClInclude Include="uiRasterizer.h" />
     <ClInclude Include="window.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="textures\8BitDeck.png">
+      <DeploymentContent>true</DeploymentContent>
+    </Image>
+    <Image Include="textures\Enhancers.png">
+      <DeploymentContent>true</DeploymentContent>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="profiles\default.toml">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\cardRasterizer\01.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\cardRasterizer\02.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\GravEngine\01.comp" />
+    <None Include="shaders\GravEngine\01.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\GravEngine\SortShaders\01.comp">
+      <DeploymentContent>false</DeploymentContent>
+    </None>
+    <None Include="shaders\GravEngine\SortShaders\01.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\GravEngine\SortShaders\02.comp">
+      <DeploymentContent>false</DeploymentContent>
+    </None>
+    <None Include="shaders\GravEngine\SortShaders\02.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\GravEngine\SortShaders\03.comp" />
+    <None Include="shaders\GravEngine\SortShaders\03.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\GravEngine\SortShaders\04.comp">
+      <DeploymentContent>false</DeploymentContent>
+    </None>
+    <None Include="shaders\GravEngine\SortShaders\04.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\GravEngine\SortShaders\05.comp" />
+    <None Include="shaders\GravEngine\SortShaders\05.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\GravEngine\SortShaders\06.comp" />
+    <None Include="shaders\GravEngine\SortShaders\07.comp" />
+    <None Include="shaders\GravEngine\SortShaders\08.comp" />
+    <None Include="shaders\GravEngine\SortShaders\09.comp" />
+    <None Include="shaders\GravEngine\SortShaders\10.comp" />
+    <None Include="shaders\particleRasterizer\01.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\particleRasterizer\01_1.vert" />
+    <None Include="shaders\particleRasterizer\02.frag" />
+    <None Include="shaders\particleRasterizer\02.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\uiRasterizer\01.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\uiRasterizer\01.vert" />
+    <None Include="shaders\uiRasterizer\02.frag" />
+    <None Include="shaders\uiRasterizer\02.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
