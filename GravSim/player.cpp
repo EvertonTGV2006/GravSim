@@ -131,7 +131,8 @@ void PlayerObject::initScoreBoxes(std::vector<std::vector<std::string>*>* player
 	uint32_t textZero = 5;
 	uint32_t minScore = static_cast<uint32_t>(std::min((*playerScoreReasons)[0]->size(), (*playerScoreReasons)[1]->size()));
 	uint32_t maxScore = static_cast<uint32_t>(std::max((*playerScoreReasons)[0]->size(), (*playerScoreReasons)[1]->size()));
-	uint32_t maxIndex = (playerScoreReasons[0].size() > playerScoreReasons[1].size()) ? 0 : 1;
+	uint32_t maxIndex = ((*playerScoreReasons)[0]->size() > (*playerScoreReasons)[1]->size()) ? 0 : 1;
+	std::cout << maxIndex << std::endl;
 
 	UIText commandText{};
 	commandText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_STRING;
@@ -162,7 +163,7 @@ void PlayerObject::initScoreBoxes(std::vector<std::vector<std::string>*>* player
 		}
 
 
-		texts[textZero + 2 + 2 * minScore + i] = commandText;
+		texts[textZero + 2 + minScore + i] = commandText;
 	}
 	UIBox commandBox{};
 	commandBox.pos = glm::vec2(0.02f, 0.02f);
