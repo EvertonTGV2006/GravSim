@@ -288,157 +288,309 @@ void NetworkingServer::initWinsock() {
 	}
 
 	std::cout << "Listenting" << std::endl;
-	while (gameRunning) {
-		int iRemoteAddrLen = sizeof(sockaddr_in);
-		cSockets.push_back(accept(lSocket, (sockaddr*)&remAddr1, &iRemoteAddrLen));
-		std::cout << "Connection being handled" << std::endl;
-		if (cSockets.back() == INVALID_SOCKET) {
-			closesocket(lSocket);
-			WSACleanup();
-			throw std::runtime_error("Failed to accept socket");
-		}
-		//closesocket(lSocket);
-		threads.push_back(std::thread(&NetworkingServer::handleConnection, this, cSockets.back(), currentusrs));
-	}
 
-	// cleanup
-	for (uint32_t i = 0; i < threads.size(); i++) {
-		threads[i].join();
-	}
-	closesocket(lSocket);
-	WSACleanup();
-
+	std::thread workerThread(&NetworkingServer::workerListen, this);
 
 }
-void NetworkingServer::handleConnection(SOCKET s, int index) {
-	std::cout << index << " Handling Connection" << std::endl;
-	char initbuf[INITIAL_PKTLEN];
-	readPacket(s, &initbuf[0], INITIAL_PKTLEN);
-	sharedMutex.lock();
-	std::array<char, 8> usrn;
-	memcpy(usrn.data(), &initbuf[0], usrn.size() * sizeof(usrn[0]));
-	usrs.push_back(usrn);
-	currentusrs++;
-	sharedMutex.unlock();
-	uint32_t serverConfig = 0;
-	if (currentusrs == 1) {
-		std::cout << "Setting Host" << std::endl;
-		serverConfig |= SVRCNF_HOST_BIT;
-		memset(&initbuf[0], 0, INITIAL_PKTLEN);
-		memcpy(&initbuf[8], &serverConfig, sizeof(serverConfig));
-		int sResult = send(s, &initbuf[0], INITIAL_PKTLEN, 0);
-		if (sResult == SOCKET_ERROR) {
-			printf("send failed with error: %d\n", WSAGetLastError());
-			closesocket(s);
-			WSACleanup();
-			throw std::runtime_error("Failed to send packet");
+
+void NetworkingServer::workerListen() {
+	while (exitTrigger == false) {
+		while (qSocketHandled == false) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(1)); //wait for queued socket to be handled by main thread
 		}
-		while (correctPlayerCount == false) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(10));
-		}
-		std::cout << "Confirming Opponent" << std::endl;
-		memcpy(&initbuf[0], &usrs[1], INITIAL_PKTLEN);
-		memcpy(&initbuf[8], &serverConfig, sizeof(serverConfig));
-		sResult = send(s, &initbuf[0], INITIAL_PKTLEN, 0);
-		if (sResult == SOCKET_ERROR) {
-			printf("send failed with error: %d\n", WSAGetLastError());
-			closesocket(s);
-			WSACleanup();
-			throw std::runtime_error("Failed to send packet");
-		}
-		char stockBuf[STOCK_PKTLEN];
-		readPacket(s, &stockBuf[0], STOCK_PKTLEN);
-		stock.resize(52);
-		memcpy(stock.data(), &stockBuf[0], STOCK_PKTLEN);
-		stockRecv = true;
-		std::cout << "Recevied Stock" << std::endl;
-	}
-	else if (currentusrs == 2) {
-		std::cout << "Confirming Client" << std::endl;
-		correctPlayerCount = true;
-		serverConfig |= SVRCNF_CLIENT_BIT;
-		memcpy(&initbuf[0], &usrs[0], INITIAL_PKTLEN);
-		memcpy(&initbuf[8], &serverConfig, sizeof(serverConfig));
-		int sResult = send(s, &initbuf[0], INITIAL_PKTLEN, 0);
-		if (sResult == SOCKET_ERROR) {
-			printf("send failed with error: %d\n", WSAGetLastError());
-			closesocket(s);
-			WSACleanup();
-			throw std::runtime_error("Failed to send packet");
-		}
-		while (stockRecv == false) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(10));
-		}
-		std::cout << "Sending Stock" << std::endl;
-		sResult = send(s, (char*)stock.data(), STOCK_PKTLEN, 0);
-		if (sResult == SOCKET_ERROR) {
-			printf("send failed with error: %d\n", WSAGetLastError());
-			closesocket(s);
-			WSACleanup();
-			throw std::runtime_error("Failed to send packet");
-		}
-	}
-	while (gameRunning) {
-		if (index == playerTurn) {
-			std::cout << "Waiting for Command" << std::endl;
-			readPacket(s, command.data(), CMD_PKTLEN);
-			commandReady = true;
-			std::string str(command.begin() + 1, command.end());
-			if (str == "/disconnect") {
-				gameRunning = false;
-			}
-			while (commandReady == true) {
-				std::this_thread::sleep_for(std::chrono::milliseconds(10));
-			}
+		qSocket = accept(lSocket, (sockaddr*)&remAddr1, &iRemoteAddrLen);
+		qSocketHandled = false;
+		if (qSocket == INVALID_SOCKET) {
+			std::cout << "Error accepting, invalid socket, ignoring... " << std::endl;
 		}
 		else {
-			while (commandReady == false) {
-				std::this_thread::sleep_for(std::chrono::milliseconds(10));
-			}
-			int sResult = send(s, command.data(), CMD_PKTLEN, 0);
-			std::cout << "Sent Command" << std::endl;
-			if (sResult == SOCKET_ERROR) {
-				printf("send failed with error: %d\n", WSAGetLastError());
-				closesocket(s);
-				WSACleanup();
-				throw std::runtime_error("Failed to send packet");
-			}
-			playerTurn = (playerTurn + 1) % 2;
-			commandReady = false;
+			qSocketReady = true;
 		}
 	}
-	sharedMutex.lock();
-	currentusrs--;
-	sharedMutex.unlock();
-	closesocket(s);
+}
+void NetworkingServer::handleConnections() {
+	while (exitTrigger == false) {
+		if (qSocketReady == true) {
+			if (unfinishedPair.partComplete = false) {
+				unfinishedPair.net[0].startWorker(qSocket);
+				unfinishedPair.partComplete = true;
+			}
+			else {
+				unfinishedPair.net[1].startWorker(qSocket);
+				unfinishedPair.complete = true;
+			}
+				
+			if (unfinishedPair.complete == false) {
+				//receive hostname and send back host confirmation;
+				InitPacket pkt1{};
+				pkt1.header.packetType = INIT_PACKET;
+				pkt1.isHost = 0;
+				unfinishedPair.net[0].sendPacket(reinterpret_cast<char*>(&pkt1));
+				while (unfinishedPair.net[0].packetReady = false) {
+					std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				}
+				InitPacket* pkt2 = reinterpret_cast<InitPacket*>(&unfinishedPair.net[0].packetData);
+				if (pkt2->header.packetType != INIT_PACKET) {
+					throw std::runtime_error("Incorrect Packet");
+				}
+				memcpy(unfinishedPair.playerNames[0].data(), &(pkt2->header.pName), unfinishedPair.playerNames[0].size());
+				//load hostname into memory;
+				unfinishedPair.net[0].packetReady = false;
+				unfinishedPair.net[0].packetFinished = true;
+			}
+			else {
+				InitPacket pkt1{};
+				pkt1.header.packetType = INIT_PACKET;
+				pkt1.isHost = 1;
+				memcpy(&pkt1.opName, unfinishedPair.playerNames[0].data(), unfinishedPair.playerNames[0].size());
+				unfinishedPair.net[1].sendPacket(reinterpret_cast<char*>(&pkt1));
+				while (unfinishedPair.net[1].packetReady = false) {
+					std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				}
+				InitPacket* pkt2 = reinterpret_cast<InitPacket*>(&unfinishedPair.net[1].packetData);
+				if (pkt2->header.packetType != INIT_PACKET) {
+					throw std::runtime_error("Incorrect Packet");
+				}
+				memcpy(unfinishedPair.playerNames[1].data(), &(pkt2->header.pName), unfinishedPair.playerNames[1].size());
+				//load hostname into memory;
+				unfinishedPair.net[1].packetReady = false;
+				unfinishedPair.net[1].packetFinished = true;
+				unfinishedPair.complete = true;
+				gamePairs.push_back(unfinishedPair);
+				memcpy(&unfinishedPair, &nullPair, sizeof(NetworkServerPair)); //nullify the unfinished pair
+			}
+			qSocketReady = false;
+			qSocketHandled = true;
+		}
+		//now enter the main loop, check each pair for commands.
+		for (uint32_t i = 0; i < gamePairs.size(); i++) {
+			//check host commands
+			if (gamePairs[i].net[0].packetReady == true) {
+				//read command, should be command packet
+				CmdPacket* pkt1 = reinterpret_cast<CmdPacket*>(&gamePairs[i].net[0].packetData);
+				if (pkt1->header.packetType != CMD_PACKET) {
+					std::cout << "Received erroneous packet, ignoring... " << std::endl;
+				}
+				else {
+					if (pkt1->cmd[1] = '/') {
+						//special command, check for newgame or disconnect
+						if (memcmp(&pkt1->cmd[1], newgameChar.data(), newgameChar.size()) == 0) {
+							//newgame command
+							handleNewgame(&gamePairs[i]);
+						}
+					}
+					else {
+						gamePairs[i].net[1].sendPacket(&gamePairs[i].net[0].packetData[0]); //send packet to client
+					}
+				}
+				gamePairs[i].net[0].packetReady = false;
+				gamePairs[i].net[0].packetFinished = true;
+			}
+			if (gamePairs[i].net[1].packetReady == true) {
+				//read command, should be command packet
+				CmdPacket* pkt1 = reinterpret_cast<CmdPacket*>(&gamePairs[i].net[1].packetData);
+				if (pkt1->header.packetType != CMD_PACKET) {
+					std::cout << "Received erroneous packet, ignoring... " << std::endl;
+				}
+				else {
+					if (pkt1->cmd[1] = '/') {
+						//special command, check for newgame or disconnect
+						if (memcmp(&pkt1->cmd[1], newgameChar.data(), newgameChar.size()) == 0) {
+							//newgame command
+							handleNewgame(&gamePairs[i]);
+						}
+					}
+					else {
+						gamePairs[i].net[0].sendPacket(&gamePairs[i].net[1].packetData[0]); //send packet to client
+					}
+				}
+				gamePairs[i].net[1].packetReady = false;
+				gamePairs[i].net[1].packetFinished = true;
+			}
+		}
+	}
+}
+void NetworkingServer::handleNewgame(NetworkServerPair* pair) {
+	pair->hostDealer = !pair->hostDealer;
+	if (pair->hostDealer) {
+		//send newgame0 to host, newgame1 to client, wait for stock from host and sent to client
+		CmdPacket pkt1{};
+		pkt1.header.packetType = CMD_PACKET;
+		pkt1.cmd[0] = 0;
+		memcpy(&pkt1.cmd[1], newgameChar.data(), newgameChar.size());
+		pkt1.cmd[9] = 0;
+		pair->net[0].sendPacket(reinterpret_cast<char*>(&pkt1));
+		pkt1.cmd[9] = 1;
+		pair->net[1].sendPacket(reinterpret_cast<char*>(&pkt1));
+		while (pair->net[0].packetReady == false) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+		GamePacket* sPtr = reinterpret_cast<GamePacket*>(&pair->net[0].packetData);
+		if (sPtr->header.packetType != GAME_PACKET) {
+			throw std::runtime_error("Expected to receive stock");
+		}
+		memcpy(&pair->initialStock[0], &sPtr->cardData, 52 * sizeof(playingCard));
+		pair->net[1].sendPacket(&pair->net[0].packetData[0]);
+		pair->net[0].packetReady = false;
+		pair->net[0].packetFinished = true;
+	}
 }
 
 
 
-void NetworkingServer::readPacket(SOCKET s, char* buf, size_t len) {
-	int receivedDataLen = 0;
-	size_t cursor = 0;
-	int rResult = 0;
-	char recvbuf[DEFAULT_BUFLEN];
 
-	do
-	{
-		rResult = recv(s, recvbuf, DEFAULT_BUFLEN, 0);
-		if (rResult > 0) {
-			//take data out of recvbuf
-			memcpy(buf + cursor, recvbuf, rResult);
-			cursor += rResult;
-			receivedDataLen += rResult;
-		}
-		else if (rResult == 0) {
-			std::cout << "Connection Closed" << std::endl;
-			return;
-		}
-		else {
-			
-			closesocket(s);
-			WSACleanup();
-			throw std::runtime_error("Failed receive error socket");
-		}
-	} while (receivedDataLen < len);
-}
+
+//	while (gameRunning) {
+//		int iRemoteAddrLen = sizeof(sockaddr_in);
+//		cSockets.push_back(accept(lSocket, (sockaddr*)&remAddr1, &iRemoteAddrLen));
+//		std::cout << "Connection being handled" << std::endl;
+//		if (cSockets.back() == INVALID_SOCKET) {
+//			closesocket(lSocket);
+//			WSACleanup();
+//			throw std::runtime_error("Failed to accept socket");
+//		}
+//		//closesocket(lSocket);
+//		threads.push_back(std::thread(&NetworkingServer::handleConnection, this, cSockets.back(), currentusrs));
+//	}
+//
+//	// cleanup
+//	for (uint32_t i = 0; i < threads.size(); i++) {
+//		threads[i].join();
+//	}
+//	closesocket(lSocket);
+//	WSACleanup();
+//
+//
+//}
+//void NetworkingServer::handleConnection(SOCKET s, int index) {
+//	std::cout << index << " Handling Connection" << std::endl;
+//	char initbuf[INITIAL_PKTLEN];
+//	readPacket(s, &initbuf[0], INITIAL_PKTLEN);
+//	sharedMutex.lock();
+//	std::array<char, 8> usrn;
+//	memcpy(usrn.data(), &initbuf[0], usrn.size() * sizeof(usrn[0]));
+//	usrs.push_back(usrn);
+//	currentusrs++;
+//	sharedMutex.unlock();
+//	uint32_t serverConfig = 0;
+//	if (currentusrs == 1) {
+//		std::cout << "Setting Host" << std::endl;
+//		serverConfig |= SVRCNF_HOST_BIT;
+//		memset(&initbuf[0], 0, INITIAL_PKTLEN);
+//		memcpy(&initbuf[8], &serverConfig, sizeof(serverConfig));
+//		int sResult = send(s, &initbuf[0], INITIAL_PKTLEN, 0);
+//		if (sResult == SOCKET_ERROR) {
+//			printf("send failed with error: %d\n", WSAGetLastError());
+//			closesocket(s);
+//			WSACleanup();
+//			throw std::runtime_error("Failed to send packet");
+//		}
+//		while (correctPlayerCount == false) {
+//			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+//		}
+//		std::cout << "Confirming Opponent" << std::endl;
+//		memcpy(&initbuf[0], &usrs[1], INITIAL_PKTLEN);
+//		memcpy(&initbuf[8], &serverConfig, sizeof(serverConfig));
+//		sResult = send(s, &initbuf[0], INITIAL_PKTLEN, 0);
+//		if (sResult == SOCKET_ERROR) {
+//			printf("send failed with error: %d\n", WSAGetLastError());
+//			closesocket(s);
+//			WSACleanup();
+//			throw std::runtime_error("Failed to send packet");
+//		}
+//		char stockBuf[STOCK_PKTLEN];
+//		readPacket(s, &stockBuf[0], STOCK_PKTLEN);
+//		stock.resize(52);
+//		memcpy(stock.data(), &stockBuf[0], STOCK_PKTLEN);
+//		stockRecv = true;
+//		std::cout << "Recevied Stock" << std::endl;
+//	}
+//	else if (currentusrs == 2) {
+//		std::cout << "Confirming Client" << std::endl;
+//		correctPlayerCount = true;
+//		serverConfig |= SVRCNF_CLIENT_BIT;
+//		memcpy(&initbuf[0], &usrs[0], INITIAL_PKTLEN);
+//		memcpy(&initbuf[8], &serverConfig, sizeof(serverConfig));
+//		int sResult = send(s, &initbuf[0], INITIAL_PKTLEN, 0);
+//		if (sResult == SOCKET_ERROR) {
+//			printf("send failed with error: %d\n", WSAGetLastError());
+//			closesocket(s);
+//			WSACleanup();
+//			throw std::runtime_error("Failed to send packet");
+//		}
+//		while (stockRecv == false) {
+//			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+//		}
+//		std::cout << "Sending Stock" << std::endl;
+//		sResult = send(s, (char*)stock.data(), STOCK_PKTLEN, 0);
+//		if (sResult == SOCKET_ERROR) {
+//			printf("send failed with error: %d\n", WSAGetLastError());
+//			closesocket(s);
+//			WSACleanup();
+//			throw std::runtime_error("Failed to send packet");
+//		}
+//	}
+//	while (gameRunning) {
+//		if (index == playerTurn) {
+//			std::cout << "Waiting for Command" << std::endl;
+//			readPacket(s, command.data(), CMD_PKTLEN);
+//			commandReady = true;
+//			std::string str(command.begin() + 1, command.end());
+//			if (str == "/disconnect") {
+//				gameRunning = false;
+//			}
+//			while (commandReady == true) {
+//				std::this_thread::sleep_for(std::chrono::milliseconds(10));
+//			}
+//		}
+//		else {
+//			while (commandReady == false) {
+//				std::this_thread::sleep_for(std::chrono::milliseconds(10));
+//			}
+//			int sResult = send(s, command.data(), CMD_PKTLEN, 0);
+//			std::cout << "Sent Command" << std::endl;
+//			if (sResult == SOCKET_ERROR) {
+//				printf("send failed with error: %d\n", WSAGetLastError());
+//				closesocket(s);
+//				WSACleanup();
+//				throw std::runtime_error("Failed to send packet");
+//			}
+//			playerTurn = (playerTurn + 1) % 2;
+//			commandReady = false;
+//		}
+//	}
+//	sharedMutex.lock();
+//	currentusrs--;
+//	sharedMutex.unlock();
+//	closesocket(s);
+//}
+
+
+//
+//void NetworkingServer::readPacket(SOCKET s, char* buf, size_t len) {
+//	int receivedDataLen = 0;
+//	size_t cursor = 0;
+//	int rResult = 0;
+//	char recvbuf[DEFAULT_BUFLEN];
+//
+//	do
+//	{
+//		rResult = recv(s, recvbuf, DEFAULT_BUFLEN, 0);
+//		if (rResult > 0) {
+//			//take data out of recvbuf
+//			memcpy(buf + cursor, recvbuf, rResult);
+//			cursor += rResult;
+//			receivedDataLen += rResult;
+//		}
+//		else if (rResult == 0) {
+//			std::cout << "Connection Closed" << std::endl;
+//			return;
+//		}
+//		else {
+//			
+//			closesocket(s);
+//			WSACleanup();
+//			throw std::runtime_error("Failed receive error socket");
+//		}
+//	} while (receivedDataLen < len);
+//}

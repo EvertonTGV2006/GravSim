@@ -81,6 +81,17 @@ public:
 	int readDataBlock(int, char*);
 	
 };
+struct NetworkServerPair {
+	NetworkUtil net[2];
+	playingCard initialStock[52];
+	std::array<std::array<char, 8>, 2> playerNames;
+	uint32_t playerTurn;
+	bool hostDealer = false;
+	bool partComplete = false;
+	bool complete = false;
+	bool exitRequired = false;
+};
+
 
 class NetworkingClient {
 public:
@@ -114,18 +125,6 @@ private:
 
 };
 
-struct NetworkServerPair {
-	std::array<SOCKET, 2> sockets;
-	std::array<bool, 2> connections;
-
-	std::array<playingCard, 52> initialStock;
-	std::array<std::array<char, 8>, 2> playerNames;
-
-	uint32_t playerTurn;
-
-	
-};
-
 class NetworkingServer
 {
 public:
@@ -134,32 +133,26 @@ public:
 private:
 	WSADATA wsaData;
 	SOCKET lSocket = INVALID_SOCKET;
+	SOCKET qSocket = INVALID_SOCKET;
 
-	const char* sendbuf = "this is a test";
+
 	int iResult;
-	int iSendResult;
-	int recvbuflen = DEFAULT_BUFLEN;
 	sockaddr_in2 remAddr1;
+	int iRemoteAddrLen;
 	sockaddr_in2 sockAddr1;
 
-	void readPacket(SOCKET, char*, size_t);
+	std::array<char, 8> newgameChar = { '/','n','e','w','g','a','m','e' };
 
-	std::vector<playingCard> stock;
-	std::vector<std::array<char, 8>>usrs;
+	NetworkServerPair nullPair{};
+	NetworkServerPair unfinishedPair{};
 
-	std::atomic_bool gameRunning = true;
-	std::atomic_bool correctPlayerCount = false;
-	std::mutex sharedMutex;
-	std::atomic_bool stockRecv = false;
-	std::atomic_int playerTurn = 1;
-	int currentusrs = 0;
+	std::atomic_bool exitTrigger = false;
+	std::atomic_bool qSocketReady = false;
+	std::atomic_bool qSocketHandled = true;
 
-	std::vector<SOCKET> cSockets;
-	std::vector<std::thread> threads;
+	std::vector<NetworkServerPair> gamePairs;
 
-	std::array<char, CMD_PKTLEN> command;
-	std::atomic_bool commandReady;
-
-	void handleConnection(SOCKET, int);
-
+	void workerListen();
+	void handleConnections();
+	void handleNewgame(NetworkServerPair*);
 }; 

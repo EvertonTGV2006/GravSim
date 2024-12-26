@@ -160,6 +160,7 @@ struct GameTableData {
 class CardEngine {
 public:
 	bool gameFinished = false;
+	uint32_t handToPlay = 1;
 
 	std::vector<playingCard> stock;
 	std::vector<playingCard> DHand;

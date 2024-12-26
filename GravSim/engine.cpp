@@ -302,9 +302,46 @@ void VulkanEngine::executeGraphics() {
                     }
                 }
                 else {
-
+                    uint32_t errCode = cardEngine.cardCommand(commandString);
+                    if (errCode != COMMAND_SUCCESS) {
+                        std::cout << "Received invalid command from sever, ignoring... " << std::endl;
+                    }
+                    else {
+                        cardEngine.handToPlay = (cardEngine.handToPlay + 1) % 2;
+                        commandSubmitFrame = true;
+                    }
                 }
-                
+            }
+        }
+        if (player->commandSubmit == true) {
+            player->commandSubmit = false;
+            if (cardRasterizer.playerIndex == cardEngine.handToPlay) {
+                commandString.clear();
+                commandString.push_back(cardRasterizer.playerIndex);
+                for (uint32_t i = 0; i < player->inputString.size(); i++) {
+                    commandString.push_back(player->inputString[i]);
+                }
+                uint32_t errCode = 0;
+                if (commandString[1] == '/') {
+                    errCode = COMMAND_SUCCESS;
+                }
+                else {
+                    errCode = cardEngine.cardCommand(commandString);
+                    cardEngine.handToPlay = (cardEngine.handToPlay + 1) % 2;
+                }
+                if (errCode == COMMAND_SUCCESS) {
+                    player->inputString.clear();
+                    commandSubmitFrame = true;
+                    CmdPacket pkt1{};
+                    pkt1.header.packetType = CMD_PACKET;
+                    memcpy(&pkt1.header.pName, nc.usrn.data(), nc.usrn.size());
+                    memcpy(&pkt1.cmd, commandString.data(), commandString.size());
+                    nc.net.sendPacket(reinterpret_cast<char*>(&pkt1));
+                    //send packet
+                }
+            }
+            else {
+                std::cout << "Not your turn!" << std::endl;
             }
         }
     }
