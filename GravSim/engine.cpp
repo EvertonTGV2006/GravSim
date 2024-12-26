@@ -1814,7 +1814,5 @@ void VulkanEngine::cleanup() {
 
     if (onlineGame) {
         nc.cleanup();
-        netThread.join();
-
     }
 }

@@ -81,8 +81,9 @@ public:
 	int readDataBlock(int, char*);
 	
 };
+
 struct NetworkServerPair {
-	NetworkUtil net[2];
+	std::array<NetworkUtil*, 2> net;
 	playingCard initialStock[52];
 	std::array<std::array<char, 8>, 2> playerNames;
 	uint32_t playerTurn;
@@ -135,6 +136,8 @@ private:
 	SOCKET lSocket = INVALID_SOCKET;
 	SOCKET qSocket = INVALID_SOCKET;
 
+	NetworkUtil nets[128];
+	uint32_t currentFreeNet = 0;
 
 	int iResult;
 	sockaddr_in2 remAddr1;

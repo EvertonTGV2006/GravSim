@@ -33,7 +33,7 @@ void NetworkUtil::sendPacket(char* data) {
 	HeaderData* hPtr = reinterpret_cast<HeaderData*>(data);
 	int packetSize = getBlockSize(hPtr) + sizeof(HeaderData);
 	int iResult = send(s, data, packetSize, 0);
-	if (iResult != 0) {
+	if (iResult < 0) {
 		std::cout << WSAGetLastError() << std::endl;
 		throw std::runtime_error("Failed to send packet");
 	}
@@ -50,6 +50,7 @@ int NetworkUtil::getBlockSize(HeaderData* hPtr) {
 		return sizeof(CmdPacket);
 		break;
 	}
+	return 0;
 }
 int NetworkUtil::readDataBlock(int blockSize, char* data) {
 	char* cursor = data;
@@ -245,7 +246,6 @@ void NetworkingClient::negotiateStock() {
 		net.packetFinished = true;
 	}
 }
-
 void NetworkingClient::cleanup() {
 	net.killWorker();
 	shutdown(hSocket, SD_SEND);
@@ -291,6 +291,7 @@ void NetworkingServer::initWinsock() {
 
 	std::thread workerThread(&NetworkingServer::workerListen, this);
 
+	handleConnections();
 }
 
 void NetworkingServer::workerListen() {
@@ -299,11 +300,12 @@ void NetworkingServer::workerListen() {
 			std::this_thread::sleep_for(std::chrono::milliseconds(1)); //wait for queued socket to be handled by main thread
 		}
 		qSocket = accept(lSocket, (sockaddr*)&remAddr1, &iRemoteAddrLen);
-		qSocketHandled = false;
 		if (qSocket == INVALID_SOCKET) {
+			std::cout << WSAGetLastError() << std::endl;
 			std::cout << "Error accepting, invalid socket, ignoring... " << std::endl;
 		}
 		else {
+			qSocketHandled = false;
 			qSocketReady = true;
 		}
 	}
@@ -311,50 +313,54 @@ void NetworkingServer::workerListen() {
 void NetworkingServer::handleConnections() {
 	while (exitTrigger == false) {
 		if (qSocketReady == true) {
+			
 			if (unfinishedPair.partComplete = false) {
-				unfinishedPair.net[0].startWorker(qSocket);
+				unfinishedPair.net[0] = &nets[currentFreeNet];
+				unfinishedPair.net[0]->startWorker(qSocket);
 				unfinishedPair.partComplete = true;
 			}
 			else {
-				unfinishedPair.net[1].startWorker(qSocket);
+				unfinishedPair.net[1] = &nets[currentFreeNet];
+				unfinishedPair.net[1]->startWorker(qSocket);
 				unfinishedPair.complete = true;
 			}
+			currentFreeNet++;
 				
 			if (unfinishedPair.complete == false) {
 				//receive hostname and send back host confirmation;
 				InitPacket pkt1{};
 				pkt1.header.packetType = INIT_PACKET;
 				pkt1.isHost = 0;
-				unfinishedPair.net[0].sendPacket(reinterpret_cast<char*>(&pkt1));
-				while (unfinishedPair.net[0].packetReady = false) {
+				unfinishedPair.net[0]->sendPacket(reinterpret_cast<char*>(&pkt1));
+				while (unfinishedPair.net[0]->packetReady = false) {
 					std::this_thread::sleep_for(std::chrono::milliseconds(1));
 				}
-				InitPacket* pkt2 = reinterpret_cast<InitPacket*>(&unfinishedPair.net[0].packetData);
+				InitPacket* pkt2 = reinterpret_cast<InitPacket*>(&unfinishedPair.net[0]->packetData);
 				if (pkt2->header.packetType != INIT_PACKET) {
 					throw std::runtime_error("Incorrect Packet");
 				}
 				memcpy(unfinishedPair.playerNames[0].data(), &(pkt2->header.pName), unfinishedPair.playerNames[0].size());
 				//load hostname into memory;
-				unfinishedPair.net[0].packetReady = false;
-				unfinishedPair.net[0].packetFinished = true;
+				unfinishedPair.net[0]->packetReady = false;
+				unfinishedPair.net[0]->packetFinished = true;
 			}
 			else {
 				InitPacket pkt1{};
 				pkt1.header.packetType = INIT_PACKET;
 				pkt1.isHost = 1;
 				memcpy(&pkt1.opName, unfinishedPair.playerNames[0].data(), unfinishedPair.playerNames[0].size());
-				unfinishedPair.net[1].sendPacket(reinterpret_cast<char*>(&pkt1));
-				while (unfinishedPair.net[1].packetReady = false) {
+				unfinishedPair.net[1]->sendPacket(reinterpret_cast<char*>(&pkt1));
+				while (unfinishedPair.net[1]->packetReady = false) {
 					std::this_thread::sleep_for(std::chrono::milliseconds(1));
 				}
-				InitPacket* pkt2 = reinterpret_cast<InitPacket*>(&unfinishedPair.net[1].packetData);
+				InitPacket* pkt2 = reinterpret_cast<InitPacket*>(&unfinishedPair.net[1]->packetData);
 				if (pkt2->header.packetType != INIT_PACKET) {
 					throw std::runtime_error("Incorrect Packet");
 				}
 				memcpy(unfinishedPair.playerNames[1].data(), &(pkt2->header.pName), unfinishedPair.playerNames[1].size());
 				//load hostname into memory;
-				unfinishedPair.net[1].packetReady = false;
-				unfinishedPair.net[1].packetFinished = true;
+				unfinishedPair.net[1]->packetReady = false;
+				unfinishedPair.net[1]->packetFinished = true;
 				unfinishedPair.complete = true;
 				gamePairs.push_back(unfinishedPair);
 				memcpy(&unfinishedPair, &nullPair, sizeof(NetworkServerPair)); //nullify the unfinished pair
@@ -365,9 +371,9 @@ void NetworkingServer::handleConnections() {
 		//now enter the main loop, check each pair for commands.
 		for (uint32_t i = 0; i < gamePairs.size(); i++) {
 			//check host commands
-			if (gamePairs[i].net[0].packetReady == true) {
+			if (gamePairs[i].net[0]->packetReady == true) {
 				//read command, should be command packet
-				CmdPacket* pkt1 = reinterpret_cast<CmdPacket*>(&gamePairs[i].net[0].packetData);
+				CmdPacket* pkt1 = reinterpret_cast<CmdPacket*>(&gamePairs[i].net[0]->packetData);
 				if (pkt1->header.packetType != CMD_PACKET) {
 					std::cout << "Received erroneous packet, ignoring... " << std::endl;
 				}
@@ -380,15 +386,15 @@ void NetworkingServer::handleConnections() {
 						}
 					}
 					else {
-						gamePairs[i].net[1].sendPacket(&gamePairs[i].net[0].packetData[0]); //send packet to client
+						gamePairs[i].net[1]->sendPacket(&gamePairs[i].net[0]->packetData[0]); //send packet to client
 					}
 				}
-				gamePairs[i].net[0].packetReady = false;
-				gamePairs[i].net[0].packetFinished = true;
+				gamePairs[i].net[0]->packetReady = false;
+				gamePairs[i].net[0]->packetFinished = true;
 			}
-			if (gamePairs[i].net[1].packetReady == true) {
+			if (gamePairs[i].net[1]->packetReady == true) {
 				//read command, should be command packet
-				CmdPacket* pkt1 = reinterpret_cast<CmdPacket*>(&gamePairs[i].net[1].packetData);
+				CmdPacket* pkt1 = reinterpret_cast<CmdPacket*>(&gamePairs[i].net[1]->packetData);
 				if (pkt1->header.packetType != CMD_PACKET) {
 					std::cout << "Received erroneous packet, ignoring... " << std::endl;
 				}
@@ -401,11 +407,11 @@ void NetworkingServer::handleConnections() {
 						}
 					}
 					else {
-						gamePairs[i].net[0].sendPacket(&gamePairs[i].net[1].packetData[0]); //send packet to client
+						gamePairs[i].net[0]->sendPacket(&gamePairs[i].net[1]->packetData[0]); //send packet to client
 					}
 				}
-				gamePairs[i].net[1].packetReady = false;
-				gamePairs[i].net[1].packetFinished = true;
+				gamePairs[i].net[1]->packetReady = false;
+				gamePairs[i].net[1]->packetFinished = true;
 			}
 		}
 	}
@@ -419,20 +425,20 @@ void NetworkingServer::handleNewgame(NetworkServerPair* pair) {
 		pkt1.cmd[0] = 0;
 		memcpy(&pkt1.cmd[1], newgameChar.data(), newgameChar.size());
 		pkt1.cmd[9] = 0;
-		pair->net[0].sendPacket(reinterpret_cast<char*>(&pkt1));
+		pair->net[0]->sendPacket(reinterpret_cast<char*>(&pkt1));
 		pkt1.cmd[9] = 1;
-		pair->net[1].sendPacket(reinterpret_cast<char*>(&pkt1));
-		while (pair->net[0].packetReady == false) {
+		pair->net[1]->sendPacket(reinterpret_cast<char*>(&pkt1));
+		while (pair->net[0]->packetReady == false) {
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
-		GamePacket* sPtr = reinterpret_cast<GamePacket*>(&pair->net[0].packetData);
+		GamePacket* sPtr = reinterpret_cast<GamePacket*>(&pair->net[0]->packetData);
 		if (sPtr->header.packetType != GAME_PACKET) {
 			throw std::runtime_error("Expected to receive stock");
 		}
 		memcpy(&pair->initialStock[0], &sPtr->cardData, 52 * sizeof(playingCard));
-		pair->net[1].sendPacket(&pair->net[0].packetData[0]);
-		pair->net[0].packetReady = false;
-		pair->net[0].packetFinished = true;
+		pair->net[1]->sendPacket(&pair->net[0]->packetData[0]);
+		pair->net[0]->packetReady = false;
+		pair->net[0]->packetFinished = true;
 	}
 }
 

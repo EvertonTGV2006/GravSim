@@ -52,6 +52,7 @@ int main() {
 			NetworkingServer ns;
 
 			ns.initWinsock();
+			
 		}
 		else if (config["mode"] == "host") {
 			//uint32_t cID = 63;
