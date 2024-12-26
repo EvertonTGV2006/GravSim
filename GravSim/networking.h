@@ -141,7 +141,7 @@ private:
 
 	int iResult;
 	sockaddr_in2 remAddr1;
-	int iRemoteAddrLen;
+	int iRemoteAddrLen = sizeof(sockaddr);
 	sockaddr_in2 sockAddr1;
 
 	std::array<char, 8> newgameChar = { '/','n','e','w','g','a','m','e' };
