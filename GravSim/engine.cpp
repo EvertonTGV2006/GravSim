@@ -43,8 +43,6 @@ void VulkanEngine::initNetworking() {
         usrn[i] = usrStr.value()[i];
     }
     nc.usrn = usrn;
-    nc.versionMajor = 1;
-    nc.versionMinor = 0;
 
     std::optional<std::string> ipaddropt = config["server"].value<std::string>();
     std::optional<int> portaddropt = config["port"].value<int>();
@@ -54,87 +52,13 @@ void VulkanEngine::initNetworking() {
     }
     nc.ipaddr = ipaddropt.value();
     nc.portaddr = portaddropt.value();
+    nc.stockPtr = &cardEngine.stock;
 
     nc.initWinsock(); /*we have now connected to the server and have an opponent*/
 
     player->usrn = nc.usrn;
     player->oppn = nc.oppn;
 
-    serverConfig = nc.serverConfig;
-
-    
-
-    handleStock();
-    if (isDealer == true) {
-        cardRasterizer.playerIndex = 0;
-    }
-    else {
-        cardRasterizer.playerIndex = 1;
-    }
-
-    netThread = std::thread(&VulkanEngine::handleNetworking, this);
-
-}
-void VulkanEngine::handleStock() {
-    if (swapDealers == false) {
-        if ((serverConfig & SVRCNF_HC_BITS) == SVRCNF_HOST_BIT) {
-            cardEngine.initStock();
-            nc.sendStock(&cardEngine.stock);
-            isDealer = true;
-            isPlayerTurn = false;
-        }
-        else if ((serverConfig & SVRCNF_HC_BITS) == SVRCNF_CLIENT_BIT) {
-            nc.recvStock(&cardEngine.stock);
-            isDealer = false;
-            isPlayerTurn = true;
-        }
-        else {
-            throw std::runtime_error("Invalid Server Config Received");
-        }
-    }
-    else {
-        if ((serverConfig & SVRCNF_HC_BITS) == SVRCNF_CLIENT_BIT) {
-            cardEngine.initStock();
-            nc.sendStock(&cardEngine.stock);
-            isDealer = true;
-            isPlayerTurn = false;
-        }
-        else if ((serverConfig & SVRCNF_HC_BITS) == SVRCNF_HOST_BIT) {
-            nc.recvStock(&cardEngine.stock);
-            isDealer = false;
-            isPlayerTurn = true;
-        }
-        else {
-            throw std::runtime_error("Invalid Server Config Received");
-        }
-    }
-}
-void VulkanEngine::handleNetworking() {
-    while (player->windowShouldClose == false) {
-        if (isPlayerTurn) {
-            std::cout << "Waiting to send command..." << std::endl;
-            while (commandReady == false) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            }
-            std::lock_guard<std::mutex> guard(commandMutex);
-            
-            nc.sendCmd(&commandString);
-            std::cout << "Sent command" << std::endl;
-            isPlayerTurn = false;
-            commandReady = false;
-        }
-        else {
-            std::cout << "Waiting to receive command..." << std::endl;;
-            commandMutex.lock();
-            nc.recvCmd(&commandString);
-            commandMutex.unlock();
-            std::cout << "Received command" << std::endl;
-            commandReady = true;
-            while (commandReady == true) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            }
-        }
-    }
 }
 
 void VulkanEngine::initEngine() {
@@ -335,74 +259,52 @@ void VulkanEngine::executeGraphics() {
     bool commandSubmitFrame = false;
 
     if (onlineGame) {
-
-        uint32_t caseValue = 0;
-        if (player->commandSubmit == true && isPlayerTurn == true) {
-            caseValue = 1;
-        }
-        else if (player->commandSubmit == true && isPlayerTurn == false) {
-            caseValue = 2;
-        }
-        else if (isPlayerTurn == false) {
-            caseValue = 3;
-        }
-
-
-        if (caseValue == 1) {
-            if (commandReady == false) {
-                std::lock_guard<std::mutex> guard(commandMutex);
-                player->commandSubmit = false;
-                commandString.clear();
-                commandString.push_back(cardRasterizer.playerIndex);
-                for (uint32_t i = 0; i < player->inputString.size(); i++) {
-                    commandString.push_back(player->inputString[i]);
-                }
-
-                uint32_t errCode = cardEngine.cardCommand(commandString);
-                if (errCode == COMMAND_SUCCESS) {
-                    player->inputString.clear();
-                    //cardRasterizer.playerIndex = (cardRasterizer.playerIndex + 1) % 2;
-                    commandSubmitFrame = true;
-                    commandReady = true;
-                }
-                else if (errCode == COMMAND_DISCONNECT) {
-                    player->windowShouldClose = true;
-                    std::cout << "Received disconnect command" << std::endl;
-                }
-                else if (errCode == COMMAND_NEWGAME_SWAP) {
-                    swapDealers = !swapDealers;
-                    handleStock();
-                    cardEngine.setupGame();
-                    player->destroyScoreBoxes();
-                }
-                else if (errCode == COMMAND_NEWGAME_STICK) {
-                    handleStock();
-                    cardEngine.setupGame();
-                    player->destroyScoreBoxes();
-                }
-                else {
-                    std::cout << errCode << std::endl;
-                }
+        //check if any commands received over network;
+        if (nc.net.packetReady = true) {
+            //parse packet if so
+            HeaderData* hPtr = reinterpret_cast<HeaderData*>(&nc.net.packetData);
+            if (hPtr->packetType != CMD_PACKET) {
+                std::cout << "Received erroneous packet, ignoring" << std::endl;
+                nc.net.packetReady = false;
+                nc.net.packetFinished = true;
             }
-        }
-        else if (caseValue == 2) {
-            player->commandSubmit = false;
-            std::cout << "Not your turn!" << std::endl;
-            player->inputString.clear();
-        }
-        else if (caseValue == 3) {
-            if (commandReady) {
-                std::cout << "Reading Command: " << std::endl;
-                std::lock_guard<std::mutex> guard(commandMutex);
-                uint32_t errCode = cardEngine.cardCommand(commandString);
-                if (errCode == COMMAND_SUCCESS) {
-                    commandReady = false;
-                    isPlayerTurn = true;
-                    commandSubmitFrame = true;
+            else {
+                CmdPacket* pkt = reinterpret_cast<CmdPacket*>(&nc.net.packetData);
+                char lastChar = 0;
+                for (char i = CMD_LENGTH - 1; i > 0; i--) {
+                    if (pkt->cmd[i] != 0) {
+                        lastChar = i;
+                        break;
+                    }
+                }
+                std::string cmdStr;
+                commandString.clear();
+                for (char i = 1; i <= lastChar; i++) { //ignore first char
+                    cmdStr.push_back(pkt->cmd[i]);
+                    commandString.push_back(pkt->cmd[i]);
+                }
+                nc.net.packetReady = false;
+                nc.net.packetFinished = true;
+
+                if (commandString[1] == '/') { //special command actions
+                    if (cmdStr == "/newgame0" || cmdStr == "/newgame1") {//player index is 0
+                        if (nc.isGameHost) {
+                            cardEngine.initStock();
+                        }
+                        nc.negotiateStock();
+                        cardEngine.setupGame();
+                        if (cmdStr == "/newgame0") {
+                            cardRasterizer.playerIndex = 0;
+                        }
+                        else {
+                            cardRasterizer.playerIndex = 1;
+                        }
+                    }
                 }
                 else {
-                    throw std::runtime_error("Received Invalid Command from server!");
+
                 }
+                
             }
         }
     }
@@ -1832,11 +1734,6 @@ void VulkanEngine::cleanup() {
     uiRasterizer.cleanup();
     cardRasterizer.cleanup();
 
-    if (onlineGame) {
-        netThread.join();
-        nc.cleanup();
-    }
-
     writeOutSampleData();
 
     cleanupSwapChain();
@@ -1877,4 +1774,10 @@ void VulkanEngine::cleanup() {
     vkDestroySurfaceKHR(instance, surface, nullptr);
     vkDestroyInstance(instance, nullptr);
     winmanager.cleanup();
+
+    if (onlineGame) {
+        nc.cleanup();
+        netThread.join();
+
+    }
 }

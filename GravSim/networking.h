@@ -18,6 +18,7 @@
 #define INITIAL_PKTLEN 16
 #define STOCK_PKTLEN 52
 #define CMD_PKTLEN 32
+#define CMD_LENGTH 31
 
 enum serverConfigBits {
 	SVRCNF_HC_BITS = 3,
@@ -33,25 +34,70 @@ struct sockaddr_in2
 	struct  in_addr sin_addr;
 	char    sin_zero[8];
 };
+struct HeaderData {
+	char packetType;
+	char pName[31];
+};
+struct CmdPacket {
+	HeaderData header;
+	char cmd[32];
+};
+struct GamePacket {
+	HeaderData header;
+	playingCard cardData[52];
+};
+struct InitPacket {
+	HeaderData header;
+	char isHost;
+	char opName[31];
+};
+enum packetTypes {
+	INIT_PACKET = 1,
+	GAME_PACKET = 2,
+	CMD_PACKET = 3
+};
+
+const uint32_t MAX_PKT_SIZE = 84;
+
+class NetworkUtil {
+public:
+	char packetData[MAX_PKT_SIZE];
+	std::atomic_bool packetReady = false;
+	std::atomic_bool packetFinished = true;
+	std::atomic_bool sendShutdown = false;
+	bool shutdownSent = false;
+	bool closeSocket = false;
+
+	SOCKET s;
+
+	std::thread workerThread;
+
+	void startWorker(SOCKET);
+	void receivePacket();
+	void killWorker();
+	void sendPacket(char* data);
+	int getBlockSize(HeaderData* hPtr);
+
+	int readDataBlock(int, char*);
+	
+};
 
 class NetworkingClient {
 public:
-	std::fstream fout;
+	NetworkUtil net;
 
 	void initWinsock();
-	void sendStock(std::vector<playingCard>*);
-	void recvStock(std::vector<playingCard>*);
-	void sendCmd(std::vector<char>*);
-	void recvCmd(std::vector<char>*);
+	void negotiateStock();
+
 	void cleanup();
 
+	bool isGameHost = false;
+	uint32_t playerIndex = 0;
 
 	std::array<char, 8> usrn;
-	uint32_t versionMajor;
-	uint32_t versionMinor;
-
 	std::array<char, 8> oppn;
-	uint32_t serverConfig;
+
+	std::vector<playingCard>* stockPtr;
 
 	std::string ipaddr;
 	int portaddr;
@@ -61,15 +107,10 @@ private:
 	WSADATA wsaData;
 	SOCKET hSocket = INVALID_SOCKET;
 
+	int iResult = 0;
 
-	char initialPacket[INITIAL_PKTLEN];
-	const char* sendbuf = "this is a test";
-	char recvbuf2[DEFAULT_BUFLEN];
-	int iResult;
-	int recvbuflen = DEFAULT_BUFLEN;
 	sockaddr_in2 sockAddr1;
-	
-	void readPacket(SOCKET, char*, size_t);
+
 
 };
 
@@ -78,7 +119,7 @@ struct NetworkServerPair {
 	std::array<bool, 2> connections;
 
 	std::array<playingCard, 52> initialStock;
-	std::array<std::string, 2> playerNames;
+	std::array<std::array<char, 8>, 2> playerNames;
 
 	uint32_t playerTurn;
 

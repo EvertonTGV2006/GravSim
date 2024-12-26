@@ -33,9 +33,8 @@ public:
 	WindowManager winmanager;
 	PlayerObject* player;
 	NetworkingClient nc;
-	uint32_t serverConfig;
 
-	std::thread netThread;
+
 
 	std::atomic_bool isDealer = false;
 	std::atomic_bool isPlayerTurn = false;
@@ -179,9 +178,6 @@ private:
 	void cleanupSwapChain();
 
 	void writeOutSampleData();
-
-	void handleNetworking();
-	void handleStock();
 
 	void readFiles(std::vector<std::string>, std::vector<std::vector<char>>*);
 

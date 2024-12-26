@@ -10,9 +10,94 @@
 
 #pragma comment(lib, "Ws2_32.lib")
 
+void NetworkUtil::receivePacket() {
+	int errCode = 0;
+	while (sendShutdown == false) {
+		if (packetFinished) {
+			errCode = readDataBlock(sizeof(HeaderData), &packetData[0]);
+			if (errCode == 1) { break; }
+			HeaderData* hPtr = reinterpret_cast<HeaderData*>(&packetData[0]);
+			int nextBlockSize = getBlockSize(hPtr);
+
+			errCode = readDataBlock(nextBlockSize, &packetData[0] + sizeof(HeaderData));
+			if (errCode == 1) { break; }
+			packetFinished = false;
+			packetReady = true;
+		}
+		else {
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+	}
+}
+void NetworkUtil::sendPacket(char* data) {
+	HeaderData* hPtr = reinterpret_cast<HeaderData*>(data);
+	int packetSize = getBlockSize(hPtr) + sizeof(HeaderData);
+	int iResult = send(s, data, packetSize, 0);
+	if (iResult != 0) {
+		std::cout << WSAGetLastError() << std::endl;
+		throw std::runtime_error("Failed to send packet");
+	}
+}
+int NetworkUtil::getBlockSize(HeaderData* hPtr) {
+	switch (hPtr->packetType) {
+	case INIT_PACKET:
+		return sizeof(InitPacket);
+		break;
+	case GAME_PACKET:
+		return sizeof(GamePacket);
+		break;
+	case CMD_PACKET:
+		return sizeof(CmdPacket);
+		break;
+	}
+}
+int NetworkUtil::readDataBlock(int blockSize, char* data) {
+	char* cursor = data;
+	int recvSize = 0;
+	int recvTotal = 0;
+	int recvCode = 0;
+	
+	while (recvTotal < blockSize) {
+		recvSize = recv(s, cursor, blockSize, 0);
+		if (recvSize > 0) {
+			recvTotal += recvSize;
+		}
+		else if (recvSize == 0) {
+			return 1; //connection closed
+		}
+		else {
+			//error
+			int errCode = WSAGetLastError();
+			if (errCode == WSAEINTR) {
+				return 1;
+			}
+			else {
+				std::cout << errCode << std::endl;
+				throw std::runtime_error("Recv Data Block failed with error");
+			}
+		}
+	}
+	return 0;
+}
+void NetworkUtil::startWorker(SOCKET sock) {
+	packetReady = false;
+	packetFinished = true;
+	sendShutdown = false;
+	shutdownSent = false;
+	closeSocket = false;
+	s = sock;
+
+	workerThread = std::thread(&NetworkUtil::receivePacket, this);
+}
+void NetworkUtil::killWorker() {
+	sendShutdown = true;
+	shutdown(s, SD_RECEIVE);
+	shutdownSent = true;
+	workerThread.join();
+}
+
 
 void NetworkingClient::initWinsock() {
-	fout.open("netout.txt");
 	std::cout << "Initialisng networking..." << std::endl;
 	iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 
@@ -50,167 +135,120 @@ void NetworkingClient::initWinsock() {
 	}
 	std::cout << std::endl;
 
+	//now start worker thread
+	net.startWorker(hSocket);
 
+	//now send packet with username
 
+	InitPacket pkt1{};
+	pkt1.header.packetType = INIT_PACKET;
+	memcpy(&pkt1.header.pName, usrn.data(), usrn.size());
 
-	//send inital packet
-
-	size_t cursor = 0;
-	size_t cpySize = usrn.size() * sizeof(usrn[0]);
-	memcpy(&initialPacket + cursor, usrn.data(), cpySize);
-	cursor += cpySize;
-	cpySize = sizeof(versionMajor);
-	memcpy(&initialPacket + cursor, &versionMajor, cpySize);
-	cursor += cpySize;
-	cpySize = sizeof(versionMinor);
-	memcpy(&initialPacket + cursor, &versionMinor, cpySize);
-
-	iResult = send(hSocket, &(initialPacket)[0], INITIAL_PKTLEN, 0);
-	//iResult = send(hSocket, sendbuf, (int)strlen(sendbuf), 0);
-	if (iResult == SOCKET_ERROR) {
-		printf("send failed with error: %d\n", WSAGetLastError());
-		closesocket(hSocket);
-		WSACleanup();
-		throw std::runtime_error("Failed to send packet");
+	net.sendPacket(reinterpret_cast<char*>(&pkt1));
+	std::cout << "Sent greeting packet, waiting for reply... ";
+	//now we wait for a reply...
+	while (net.packetReady == false) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	}
+	std::cout << "Recevied reply" << std::endl;
+	//now we parse reply;
+	InitPacket* pkt2{};
+	if (pkt2->header.packetType != INIT_PACKET) {
+		std::cout << "Received incorrect packet, exiting" << std::endl;
+		throw std::runtime_error("Incorrect Packet");
 	}
 
-	//now wait for return packet with pName param and host/client config + 4 bytes padding
-	char replyPacket[INITIAL_PKTLEN];
-	readPacket(hSocket, &replyPacket[0], INITIAL_PKTLEN);
-	cursor = 0;
-	cpySize = sizeof(oppn[0]) * oppn.size();
-	memcpy(oppn.data(), &replyPacket[0] + cursor, cpySize);
-	cursor += cpySize;
-	cpySize = sizeof(serverConfig);
-	memcpy(&serverConfig, &replyPacket[0] + cursor, cpySize);
+	isGameHost = (pkt2->isHost == 0) ? true : false;
+	net.packetReady = false;
+	net.packetFinished = true;
 
-	if ((serverConfig & SVRCNF_HC_BITS) == SVRCNF_HOST_BIT) {
-
-		std::cout << "Waiting for opponent... " << std::endl;
-		readPacket(hSocket, &replyPacket[0], INITIAL_PKTLEN);
-		cursor = 0;
-		cpySize = sizeof(oppn[0]) * oppn.size();
-		memcpy(oppn.data(), &replyPacket[0] + cursor, cpySize);
-	}
-	std::cout << "Opponent Found: ";
-	for (size_t i = 0; i < oppn.size(); i++) {
-		std::cout << oppn[i];
-	}
-	std::cout << std::endl;
+	if (isGameHost) {
 
 
-
-
-
-
-	//iResult = shutdown(hSocket, SD_SEND);
-	//if (iResult == SOCKET_ERROR) {
-	//	printf("shutdown failed with error: %d\n", WSAGetLastError());
-	//	closesocket(hSocket);
-	//	WSACleanup();
-
-	//	throw std::runtime_error("Failed to shutdown socket");
-	//}
-
-	//do {
-
-	//	iResult = recv(hSocket, recvbuf, recvbuflen, 0);
-	//	if (iResult > 0) {
-	//		printf("Bytes received: %d\n", iResult);
-	//	}
-	//	else if (iResult == 0) {
-	//		printf("Connection closed\n");
-	//	}
-	//	else {
-	//		printf("recv failed with error: %d\n", WSAGetLastError());
-	//		std::cout << iResult << std::endl;
-	//		std::cout << WSAGetLastError() << std::endl;
-	//		throw std::runtime_error(("Failed receive error socket"));
-	//	}
-
-	//} while (iResult > 0);
-
-	//for (uint32_t i = 0; i < DEFAULT_BUFLEN; i++) {
-	//	std::cout << recvbuf[i];
-	//}
-
-
-	//closesocket(hSocket);
-	//WSACleanup();
-
-
-}
-void NetworkingClient::sendStock(std::vector<playingCard>* stock) {
-	int sResult = send(hSocket, (char*)stock->data(), STOCK_PKTLEN, 0);
-	if (sResult == SOCKET_ERROR) {
-		printf("send failed with error: %d\n", WSAGetLastError());
-		closesocket(hSocket);
-		WSACleanup();
-		throw std::runtime_error("Failed to send packet");
-	}
-}
-void NetworkingClient::recvStock(std::vector<playingCard>* stock) {
-	char buf[STOCK_PKTLEN];
-	readPacket(hSocket, &buf[0], STOCK_PKTLEN);
-	stock->clear();
-	stock->resize(STOCK_PKTLEN);
-	memcpy(stock->data(), &buf[0], STOCK_PKTLEN);
-}
-void NetworkingClient::sendCmd(std::vector<char>* cmd) {
-	char buf[CMD_PKTLEN]{};
-	memcpy(&buf[0], cmd->data(), cmd->size());
-	int sResult = send(hSocket, &buf[0], CMD_PKTLEN, 0);
-	if (sResult == SOCKET_ERROR) {
-		printf("send failed with error: %d\n", WSAGetLastError());
-		closesocket(hSocket);
-		WSACleanup();
-		throw std::runtime_error("Failed to send packet");
-	}
-}
-void NetworkingClient::recvCmd(std::vector<char>* cmd) {
-	cmd->clear();
-	char buf[CMD_PKTLEN];
-	readPacket(hSocket, &buf[0], CMD_PKTLEN);
-	size_t endIndex = 0;
-	for (int i = CMD_PKTLEN - 1; i >= 0; i--) {
-		if (buf[i] != 0) {
-			endIndex = i;
-			break;
+		//if game host, we wait for another greeting packet
+		std::cout << "Selected as game host, waiting for opponent... ";
+		
+		
+		while (net.packetReady == false) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 		}
+		net.packetReady = false;
+		net.packetFinished = true;
+		if (pkt2->header.packetType != INIT_PACKET) {
+			std::cout << "Received incorrect packet, exiting" << std::endl;
+			throw std::runtime_error("Incorrect Packet");
+		}
+		//parse new packet
+		std::cout << "Opponent Found: ";
+		memcpy(oppn.data(), &(pkt2->opName), oppn.size());
+		for (uint32_t i = 0; i < oppn.size(); i++) {
+			std::cout << oppn[i];
+		}
+		std::cout << std::endl;
+
+		//function sends a newgame command
+		CmdPacket pkt3{};
+		pkt3.header.packetType = CMD_PACKET;
+		memcpy(&pkt3.header.pName, usrn.data(), usrn.size());
+		std::array<char, 9> cmd = { 0, '/','n','e','w','g','a','m','e' };
+		memcpy(&pkt3.cmd, cmd.data(), cmd.size());
+		net.sendPacket(reinterpret_cast<char*>(&pkt3));
+
 	}
-	for (int i = 0; i <= endIndex; i++) {
-		cmd->push_back(buf[i]);
+	else {
+
+		std::cout << "Not hosting game, opponent found: ";
+			memcpy(oppn.data(), &(pkt2->opName), oppn.size());
+		for (uint32_t i = 0; i < oppn.size(); i++) {
+			std::cout << oppn[i];
+		}
+		std::cout << std::endl;
+	}
+	
+
+
+	GamePacket* pkt3{};
+	std::cout << "Waiting to receive game details... ";
+	while (net.packetReady == false) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	}
+	std::cout << "Recveived game details" << std::endl;
+	pkt3 = reinterpret_cast<GamePacket*>(&net.packetData);
+	net.packetReady = false;
+	net.packetFinished = true;
+	if (pkt3->header.packetType != GAME_PACKET) {
+		std::cout << "Received incorrect packet, exiting" << std::endl;
+		throw std::runtime_error("Incorrect Packet");
+	}
+	stockPtr->resize(52);
+	memcpy(stockPtr->data(), pkt3->cardData, stockPtr->size());
+
+
+}
+void NetworkingClient::negotiateStock() {
+	if (isGameHost) {
+		GamePacket pkt{};
+		pkt.header.packetType = GAME_PACKET;
+		memcpy(&pkt.header.pName, usrn.data(), usrn.size());
+		memcpy(&pkt.cardData, stockPtr->data(), stockPtr->size() * sizeof(playingCard));
+		net.sendPacket(reinterpret_cast<char*>(&pkt));
+	}
+	else {
+		GamePacket* pkt3 = reinterpret_cast<GamePacket*>(&net.packetData);
+		if (pkt3->header.packetType != GAME_PACKET) {
+			std::cout << "Received incorrect packet, exiting" << std::endl;
+			throw std::runtime_error("Incorrect Packet");
+		}
+		stockPtr->resize(52);
+		memcpy(stockPtr->data(), pkt3->cardData, stockPtr->size());
+		net.packetReady = false;
+		net.packetFinished = true;
 	}
 }
 
-void NetworkingClient::readPacket(SOCKET s, char* buf, size_t len) {
-	int receivedDataLen = 0;
-	size_t cursor = 0;
-	int rResult = 0;
-	char recvbuf[DEFAULT_BUFLEN];
-
-	do
-	{
-		rResult = recv(s, recvbuf, DEFAULT_BUFLEN, 0);
-		if (rResult > 0) {
-			//take data out of recvbuf
-			memcpy(buf + cursor, recvbuf, rResult);
-			cursor += rResult;
-			receivedDataLen += rResult;
-		}
-		else if (rResult == 0) {
-			std::cout << "Connection Closed" << std::endl;
-		}
-		else {
-			std::cout<< WSAGetLastError();
-			closesocket(s);
-			WSACleanup();
-			throw std::runtime_error("Packet Read Failed");
-		}
-	} while (receivedDataLen < len);
-}
 void NetworkingClient::cleanup() {
-	shutdown(hSocket, SD_BOTH);
+	net.killWorker();
+	shutdown(hSocket, SD_SEND);
 	closesocket(hSocket);
 	WSACleanup();
 }
@@ -394,6 +432,7 @@ void NetworkingServer::readPacket(SOCKET s, char* buf, size_t len) {
 		}
 		else if (rResult == 0) {
 			std::cout << "Connection Closed" << std::endl;
+			return;
 		}
 		else {
 			
