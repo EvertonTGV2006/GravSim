@@ -461,7 +461,7 @@ void VulkanEngine::executeGraphics() {
     ubo.proj = glm::perspective(glm::radians(45.0f), (float)swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 1000.0f);
     ubo.zeta = glm::mat4(1);
 
-    particleRasterizer.drawObjects(drawCommandBuffers[frameIndex], frameIndex, ubo);
+    //particleRasterizer.drawObjects(drawCommandBuffers[frameIndex], frameIndex, ubo);
 
     
     cardRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex, commandSubmitFrame, ubo.proj * ubo.view);
@@ -488,23 +488,23 @@ void VulkanEngine::executeGraphics() {
     waitInfo1.semaphore = imageSemaphores[frameIndex];
     waitInfo1.stageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
-    VkSemaphoreSubmitInfo waitInfo2{};
-    waitInfo2.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-    waitInfo2.semaphore = gravRenderSemaphores[frameIndex];
-    waitInfo2.stageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+    //VkSemaphoreSubmitInfo waitInfo2{};
+    //waitInfo2.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+    //waitInfo2.semaphore = gravRenderSemaphores[frameIndex];
+    //waitInfo2.stageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
 
     VkSemaphoreSubmitInfo signalInfo1{};
     signalInfo1.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
     signalInfo1.semaphore = renderSemaphores[frameIndex];
     signalInfo1.stageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 
-    VkSemaphoreSubmitInfo signalInfo2{};
-    signalInfo2.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-    signalInfo2.semaphore = renderGravSemaphores[(frameIndex+1)%FRAMES_IN_FLIGHT];
-    signalInfo2.stageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    //VkSemaphoreSubmitInfo signalInfo2{};
+    //signalInfo2.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+    //signalInfo2.semaphore = renderGravSemaphores[(frameIndex+1)%FRAMES_IN_FLIGHT];
+    //signalInfo2.stageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 
-    std::array<VkSemaphoreSubmitInfo, 2> waitInfos = { waitInfo1 , waitInfo2};
-    std::array<VkSemaphoreSubmitInfo, 2> signalInfos = { signalInfo1 , signalInfo2};
+    std::array<VkSemaphoreSubmitInfo, 1> waitInfos = { waitInfo1};
+    std::array<VkSemaphoreSubmitInfo, 1> signalInfos = { signalInfo1};
 
     VkSubmitInfo2 submitInfo2{};
     submitInfo2.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
@@ -549,7 +549,7 @@ void VulkanEngine::executeGraphics() {
     ct = std::chrono::high_resolution_clock::now();
     dt = std::chrono::duration<double>(ct - pt);
     pt = ct;
-    gravEngine.simGrav(dt.count());
+    //gravEngine.simGrav(dt.count());
 
     frameTimes.push_back(dt);
 
