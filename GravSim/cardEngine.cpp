@@ -299,7 +299,7 @@ uint32_t CardEngine::cardCommand(std::vector<char> command) {
 		
 		return COMMAND_ERROR_FIRST_ACTION_NOT_FOUND;
 	}
-	if (DHand.size() == 0) {
+	if (DHand.size() == 0 && NDHand.size() == 0) {
 		if (stock.size() == 0) {
 			for (uint8_t i = 0; i < table.size(); i++) {
 				while (table[i].size() > 0) {

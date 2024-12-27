@@ -387,13 +387,10 @@ void VulkanEngine::executeGraphics() {
     }
     if (commandSubmitFrame == true && cardEngine.gameFinished == true) {
         std::vector<std::string> playerNames;
+        playerNames.resize(2);
         if (isDealer) {
-            playerNames.push_back("Gareth");
-            playerNames.push_back("Beth");
-        }
-        else {
-            playerNames.push_back("Beth");
-            playerNames.push_back("Gareth");
+            playerNames[0] = std::string(nc.usrn.begin(), nc.usrn.end());
+            playerNames[1] = std::string(nc.usrn.begin(), nc.usrn.end());
         }
         player->initScoreBoxes(&cardEngine.playerScoreReasons, &cardEngine.playerScores, playerNames);
     }
