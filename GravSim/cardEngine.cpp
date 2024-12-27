@@ -172,10 +172,10 @@ uint32_t CardEngine::cardCommand(std::vector<char> command) {
 	else if (heldCardIndexRaw == HAND_INDEX_3) { heldCardIndex = 3; }
 	else if (heldCardIndexRaw == '/') {
 		std::string commandString(command.begin() + 2, command.end());
-		if (commandString == "newgame") {
-			setupGame();
-			return COMMAND_SUCCESS;
-		}
+		//if (commandString == "newgame") {
+		//	setupGame();
+		//	return COMMAND_SUCCESS;
+		//}
 		if (commandString == "save") {
 			writeGameState("game.txt");
 			return COMMAND_NOACTION;

@@ -68,14 +68,19 @@ public:
 	bool shutdownSent = false;
 	bool closeSocket = false;
 
-	SOCKET s;
+	void startWorker(SOCKET*);
+	void killWorker();
+	void sendPacket(char* data);
+
+private:
+	SOCKET* sock;
 
 	std::thread workerThread;
 
-	void startWorker(SOCKET);
+	
 	void receivePacket();
-	void killWorker();
-	void sendPacket(char* data);
+	
+	
 	int getBlockSize(HeaderData* hPtr);
 
 	int readDataBlock(int, char*);
@@ -134,8 +139,9 @@ public:
 private:
 	WSADATA wsaData;
 	SOCKET lSocket = INVALID_SOCKET;
-	SOCKET qSocket = INVALID_SOCKET;
+	
 
+	SOCKET socks[128];
 	NetworkUtil nets[128];
 	uint32_t currentFreeNet = 0;
 

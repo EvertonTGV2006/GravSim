@@ -106,8 +106,12 @@ void VulkanEngine::initEngine() {
     vkGetPhysicalDeviceProperties(physicalDevice, &properties);
 
 
-    if (!onlineGame) { cardEngine.initStock(); }
-    cardEngine.setupGame();
+    if (!onlineGame) {
+        cardEngine.initStock();
+        cardEngine.setupGame();
+    }
+
+
 
     std::vector<std::vector<char>> shaderCode;
     std::vector<std::string> shaderFiles;
@@ -260,7 +264,7 @@ void VulkanEngine::executeGraphics() {
 
     if (onlineGame) {
         //check if any commands received over network;
-        if (nc.net.packetReady = true) {
+        if (nc.net.packetReady == true) {
             //parse packet if so
             HeaderData* hPtr = reinterpret_cast<HeaderData*>(&nc.net.packetData);
             if (hPtr->packetType != CMD_PACKET) {
@@ -279,6 +283,7 @@ void VulkanEngine::executeGraphics() {
                 }
                 std::string cmdStr;
                 commandString.clear();
+                commandString.push_back(pkt->cmd[0]);
                 for (char i = 1; i <= lastChar; i++) { //ignore first char
                     cmdStr.push_back(pkt->cmd[i]);
                     commandString.push_back(pkt->cmd[i]);
