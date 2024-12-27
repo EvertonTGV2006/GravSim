@@ -261,8 +261,19 @@ void VulkanEngine::runGraphics() {
 }
 void VulkanEngine::executeGraphics() {
     bool commandSubmitFrame = false;
+    //check player window should close state
+    if (player->windowShouldClose == true) {
+        glfwSetWindowShouldClose(winmanager.window, GLFW_TRUE);
+    }
+
 
     if (onlineGame) {
+        //check if networking is still alive
+        if (nc.net.sendShutdown == true) {
+            player->windowShouldClose = true; //call for program exit if network disconnects
+            std::cout << "Networking disconnected, exiting" << std::endl;
+        }
+
         //check if any commands received over network;
         if (nc.net.packetReady == true) {
             //parse packet if so
@@ -304,6 +315,7 @@ void VulkanEngine::executeGraphics() {
                         else {
                             cardRasterizer.playerIndex = 1;
                         }
+                        commandSubmitFrame = true;
                     }
                 }
                 else {

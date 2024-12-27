@@ -57,14 +57,15 @@ enum packetTypes {
 	CMD_PACKET = 3
 };
 
-const uint32_t MAX_PKT_SIZE = 84;
+const uint32_t MAX_PKT_SIZE = 256;
 
 class NetworkUtil {
 public:
-	char packetData[MAX_PKT_SIZE];
+	char packetData[MAX_PKT_SIZE]; //weird pointer getting overwritten becasue packetdata was too small
 	std::atomic_bool packetReady = false;
 	std::atomic_bool packetFinished = true;
 	std::atomic_bool sendShutdown = false;
+	std::atomic_bool connectionClosed = false;
 	bool shutdownSent = false;
 	bool closeSocket = false;
 
