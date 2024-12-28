@@ -26,10 +26,13 @@
     <ClInclude Include="cardEngine.h" />
     <ClInclude Include="cardRasterizer.h" />
     <ClInclude Include="networking.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="textures\8BitDeck.png" />
     <Image Include="textures\Enhancers.png" />
+    <Image Include="textures\icon.ico" />
+    <Image Include="textures\icon.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\cardRasterizer\01.spv" />
@@ -60,5 +63,8 @@
     <None Include="shaders\uiRasterizer\02.frag" />
     <None Include="shaders\uiRasterizer\02.spv" />
     <None Include="profiles\default.toml" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="GravSim.rc" />
   </ItemGroup>
 </Project>

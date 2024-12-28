@@ -186,6 +186,7 @@ CALL compile.bat</Command>
     <ClInclude Include="geometry.h" />
     <ClInclude Include="grav.h" />
     <ClInclude Include="player.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="structs.h" />
     <ClInclude Include="uiRasterizer.h" />
     <ClInclude Include="window.h" />
@@ -195,6 +196,12 @@ CALL compile.bat</Command>
       <DeploymentContent>true</DeploymentContent>
     </Image>
     <Image Include="textures\Enhancers.png">
+      <DeploymentContent>true</DeploymentContent>
+    </Image>
+    <Image Include="textures\icon.ico">
+      <DeploymentContent>true</DeploymentContent>
+    </Image>
+    <Image Include="textures\icon.png">
       <DeploymentContent>true</DeploymentContent>
     </Image>
   </ItemGroup>
@@ -259,6 +266,9 @@ CALL compile.bat</Command>
     <None Include="shaders\uiRasterizer\02.spv">
       <DeploymentContent>true</DeploymentContent>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="GravSim.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
