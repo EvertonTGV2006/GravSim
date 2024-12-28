@@ -67,6 +67,9 @@ public:
 
 	bool lowPerformanceSetting;
 	bool onlineGame;
+	bool unlimitedFPS;
+
+	int targetFrameTime_uS;
 
 	float swapChainAspectRatio;
 
@@ -142,7 +145,7 @@ private:
 	std::chrono::time_point<std::chrono::high_resolution_clock> pt = std::chrono::high_resolution_clock::now();
 	std::chrono::time_point<std::chrono::high_resolution_clock> ct = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double> dt;
-
+	std::chrono::time_point<std::chrono::high_resolution_clock> nextFrameScheduled = std::chrono::high_resolution_clock::now();
 
 
 	bool firstFrame = true;

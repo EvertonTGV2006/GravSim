@@ -266,6 +266,12 @@ void VulkanEngine::executeGraphics() {
         glfwSetWindowShouldClose(winmanager.window, GLFW_TRUE);
     }
 
+    //now we wait until next frame;
+    if (!unlimitedFPS) {
+        std::this_thread::sleep_until(nextFrameScheduled);
+        nextFrameScheduled += std::chrono::microseconds(targetFrameTime_uS);
+    }
+
 
     if (onlineGame) {
         //check if networking is still alive

@@ -84,6 +84,13 @@ int main() {
 			//player.usrn = nc.usrn;
 			//player.oppn = nc.oppn;
 
+			int64_t targetFPS = config["capFPS"].value_or(60);
+			if(targetFPS == 0) {
+				engine.unlimitedFPS = true;
+			}
+			else {
+				engine.targetFrameTime_uS = 1000000 / targetFPS;
+			}
 			engine.player = &player;
 			engine.runNumber = 0;
 			engine.onlineGame = true;
@@ -108,7 +115,13 @@ int main() {
 
 			PlayerObject player;
 			VulkanEngine engine;
-
+			int64_t targetFPS = config["targetFPS"].value_or(60);
+			if (targetFPS == 0) {
+				engine.unlimitedFPS = true;
+			}
+			else {
+				engine.targetFrameTime_uS = 1000000 / targetFPS;
+			}
 			engine.player = &player;
 			engine.runNumber = 0;
 			engine.onlineGame = false;
