@@ -367,7 +367,7 @@ void VulkanEngine::executeGraphics() {
                 if (player->inputString[0] == '/') {
                     //special command;
                     commandString.push_back(cardRasterizer.playerIndex);
-                    for (uint32_t i = 0; i < i < player->inputString.size(); i++) {
+                    for (uint32_t i = 0; i < player->inputString.size(); i++) {
                         commandString.push_back(player->inputString[i]);
                     }
                     commandSubmitFrame = true;

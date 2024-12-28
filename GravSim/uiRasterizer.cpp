@@ -870,14 +870,13 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 			pc.charDimensions = charDimensions;
 			pc.screenPosition = blockScreenCoords;
 			pc.renderStage = 3;
-			pc.texAdvance = texAdvance;
-			pc.texDimensions = glm::vec2(1.0f / charCount, 1);
+			pc.texAdvance = texAdvance*0.9f;//0.9f makes text on the right align correctly, as to why I have no idea;
+			pc.texDimensions = glm::vec2(1.0f / charCount, 1.0f);
 			pc.instanceOffset = charIndex + boxCountc[i];
 			pc.inColour = glm::vec4(workingText->colour.x, workingText->colour.y, workingText->colour.z, 0.0f);
 			vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &pc);
 			vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), hBlockCountc[k], 0, 0);
 			charIndex += hBlockCountc[k];
-
 			localPos.push_back(blockScreenCoords);
 
 			texIndex += hBlockCount[k];

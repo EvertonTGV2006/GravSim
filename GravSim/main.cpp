@@ -89,7 +89,7 @@ int main() {
 				engine.unlimitedFPS = true;
 			}
 			else {
-				engine.targetFrameTime_uS = 1000000 / targetFPS;
+				engine.targetFrameTime_uS = static_cast<int>(1000000 / targetFPS);
 			}
 			engine.player = &player;
 			engine.runNumber = 0;
@@ -120,7 +120,7 @@ int main() {
 				engine.unlimitedFPS = true;
 			}
 			else {
-				engine.targetFrameTime_uS = 1000000 / targetFPS;
+				engine.targetFrameTime_uS = static_cast<int>(1000000 / targetFPS);
 			}
 			engine.player = &player;
 			engine.runNumber = 0;
