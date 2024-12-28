@@ -30,7 +30,12 @@ struct CardInit {
 };
 
 struct CardPushConstants {
+	glm::mat4 viewMat;
 	glm::mat4 viewPojectionMatrix;
+	glm::vec4 pos;
+	glm::vec4 dir;
+	glm::vec4 colour;
+	glm::vec4 eyePos;
 };
 struct CardDataConstant {
 	glm::mat4 cardMat;
@@ -53,7 +58,7 @@ public:
 
 	static const uint32_t MAX_STRING_LENGTH = 4096;
 
-	void drawElements(VkCommandBuffer, uint32_t, bool, glm::mat4);
+	void drawElements(VkCommandBuffer, uint32_t, bool, glm::mat4, glm::mat4);
 
 	static const uint32_t FRAMES_IN_FLIGHT = 3;
 

@@ -516,7 +516,8 @@ void CardRasterizer::createPipeline() {
 	VkPushConstantRange constantRange{};
 	constantRange.size = sizeof(CardPushConstants);
 	constantRange.offset = 0;
-	constantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	constantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
 
 	VkPipelineLayoutCreateInfo layoutInfo{};
 	layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -561,7 +562,7 @@ void CardRasterizer::getMemoryRequirements(std::vector<MemoryDetails>* details, 
 	}
 }
 
-void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameIndex, bool newCommand, glm::mat4 viewProjMat) {
+void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameIndex, bool newCommand, glm::mat4 viewMat, glm::mat4 projMat) {
 
 
 	//std::cout << glm::to_string(viewProjMat) << std::endl;
@@ -594,12 +595,12 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 			glm::vec2(0.7f, 0.0f),
 			glm::vec2(2.1f, 0.0f) };
 		handPositons = {
-			glm::vec2(0.0f, -1.3f),
-			glm::vec2(0.0f, 1.3f) };
+			glm::vec2(0.0f, -1.8f),
+			glm::vec2(0.0f, 1.8f) };
 		stockPosition = glm::vec2(4.4f, 0.0f);
 		winPositions = {
-			glm::vec2(-4.4f, -1.3f),
-			glm::vec2(-4.4f, 1.3f) };
+			glm::vec2(-4.4f, -1.7f),
+			glm::vec2(-4.4f, 1.7f) };
 
 
 		glm::vec2 tableLeft = glm::vec2(-0.35f * (table->size()+2), 0.0f);
@@ -686,18 +687,21 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 
 	//std::cout << timeDuration << std::endl;
 
-	double animationDuration = 1;
-	double animationSmoothness = 5;
+	const double animationDuration = 1;
+	const double animationSmoothness = 6;
 
 
 	float animationInterpolation = (timeDuration < animationDuration) ? 0.5f * float(glm::tanh(animationSmoothness * (timeDuration - (animationDuration / 2)))) + 0.5f : 1.0f;
 	glm::vec4 interpolatedCardData;
+	
 	glm::mat4 interpolatedMatData;
-	float animationLiftHeight = -0.2f;
+	const float animationLiftHeight = -0.4f;
+	float cardMoved;
 	
 	for (uint32_t i = 0; i < currentCardData.size(); i++) {
 		interpolatedCardData = (1.0f - animationInterpolation) * prevCardData[i] + animationInterpolation * currentCardData[i];
-		interpolatedCardData.z = animationLiftHeight * pow(glm::sin(glm::pi<float>() * animationInterpolation), 2.0f) + interpolatedCardData.z;
+		cardMoved = (pow(currentCardData[i].y - prevCardData[i].y, 2.0f) + pow(currentCardData[i].z - prevCardData[i].z, 2.0f) + pow(currentCardData[i].a - prevCardData[i].a, 2.0f) > 0.01f) ? 1.0f : 0.0f;
+		interpolatedCardData.z = cardMoved * animationLiftHeight * (4.0f*animationInterpolation * (1.0f-animationInterpolation))/*glm::sin(glm::pi<float>() * animationInterpolation)*/ + interpolatedCardData.z;
 		interpolatedMatData = glm::mat4{
 			{1.0f, 0.0, 0.0f, interpolatedCardData.x},
 			{0.0f, glm::cos(interpolatedCardData.a), -glm::sin(interpolatedCardData.a), interpolatedCardData.y},
@@ -753,7 +757,12 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 	//std::cout << 2 << std::endl;
 
 	CardPushConstants pc{};
-	pc.viewPojectionMatrix = viewProjMat;
+	pc.viewMat = viewMat;
+	pc.viewPojectionMatrix = projMat * viewMat;
+	pc.pos = glm::vec4(0.0f, 0.0f, -3.0f, 64.0f);
+	pc.dir = glm::vec4(0);
+	pc.colour = glm::vec4(1);
+	pc.eyePos = glm::vec4(player->pos.x, player->pos.y, player->pos.z, 1.0f);
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[frameIndex], 0, nullptr);
@@ -761,7 +770,7 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, offsets);
 	memcpy(uniformsMapped[frameIndex], cardData.data(), cardData.size() * sizeof(cardData[0]));
 
-	vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(CardPushConstants), &pc);
+	vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(CardPushConstants), &pc);
 
 	vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 52, 0, 0);
 	frameCounter++;

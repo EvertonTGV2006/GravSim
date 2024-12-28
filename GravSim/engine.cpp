@@ -459,9 +459,9 @@ void VulkanEngine::executeGraphics() {
     ubo.zeta = glm::mat4(1);
 
     //particleRasterizer.drawObjects(drawCommandBuffers[frameIndex], frameIndex, ubo);
-
+    //std::cout << "Draw";
     
-    cardRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex, commandSubmitFrame, ubo.proj * ubo.view);
+    cardRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex, commandSubmitFrame, ubo.view, ubo.proj);
 
     uiRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex);
 

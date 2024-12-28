@@ -1,4 +1,4 @@
-mode = "host"
+mode = "offline"
 usrn = "Gareth"
 port  = 25566
 server = "77.100.95.113"
