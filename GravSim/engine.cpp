@@ -64,8 +64,9 @@ void VulkanEngine::initNetworking() {
 void VulkanEngine::initEngine() {
     std::chrono::time_point startTime = std::chrono::high_resolution_clock::now();
     winmanager.initWindow();
-    player->winmanager = winmanager;
+    player->winmanager = &winmanager;
     player->updateGLFWcallbacks();
+    player->playerTurnStr = &playerTurnString;
     player->initUIElements(&frameCounter, &fpsVal);
     
 
@@ -315,6 +316,7 @@ void VulkanEngine::executeGraphics() {
                         }
                         nc.negotiateStock();
                         cardEngine.setupGame();
+                        player->destroyScoreBoxes();
                         if (cmdStr == "/newgame0") {
                             cardRasterizer.playerIndex = 0;
                         }
@@ -330,7 +332,6 @@ void VulkanEngine::executeGraphics() {
                         std::cout << "Received invalid command from sever, ignoring... " << std::endl;
                     }
                     else {
-                        cardEngine.handToPlay = (cardEngine.handToPlay + 1) % 2;
                         commandSubmitFrame = true;
                     }
                 }
@@ -350,7 +351,6 @@ void VulkanEngine::executeGraphics() {
                 }
                 else {
                     errCode = cardEngine.cardCommand(commandString);
-                    cardEngine.handToPlay = (cardEngine.handToPlay + 1) % 2;
                 }
                 if (errCode == COMMAND_SUCCESS) {
                     player->inputString.clear();
@@ -364,7 +364,23 @@ void VulkanEngine::executeGraphics() {
                 }
             }
             else {
-                std::cout << "Not your turn!" << std::endl;
+                if (player->inputString[0] == '/') {
+                    //special command;
+                    commandString.push_back(cardRasterizer.playerIndex);
+                    for (uint32_t i = 0; i < i < player->inputString.size(); i++) {
+                        commandString.push_back(player->inputString[i]);
+                    }
+                    commandSubmitFrame = true;
+                    CmdPacket pkt1{};
+                    pkt1.header.packetType = CMD_PACKET;
+                    memcpy(&pkt1.header.pName, nc.usrn.data(), nc.usrn.size());
+                    memcpy(&pkt1.cmd, commandString.data(), commandString.size());
+                    nc.net.sendPacket(reinterpret_cast<char*>(&pkt1));
+                    std::cout << "Sent packet to server" << std::endl;
+                }
+                else {
+                    std::cout << "Not your turn!" << std::endl;
+                }
             }
         }
     }
@@ -396,9 +412,49 @@ void VulkanEngine::executeGraphics() {
         playerNames.resize(2);
         if (isDealer) {
             playerNames[0] = std::string(nc.usrn.begin(), nc.usrn.end());
+            playerNames[1] = std::string(nc.oppn.begin(), nc.oppn.end());
+        }
+        else {
+            playerNames[0] = std::string(nc.oppn.begin(), nc.oppn.end());
             playerNames[1] = std::string(nc.usrn.begin(), nc.usrn.end());
         }
+        std::cout << *cardEngine.playerScores[0] << *cardEngine.playerScores[1] << std::endl;;
         player->initScoreBoxes(&cardEngine.playerScoreReasons, &cardEngine.playerScores, playerNames);
+    }
+    //upadte playerturnstring
+    if (commandSubmitFrame) {
+        //to-do
+        if (onlineGame) {
+            playerTurnString.clear();
+            if (cardRasterizer.playerIndex == cardEngine.handToPlay) {
+                
+                for (uint32_t i = 0; i < nc.usrn.size();i++) {
+                    if (nc.usrn[i] == 0) {
+                        break;
+                    }
+                    playerTurnString.push_back(nc.usrn[i]);
+                }
+            }
+            else {
+                for (uint32_t i = 0; i < nc.oppn.size(); i++) {
+                    if (nc.oppn[i] == 0) {
+                        break;
+                    }
+                    playerTurnString.push_back(nc.oppn[i]);
+                }
+            }
+        }
+        else {
+            if (cardRasterizer.playerIndex == 1) {
+                playerTurnString = "Player 1";
+            }
+            else {
+                playerTurnString = "Player 2";
+            }
+        }
+        for (uint32_t i = 0; i < playerTurnStringEnd.size(); i++) {
+            playerTurnString.push_back(playerTurnStringEnd[i]);
+        }
     }
 
 

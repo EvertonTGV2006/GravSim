@@ -313,9 +313,11 @@ uint32_t CardEngine::cardCommand(std::vector<char> command) {
 		}
 		else {
 			normalDeal();
+			handToPlay = (handToPlay + 1) % 2;
+			
 		}
 	}
-
+	handToPlay = (handToPlay + 1) % 2;
 
 	//printCards(0);
 	return COMMAND_SUCCESS;

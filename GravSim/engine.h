@@ -41,6 +41,8 @@ public:
 	std::atomic_bool commandReady = false;
 	std::mutex commandMutex;
 	std::vector<char> commandString;
+	std::string playerTurnString;
+	std::string playerTurnStringEnd = "'s Turn";
 
 
 	void initNetworking();

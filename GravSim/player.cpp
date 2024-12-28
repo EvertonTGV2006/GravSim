@@ -33,43 +33,24 @@ void PlayerObject::updateViewMat() {
 }
 
 void PlayerObject::updateGLFWcallbacks() {
-	glfwSetWindowUserPointer(winmanager.window, this);
+	glfwSetWindowUserPointer(winmanager->window, this);
 	int x, y;
-	glfwGetFramebufferSize(winmanager.window, &x, &y);
+	glfwGetFramebufferSize(winmanager->window, &x, &y);
 	xpos = x/2; ypos = y/2;
-	glfwSetInputMode(winmanager.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	glfwSetInputMode(winmanager.window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-	glfwSetFramebufferSizeCallback(winmanager.window, framebufferResizeCallback);
-	glfwSetCursorPosCallback(winmanager.window, mouseMotionCallback);
-	glfwSetCursorPos(winmanager.window, xpos, ypos);
+	glfwSetInputMode(winmanager->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	glfwSetInputMode(winmanager->window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+	glfwSetFramebufferSizeCallback(winmanager->window, framebufferResizeCallback);
+	glfwSetCursorPosCallback(winmanager->window, mouseMotionCallback);
+	glfwSetCursorPos(winmanager->window, xpos, ypos);
 	std::cout << "Setting Callbacks";
-	glfwSetKeyCallback(winmanager.window, keyCallback);
-	glfwSetScrollCallback(winmanager.window, scrollCallback);
-	glfwSetWindowCloseCallback(winmanager.window, windowCloseCallback);
-	glfwSetCharCallback(winmanager.window, charCallback);
+	glfwSetKeyCallback(winmanager->window, keyCallback);
+	glfwSetScrollCallback(winmanager->window, scrollCallback);
+	glfwSetWindowCloseCallback(winmanager->window, windowCloseCallback);
+	glfwSetCharCallback(winmanager->window, charCallback);
 
 }
 
 void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
-	elements.resize(4);
-	elements[0].textPosition = glm::vec2(-0.5, -0.5);
-	elements[0].textDimension = glm::vec2(10, 0.25);
-	elements[0].dataPointer = &str2;
-	elements[0].configuration = UI_REFERENCE_MODE_STRING;
-	elements[1].textDimension = glm::vec2(10, 0.25);
-	elements[1].textPosition = glm::vec2(0, 0);
-	elements[1].configuration = UI_REFERENCE_MODE_UINT32_T;
-	elements[1].dataPointer = &number;
-	elements[2].textDimension = glm::vec2(3, 0.1);
-	elements[2].textPosition = glm::vec2(-0.9, -0.9);
-	elements[2].dataPointer = frameIndex;
-	elements[2].labelPointer = &fLabel;
-	elements[2].configuration = UI_REFERENCE_MODE_LABEL_STR_VALUE;
-	elements[3].textDimension = glm::vec2(3, 0.1);
-	elements[3].textPosition = glm::vec2(-0.2, -0.9);
-	elements[3].dataPointer = fpsVal;
-	elements[3].labelPointer = &tLabel;
-	elements[3].configuration = UI_REFERENCE_MODE_LABEL_STR_VALUE;
 
 	std::string frameString1 = "Frame Count: ";
 	strings[0] = frameString1;
@@ -116,9 +97,21 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 	frameCounterBox.colour = glm::vec3(1.0f, 1.0f, 1.0f);
 	frameCounterBox.dataP = &(texts[0]);
 	frameCounterBox.textCount = 4;
+	
+	UIText playerTurnText;
+	playerTurnText.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_B | UI_NEWLINE_FALSE | UI_DATA_STRING;
+	playerTurnText.colour = glm::vec3(0.5f, 0.9f, 0.85f);
+	playerTurnText.dataP = playerTurnStr;
+	texts[126] = playerTurnText;
+
+	UIBox playerTurnBox = frameCounterBox;
+	playerTurnBox.dataP = &texts[126];
+	playerTurnBox.textCount = 1;
+	
 
 	boxes.push_back(commandBox);
 	boxes.push_back(frameCounterBox);
+	boxes.push_back(playerTurnBox);
 
 	//inputString.push_back('w');
 	
@@ -142,15 +135,21 @@ void PlayerObject::initScoreBoxes(std::vector<std::vector<std::string>*>* player
 	commandText.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_STRING;
 	commandText.dataP = &playerNames[1];
 	texts[textZero + 1] = commandText;
+	commandText.config = commandText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_TRUE | UI_DATA_UINT32_T;
+	commandText.dataP = (*playerScores)[0];
+	texts[textZero + 2] = commandText;
+	commandText.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_UINT32_T;
+	commandText.dataP = (*playerScores)[1];
+	texts[textZero + 3] = commandText;
 
 
 	for (uint32_t i = 0; i < minScore; i++) {
 		commandText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_TRUE | UI_DATA_STRING;
 		commandText.dataP = &(*(*playerScoreReasons)[0])[i];
-		texts[textZero + 2 * i + 2] = commandText;
+		texts[textZero + 4 * i + 2] = commandText;
 		commandText.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_STRING;
 		commandText.dataP = &(*(*playerScoreReasons)[1])[i];
-		texts[textZero + 2 * i + 3] = commandText;
+		texts[textZero + 4 * i + 3] = commandText;
 	}
 	for (uint32_t i = minScore; i < maxScore; i++) {
 		if (maxIndex == 0) {
@@ -163,19 +162,21 @@ void PlayerObject::initScoreBoxes(std::vector<std::vector<std::string>*>* player
 		}
 
 
-		texts[textZero + 2 + minScore + i] = commandText;
+		texts[textZero + 4 + minScore + i] = commandText;
 	}
 	UIBox commandBox{};
-	commandBox.pos = glm::vec2(0.02f, 0.02f);
+	commandBox.pos = glm::vec2(0.02f, 0.12f);
 	commandBox.size = glm::vec2(0.9f, 0.9f);
 	commandBox.colour = glm::vec3(1.0f, 1.0f, 1.0f);
 	commandBox.dataP = &(texts[textZero]);
-	commandBox.textCount = 2 + minScore + maxScore;
+	commandBox.textCount = 4 + minScore + maxScore;
 	boxes.push_back(commandBox);
 	
 }
 void PlayerObject::destroyScoreBoxes() {
-	boxes.pop_back();
+	if (boxes.size() > 3) {
+		boxes.pop_back();
+	}
 }
 
 void PlayerObject::framebufferResizeCallback(GLFWwindow* window, int width, int height){
