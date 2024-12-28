@@ -44,7 +44,7 @@ public:
 	const float zoomMin = 0.01f;
 	const float zoomMax = 100.0f;
 
-	WindowManager winmanager;
+	WindowManager* winmanager;
 
 	uint32_t playerOptions = PL_VIEW_LOCK_FOCUS | PL_VIEW_LOCK_UP;
 
@@ -87,9 +87,7 @@ public:
 	int windowxpos = 0;
 	int windowypos = 0;
 
-	std::vector<UIElement> elements;
-	uint32_t number = 42;
-	
+	void* playerTurnStr;
 	
 	std::vector<char> str1 = { 'H','e','l','l','o',' ','W','o','r','l','d' };
 	//std::vector<char> str = { 'A', 'n', 'y', 't', 'h', 'i', 'n', 'g' };
