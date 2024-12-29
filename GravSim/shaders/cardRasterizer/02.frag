@@ -51,6 +51,9 @@ void main(){
 
         //outColour = vec4(fragTexCoord, 0.0f, 1.0f);
     }
+    else if(mode==2){
+        outColour = vec4(colour.xyz, 1.0f);
+    }
     if(outColour.a == 0.0f){
         discard;
     }
@@ -73,7 +76,7 @@ void main(){
     vec4 specColour = outColour * max(spec, 0.0f);
 
     float ambCoeff = 1.0f;
-    float diffCoeff = 0.4f;
+    float diffCoeff = 0.5f;
     float specCoeff = 0.5f;
 
     finalColour = (specCoeff * specColour + ambCoeff * ambColour + diffCoeff * diffColour);

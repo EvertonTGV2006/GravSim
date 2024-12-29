@@ -761,7 +761,7 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 	pc.viewPojectionMatrix = projMat * viewMat;
 	pc.pos = glm::vec4(0.0f, 0.0f, -3.0f, 64.0f);
 	pc.dir = glm::vec4(0);
-	pc.colour = glm::vec4(1);
+	pc.colour = glm::vec4(0);
 	pc.eyePos = glm::vec4(player->pos.x, player->pos.y, player->pos.z, 1.0f);
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
@@ -771,8 +771,14 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 	memcpy(uniformsMapped[frameIndex], cardData.data(), cardData.size() * sizeof(cardData[0]));
 
 	vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(CardPushConstants), &pc);
-
 	vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 52, 0, 0);
+
+	//now also draw the floor
+	pc.colour = glm::vec4(34.0f / 256.0f, 139.0f / 256.0f, 34.0f / 256.0f, 2.0f);
+	vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(CardPushConstants), &pc);
+	vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+
+
 	frameCounter++;
 	if (frameCounter == 120) {
 		frameCounter = 0;

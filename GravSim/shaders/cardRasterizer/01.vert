@@ -90,7 +90,13 @@ void main() {
 
     }
     normal = (cardMat * cardNormal).xyz;
-
+    if(colour.a == 2.0f){
+        //hacky way to enable floor rendering
+        //now we make everything big
+        outPosition = vec4(15.0f * inPosition.xy,0.0f,1.0f);
+        normal = vec3(0.0f, 0.0f, 1.0f);
+        mode = 2;
+    }
 
 
     fragPos = (scaleMat * outPosition).xyz;
