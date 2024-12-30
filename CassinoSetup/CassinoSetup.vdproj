@@ -95,11 +95,6 @@
             "ComponentsUrl" = "8:"
                 "Items"
                 {
-                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:.NETFramework,Version=v4.7.2"
-                    {
-                    "Name" = "8:Microsoft .NET Framework 4.7.2 (x86 and x64)"
-                    "ProductCode" = "8:.NETFramework,Version=v4.7.2"
-                    }
                     "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:Microsoft.Visual.C++.14.0.x64"
                     {
                     "Name" = "8:Visual C++ \"14\" Runtime Libraries (x64)"
@@ -225,7 +220,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Cassino"
         "ProductCode" = "8:{AE1CE0F1-BBB9-4B21-AB8E-B64D0E961AE2}"
-        "PackageCode" = "8:{CEAC61AB-2E24-4F52-885A-E0D7C0C48142}"
+        "PackageCode" = "8:{B4209690-87F4-47BC-A2E1-D7FF4846F60D}"
         "UpgradeCode" = "8:{E7C5D7D1-D458-4DE3-B034-9F9FA45BA2EC}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"
