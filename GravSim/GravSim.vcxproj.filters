@@ -13,6 +13,7 @@
     <ClCompile Include="cardEngine.cpp" />
     <ClCompile Include="cardRasterizer.cpp" />
     <ClCompile Include="networking.cpp" />
+    <ClCompile Include="statusLogger.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="engine.h" />
@@ -27,6 +28,7 @@
     <ClInclude Include="cardRasterizer.h" />
     <ClInclude Include="networking.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="statusLogger.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="textures\8BitDeck.png" />

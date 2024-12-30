@@ -5,6 +5,8 @@
 #include <vector>
 #include <iostream>
 
+#include "statusLogger.h"
+
 enum cardSuit {
 	CARD_SUIT_DIAMONDS = 2,
 	CARD_SUIT_CLUBS = 1,
@@ -161,6 +163,7 @@ class CardEngine {
 public:
 	bool gameFinished = false;
 	uint32_t handToPlay = 1;
+	StatusLogger* stat;
 
 	std::vector<playingCard> stock;
 	std::vector<playingCard> DHand;

@@ -256,14 +256,59 @@ void CardRasterizer::createBuffers() {
 	createInfo.size = uniformBufferSize;
 	if (vkCreateBuffer(device, &createInfo, nullptr, &uniformBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create Card uniform buffer"); }
 
+
+
+	VkImageCreateInfo depthImageInfo{};
+	depthImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	depthImageInfo.imageType = VK_IMAGE_TYPE_2D;
+	depthImageInfo.extent.width = shadowImageSize;
+	depthImageInfo.extent.height = shadowImageSize;
+	depthImageInfo.extent.depth = 1;
+	depthImageInfo.mipLevels = 1;
+	depthImageInfo.arrayLayers = 1;
+	depthImageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	depthImageInfo.format = depthFormat;
+	depthImageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	depthImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depthImageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+	depthImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+
+	//if (vkCreateImage(device, &depthImageInfo, nullptr, &depthImage) != VK_SUCCESS) {throw std::runtime_error("Failed to create card depthImage");}
+	VkImageCreateInfo shadowImageInfo{};
+	shadowImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	shadowImageInfo.imageType = VK_IMAGE_TYPE_2D;
+	shadowImageInfo.extent.width = shadowImageSize;
+	shadowImageInfo.extent.height = shadowImageSize;
+	shadowImageInfo.extent.depth = 1;
+	shadowImageInfo.mipLevels = 1;
+	shadowImageInfo.arrayLayers = 6;
+	shadowImageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	shadowImageInfo.format = depthFormat;
+	shadowImageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	shadowImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	shadowImageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	shadowImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	shadowImageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+	//if (vkCreateImage(device, &shadowImageInfo, nullptr, &shadowImage) != VK_SUCCESS) {
+	//	throw std::runtime_error("Failed to create card shadowImage");
+	//}
+
+
+
+	
+	
 	vkGetBufferMemoryRequirements(device, vertexBuffer, &vertexRequirements.requirements);
 	vkGetBufferMemoryRequirements(device, uniformBuffer, &uniformRequirements.requirements);
+	//vkGetImageMemoryRequirements(device, depthImage, &depthRequirements.requirements);
+	//vkGetImageMemoryRequirements(device, shadowImage, &shadowRequirements.requirements);
 
 	for (uint32_t i = 0; i < texImage.size(); i++) {
 		vkGetImageMemoryRequirements(device, texImage[i], &texRequirements[i].requirements);
 		texRequirements[i].flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	}
 
+	depthRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	shadowRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	vertexRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	uniformRequirements.flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
@@ -284,6 +329,44 @@ void CardRasterizer::createImageView() {
 
 		if (vkCreateImageView(device, &viewInfo, nullptr, &texImageView[i]) != VK_SUCCESS) { throw std::runtime_error("Failed to create UI image view"); }
 	}
+	VkImageViewCreateInfo depthViewInfo{};
+	depthViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	depthViewInfo.image = depthImage;
+	depthViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	depthViewInfo.format = depthFormat;
+	depthViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+	depthViewInfo.subresourceRange.baseArrayLayer = 0;
+	depthViewInfo.subresourceRange.layerCount = 1;
+	depthViewInfo.subresourceRange.baseMipLevel = 0;
+	depthViewInfo.subresourceRange.levelCount = 1;
+
+	for (uint32_t i = 0; i < shadowCubeViews.size(); i++) {
+		VkImageViewCreateInfo cubeInfo{};
+		cubeInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		cubeInfo.image = shadowImage;
+		cubeInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		cubeInfo.format = shadowFormat;
+		cubeInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		cubeInfo.subresourceRange.baseArrayLayer = i;
+		cubeInfo.subresourceRange.layerCount = 1;
+		cubeInfo.subresourceRange.baseMipLevel = 0;
+		cubeInfo.subresourceRange.levelCount = 1;
+		//if (vkCreateImageView(device, &cubeInfo, nullptr, &shadowCubeViews[i]) != VK_SUCCESS) { throw std::runtime_error("Could not create shadow image view"); }
+	}
+	VkImageViewCreateInfo cubeInfo{};
+	cubeInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	cubeInfo.image = shadowImage;
+	cubeInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+	cubeInfo.format = shadowFormat;
+	cubeInfo.components = { VK_COMPONENT_SWIZZLE_R };
+	cubeInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	cubeInfo.subresourceRange.baseArrayLayer = 0;
+	cubeInfo.subresourceRange.layerCount = 6;
+	cubeInfo.subresourceRange.baseMipLevel = 0;
+	cubeInfo.subresourceRange.levelCount = 1;
+	//if (vkCreateImageView(device, &cubeInfo, nullptr, &shadowCubeMapView) != VK_SUCCESS) { throw std::runtime_error("Could not create shadow image view"); }
+	//if (vkCreateImageView(device, &depthViewInfo, nullptr, &depthView) != VK_SUCCESS) { throw std::runtime_error("Failed to create card depthImageView"); }
+
 }
 void CardRasterizer::createSampler() {
 	VkSamplerCreateInfo createInfo{};
@@ -305,6 +388,27 @@ void CardRasterizer::createSampler() {
 	for (uint32_t i = 0; i < texImage.size(); i++) {
 		if (vkCreateSampler(device, &createInfo, nullptr, &texSampler[i]) != VK_SUCCESS) { throw std::runtime_error("Failed to create Card sampler"); }
 	}
+	VkSamplerCreateInfo cubeInfo{};
+	cubeInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	cubeInfo.magFilter = VK_FILTER_LINEAR;
+	cubeInfo.minFilter = VK_FILTER_LINEAR;
+	cubeInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	cubeInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	cubeInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+	cubeInfo.anisotropyEnable = VK_FALSE;
+	cubeInfo.unnormalizedCoordinates = VK_FALSE;
+	cubeInfo.compareEnable = VK_FALSE;
+	cubeInfo.compareOp = VK_COMPARE_OP_NEVER;
+	cubeInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	cubeInfo.mipLodBias = 0.0f;
+	cubeInfo.minLod = 0.0f;
+	cubeInfo.maxLod = 1.0f;
+	cubeInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+
+	//if (vkCreateSampler(device, &createInfo, nullptr, &shadowSampler) != VK_SUCCESS) { throw std::runtime_error("Failed to create depth sampler"); }
+
+
+
 }
 
 void CardRasterizer::createDescriptorSets() {
@@ -400,6 +504,58 @@ void CardRasterizer::createDescriptorSets() {
 
 		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 	}
+}
+
+void CardRasterizer::createRenderPass() {
+
+	VkAttachmentDescription colorAttachment{};
+	colorAttachment.format = shadowFormat;
+	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	VkAttachmentDescription depthAttachment{};
+	depthAttachment.format = shadowFormat;
+	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference colorReference = {};
+	colorReference.attachment = 0;
+	colorReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference depthReference = {};
+	depthReference.attachment = 1;
+	depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkSubpassDescription subpass = {};
+	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpass.colorAttachmentCount = 1;
+	subpass.pColorAttachments = &colorReference;
+	subpass.pDepthStencilAttachment = &depthReference;
+
+	std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
+	VkRenderPassCreateInfo renderPassInfo{};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+	renderPassInfo.pAttachments = attachments.data();
+	renderPassInfo.dependencyCount = 0;
+	renderPassInfo.pDependencies = nullptr;
+	renderPassInfo.subpassCount = 1;
+	renderPassInfo.pSubpasses = &subpass;
+
+	//if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) { throw std::runtime_error("Failed to create shadow renderPass"); }
+
+	//now create offscreen framebuffers
+
 }
 
 void CardRasterizer::createPipeline() {

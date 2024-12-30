@@ -33,7 +33,7 @@ public:
 	WindowManager winmanager;
 	PlayerObject* player;
 	NetworkingClient nc;
-
+	StatusLogger* stat;
 
 
 	std::atomic_bool isDealer = false;
@@ -217,8 +217,12 @@ private:
 	VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 	void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
-		std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
-
+		//std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+		StatusLogger* statPtr = reinterpret_cast<StatusLogger*>(pUserData);
+		std::ostringstream os;
+		os << "Validation Layer: " << pCallbackData->messageIdNumber << " | " << pCallbackData->pMessage;
+		statPtr->addMessage(MSG_LEVEL_GRAPHICS, os.str());
+		
 		return VK_FALSE;
 	}
 };

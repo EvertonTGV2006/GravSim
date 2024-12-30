@@ -173,6 +173,7 @@ CALL compile.bat</Command>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="grav.cpp" />
     <ClCompile Include="player.cpp" />
+    <ClCompile Include="statusLogger.cpp" />
     <ClCompile Include="structs.cpp" />
     <ClCompile Include="uiRasterizer.cpp" />
     <ClCompile Include="window.cpp" />
@@ -187,6 +188,7 @@ CALL compile.bat</Command>
     <ClInclude Include="grav.h" />
     <ClInclude Include="player.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="statusLogger.h" />
     <ClInclude Include="structs.h" />
     <ClInclude Include="uiRasterizer.h" />
     <ClInclude Include="window.h" />

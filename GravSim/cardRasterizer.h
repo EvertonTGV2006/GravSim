@@ -47,6 +47,7 @@ class CardRasterizer {
 public:
 	void initCard_A(CardInit);
 	void initCard_B();
+	StatusLogger* stat;
 
 	void initMemory(std::array<MemInit, 4>);
 	
@@ -82,6 +83,28 @@ private:
 	VkDescriptorSetLayout descriptorSetLayout;
 
 	float* aspectRatio;
+
+	VkRenderPass shadowPass;
+	VkPipeline shadowPipeline;
+	VkPipelineLayout shadowPipelineLayout;
+	std::array<VkDescriptorSet, FRAMES_IN_FLIGHT> shadowDescriptorSets;
+	VkDescriptorSetLayout shadowDescriptorSetLayout;
+
+	VkImage depthImage;
+	MemInit depthImageMemory;
+	VkImageView depthView;
+	VkFormat depthFormat = VK_FORMAT_D16_UNORM;
+
+	VkImage shadowImage;
+	MemInit shadowImageMemory;
+	VkSampler shadowSampler;
+	std::array<VkFramebuffer, 6> shadowFramebuffers;
+	std::array<VkImageView, 6> shadowCubeViews;
+	VkImageView shadowCubeMapView;
+	VkFormat shadowFormat = VK_FORMAT_R32_SFLOAT;
+	const uint32_t shadowImageSize = 1024;
+
+
 
 	VkBuffer vertexBuffer;
 	MemInit vertexMemory;
@@ -136,6 +159,8 @@ private:
 	MemoryDetails vertexRequirements{};
 	MemoryDetails uniformRequirements{};
 	std::array<MemoryDetails, 2> texRequirements{};
+	MemoryDetails depthRequirements{};
+	MemoryDetails shadowRequirements{};
 
 	
 	void createPipeline();
@@ -143,7 +168,7 @@ private:
 	void createBuffers();
 	void createImageView();
 	void createSampler();
-
+	void createRenderPass();
 
 
 

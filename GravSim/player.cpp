@@ -42,7 +42,8 @@ void PlayerObject::updateGLFWcallbacks() {
 	glfwSetFramebufferSizeCallback(winmanager->window, framebufferResizeCallback);
 	glfwSetCursorPosCallback(winmanager->window, mouseMotionCallback);
 	glfwSetCursorPos(winmanager->window, xpos, ypos);
-	std::cout << "Setting Callbacks";
+	//std::cout << "Setting Callbacks";
+	stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Setting GLFW callbacks");
 	glfwSetKeyCallback(winmanager->window, keyCallback);
 	glfwSetScrollCallback(winmanager->window, scrollCallback);
 	glfwSetWindowCloseCallback(winmanager->window, windowCloseCallback);
@@ -107,11 +108,19 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 	UIBox playerTurnBox = frameCounterBox;
 	playerTurnBox.dataP = &texts[126];
 	playerTurnBox.textCount = 1;
+
+	UIBox statBox{};
+	statBox.pos = glm::vec2(0.5f, 0.02f);
+	statBox.size = glm::vec2(0.5f, 0.8f);
+	statBox.colour = glm::vec3(1);
+	statBox.dataP = &(stat->texts[0]);
+	statBox.textCount = stat->currentMsgCount;
 	
 
 	boxes.push_back(commandBox);
 	boxes.push_back(frameCounterBox);
 	boxes.push_back(playerTurnBox);
+	boxes.push_back(statBox);
 
 	//inputString.push_back('w');
 	
@@ -146,10 +155,10 @@ void PlayerObject::initScoreBoxes(std::vector<std::vector<std::string>*>* player
 	for (uint32_t i = 0; i < minScore; i++) {
 		commandText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_TRUE | UI_DATA_STRING;
 		commandText.dataP = &(*(*playerScoreReasons)[0])[i];
-		texts[textZero + 4 * i + 2] = commandText;
+		texts[textZero + 2 * i + 4] = commandText;
 		commandText.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_STRING;
 		commandText.dataP = &(*(*playerScoreReasons)[1])[i];
-		texts[textZero + 4 * i + 3] = commandText;
+		texts[textZero + 2 * i + 5] = commandText;
 	}
 	for (uint32_t i = minScore; i < maxScore; i++) {
 		if (maxIndex == 0) {
@@ -174,7 +183,7 @@ void PlayerObject::initScoreBoxes(std::vector<std::vector<std::string>*>* player
 	
 }
 void PlayerObject::destroyScoreBoxes() {
-	if (boxes.size() > 3) {
+	if (boxes.size() > 4) {
 		boxes.pop_back();
 	}
 }
@@ -354,6 +363,7 @@ void PlayerObject::updatePlayerMovement() {
 
 void PlayerObject::windowCloseCallback(GLFWwindow* window) {
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
-	std::cout << "Window close callback";
+	//std::cout << "Window close callback";
+	app->stat->addMessage(MSG_LEVEL_DEBUG, "Window Closing");
 	app->windowShouldClose = true;
 }

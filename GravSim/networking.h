@@ -10,6 +10,7 @@
 #include <fstream>
 
 #include "cardEngine.h"
+#include "statusLogger.h"
 
 #pragma comment(lib, "Ws2_32.lib")
 
@@ -69,12 +70,13 @@ public:
 	bool shutdownSent = false;
 	bool closeSocket = false;
 
-	void startWorker(SOCKET*);
+	void startWorker(SOCKET*, StatusLogger*);
 	void killWorker();
 	void sendPacket(char* data);
 
 private:
 	SOCKET* sock;
+	StatusLogger* stat;
 
 	std::thread workerThread;
 
@@ -104,6 +106,7 @@ class NetworkingClient {
 public:
 	NetworkUtil net;
 
+	StatusLogger* stat;
 	void initWinsock();
 	void negotiateStock();
 
@@ -136,11 +139,11 @@ class NetworkingServer
 {
 public:
 	void initWinsock();
-
+	StatusLogger* stat;
 private:
 	WSADATA wsaData;
 	SOCKET lSocket = INVALID_SOCKET;
-	
+
 
 	SOCKET socks[128];
 	NetworkUtil nets[128];

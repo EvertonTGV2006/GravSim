@@ -53,6 +53,7 @@ void VulkanEngine::initNetworking() {
     nc.ipaddr = ipaddropt.value();
     nc.portaddr = portaddropt.value();
     nc.stockPtr = &cardEngine.stock;
+    nc.stat = stat;
 
     nc.initWinsock(); /*we have now connected to the server and have an opponent*/
 
@@ -62,14 +63,18 @@ void VulkanEngine::initNetworking() {
 }
 
 void VulkanEngine::initEngine() {
+    stat->addMessage(MSG_LEVEL_STARTUP, "Starting Engine");
+
     std::chrono::time_point startTime = std::chrono::high_resolution_clock::now();
     winmanager.initWindow();
     player->winmanager = &winmanager;
     player->updateGLFWcallbacks();
     player->playerTurnStr = &playerTurnString;
     player->initUIElements(&frameCounter, &fpsVal);
-    
 
+    cardEngine.stat = stat;
+    cardRasterizer.stat = stat;
+    uiRasterizer.stat = stat;
 
     std::vector<Mesh> meshes;
     meshes.resize(1);
@@ -222,8 +227,10 @@ void VulkanEngine::initEngine() {
     std::chrono::time_point endTime = std::chrono::high_resolution_clock::now();
 
     std::chrono::duration<double> elapsedTime = endTime - startTime;
+    std::string timeStr = /*std::format("{:%S}", elapsedTime)*/std::to_string(elapsedTime.count());
 
-    std::cout <<std::endl<<"Program took " << elapsedTime << " to start." << std::endl;
+    //std::cout <<std::endl<<"Program took " << elapsedTime << " to start." << std::endl;
+    stat->addMessage(MSG_LEVEL_USER, "Program took " + timeStr + " seconds to start");
 }
 
 void VulkanEngine::readFiles(std::vector<std::string> files, std::vector<std::vector<char>>* code) {
@@ -240,7 +247,8 @@ void VulkanEngine::readFiles(std::vector<std::string> files, std::vector<std::ve
         file.read((*code)[i].data(), fileSize);
         file.close();
 
-        std::cout << "Loaded " << files[i] << std::endl;
+        /*std::cout << "Loaded " << files[i] << std::endl;*/
+        stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Loaded " + files[i]);
     }
 }
 
@@ -272,13 +280,16 @@ void VulkanEngine::executeGraphics() {
         std::this_thread::sleep_until(nextFrameScheduled);
         nextFrameScheduled += std::chrono::microseconds(targetFrameTime_uS);
     }
+    //update stat boxes;
+    player->boxes[3].textCount = 0/*stat->currentMsgCount*/;
 
 
     if (onlineGame) {
         //check if networking is still alive
         if (nc.net.sendShutdown == true) {
             player->windowShouldClose = true; //call for program exit if network disconnects
-            std::cout << "Networking disconnected, exiting" << std::endl;
+            //std::cout << "Networking disconnected, exiting" << std::endl;
+            stat->addMessage(MSG_LEVEL_URGENT, "Networking disconnected, exiting");
         }
 
         //check if any commands received over network;
@@ -329,7 +340,8 @@ void VulkanEngine::executeGraphics() {
                 else {
                     uint32_t errCode = cardEngine.cardCommand(commandString);
                     if (errCode != COMMAND_SUCCESS) {
-                        std::cout << "Received invalid command from sever, ignoring... " << std::endl;
+                        //std::cout << "Received invalid command from sever, ignoring... " << std::endl;
+                        stat->addMessage(MSG_LEVEL_DEBUG, "Received erroneous command from server, ignoring");
                     }
                     else {
                         commandSubmitFrame = true;
@@ -376,10 +388,12 @@ void VulkanEngine::executeGraphics() {
                     memcpy(&pkt1.header.pName, nc.usrn.data(), nc.usrn.size());
                     memcpy(&pkt1.cmd, commandString.data(), commandString.size());
                     nc.net.sendPacket(reinterpret_cast<char*>(&pkt1));
-                    std::cout << "Sent packet to server" << std::endl;
+                    //std::cout << "Sent packet to server" << std::endl;
+                    stat->addMessage(MSG_LEVEL_NETWORK_HIGH, "Sent packet to server");
                 }
                 else {
-                    std::cout << "Not your turn!" << std::endl;
+                    //std::cout << "Not your turn!" << std::endl;
+                    stat->addMessage(MSG_LEVEL_USER, "Not your turn!");
                 }
             }
         }
@@ -418,7 +432,7 @@ void VulkanEngine::executeGraphics() {
             playerNames[0] = std::string(nc.oppn.begin(), nc.oppn.end());
             playerNames[1] = std::string(nc.usrn.begin(), nc.usrn.end());
         }
-        std::cout << *cardEngine.playerScores[0] << *cardEngine.playerScores[1] << std::endl;;
+        //std::cout << *cardEngine.playerScores[0] << *cardEngine.playerScores[1] << std::endl;;
         player->initScoreBoxes(&cardEngine.playerScoreReasons, &cardEngine.playerScores, playerNames);
     }
     //upadte playerturnstring
@@ -1294,8 +1308,22 @@ void VulkanEngine::pickPhysicalDevice() {
             physicalDevice = devices[i];
             VkPhysicalDeviceProperties prop;
             vkGetPhysicalDeviceProperties(devices[i], &prop);
-            std::cout << "Device Picked is " << prop.deviceName << std::endl;
-            std::cout << "Max vulkan version is " << prop.apiVersion << std::endl;
+            //std::cout << "Device Picked is " << prop.deviceName << std::endl;
+            //std::cout << "Max vulkan version is " << prop.apiVersion << std::endl;
+            std::string nameStr;
+            uint32_t breakChar = 0;
+            for (uint32_t i = 255; i > 0; i--) {
+                if (prop.deviceName[i] != 0) {
+                    breakChar = i;
+                    break;
+                }
+            }
+            for (uint32_t i = 0; i <= breakChar; i++) {
+                nameStr.push_back(prop.deviceName[i]);
+            }
+            stat->addMessage(MSG_LEVEL_STARTUP, "Device picked is " + nameStr);
+            stat->addMessage(MSG_LEVEL_DEBUG, "Max Vulkan version is " + std::to_string(prop.apiVersion));
+            
         }
     }
 }
@@ -1733,6 +1761,7 @@ void VulkanEngine::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateI
     createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
     createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
     createInfo.pfnUserCallback = debugCallback;
+    createInfo.pUserData = stat;
 }
 void VulkanEngine::setupDebugMessenger() {
     if (!enableValidationLayers) return;

@@ -20,6 +20,7 @@
 #include "geometry.h"
 
 #include "networking.h"
+#include "statusLogger.h"
 
 const std::vector<const char*> validationLayers = { "VK_LAYER_KHRONOS_validation" };
 
@@ -46,11 +47,14 @@ int main() {
 	//file.open("data.csv");
 	//file << "\n";
 	//file.close();
+
+	StatusLogger stat{};
+
 	try {
 		if (config["mode"] == "server") {
 
 			NetworkingServer ns;
-
+			ns.stat = &stat;
 			ns.initWinsock();
 			
 		}
@@ -68,7 +72,9 @@ int main() {
 			//cards.processTurns();
 
 			PlayerObject player;
+			player.stat = &stat;
 			VulkanEngine engine;
+			engine.stat = &stat;
 			//NetworkingClient nc;
 			//std::optional<std::string> usrStr = config["usrn"].value<std::string>();
 			//std::array<char, 8> usrn{};
@@ -131,11 +137,15 @@ int main() {
 		}
 	}
 	catch (const std::exception& e) {
+		
+		stat.addMessage(MSG_LEVEL_URGENT, e.what());
+		stat.writeOutMessages();
 		std::cerr << e.what() << std::endl;
 		std::cout << "Press ENTER to continue...";
 		std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 		return EXIT_FAILURE;
 	}
+	stat.writeOutMessages();
 	std::cout << 1 << std::endl;
 	std::cout << "Press ENTER to continue...";
 	std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');

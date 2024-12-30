@@ -15,6 +15,7 @@
 #include "structs.h"
 #include <chrono>
 //#include "renderer.h"
+#include "statusLogger.h"
 
 enum playerViewOptions {
 	PL_VIEW_LOCK_FOCUS = 1,
@@ -31,7 +32,7 @@ enum playerMoveOptions {
 
 class PlayerObject {
 public:
-
+	StatusLogger* stat;
 
 	std::atomic_bool windowShouldClose;
 	bool validateParticles = false;

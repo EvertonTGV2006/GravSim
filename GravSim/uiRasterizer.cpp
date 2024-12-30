@@ -188,7 +188,7 @@ void UIRasterizer::createBuffers() {
 	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	if (vkCreateImage(device, &imageInfo, nullptr, &texImage) != VK_SUCCESS) { throw std::runtime_error("Failed to create texture atlas image"); }
 
-	uniformBufferRegion = sizeof(char) * stringLength;
+	uniformBufferRegion = sizeof(char) * MAX_STRING_LENGTH;
 	uniformBufferSize = uniformBufferRegion * FRAMES_IN_FLIGHT;
 
 	VkBufferCreateInfo createInfo{};
