@@ -12,6 +12,7 @@
 
 #include "structs.h"
 #include "player.h"
+#include "statusLogger.h"
 
 struct UIInit {
 	VkDevice device;
@@ -25,7 +26,7 @@ struct UIInit {
 	float* aspectRatio;
 
 	PlayerObject* player;
-
+	
 };
 
 struct UIPushConstants {
@@ -62,7 +63,7 @@ public:
 	void initBufferData_B(VkCommandBuffer, VkQueue, MemInit);
 	std::vector<std::string> shaderFiles = { "shaders/uiRasterizer/01.spv", "shaders/uiRasterizer/02.spv" };
 
-
+	StatusLogger* stat;
 private:
 	VkDevice device;
 	VkDescriptorPool descriptorPool;
@@ -101,6 +102,7 @@ private:
 	FT_Face face;
 
 	PlayerObject* player;
+
 
 	std::vector<char*> bitmapData;
 	uint32_t bitmapHeight;

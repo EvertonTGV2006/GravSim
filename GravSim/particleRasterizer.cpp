@@ -270,15 +270,15 @@ void particleRasterizer::createBuffers() {
 			indexOffsets[i] = 0;
 		}
 		else {
-			vertexOffsets[i] = vertexRequirements.requirements.size;
-			indexOffsets[i] = indexRequirements.requirements.size;
+			vertexOffsets[i] = static_cast<uint32_t>(vertexRequirements.requirements.size);
+			indexOffsets[i] = static_cast<uint32_t>(indexRequirements.requirements.size);
 
 			vertexRequirements.requirements.size += vertexMem.size;
 			indexRequirements.requirements.size += indexMem.size;
 		}
 	}
-	vertexOffsets.push_back(vertexRequirements.requirements.size);
-	indexOffsets.push_back(indexRequirements.requirements.size);
+	vertexOffsets.push_back(static_cast<uint32_t>(vertexRequirements.requirements.size));
+	indexOffsets.push_back(static_cast<uint32_t>(indexRequirements.requirements.size));
 
 	//now make uniform buffer
 	VkDeviceSize bufferSize = sizeof(UniformBufferObject) * FRAMES_IN_FLIGHT;
@@ -305,9 +305,9 @@ void particleRasterizer::initMemory(std::array<MemInit, 3> details) {
 	uniformBufferMemory = details[2];
 
 	
-	std::cout << vertexMemory.range << " | " << vertexRequirements.requirements.size << std::endl;
-	std::cout << indexMemory.range << " | " << indexRequirements.requirements.size << std::endl;
-	std::cout << uniformBufferMemory.range << " | " << uniformRequirements.requirements.size << std::endl;
+	//std::cout << vertexMemory.range << " | " << vertexRequirements.requirements.size << std::endl;
+	//std::cout << indexMemory.range << " | " << indexRequirements.requirements.size << std::endl;
+	//std::cout << uniformBufferMemory.range << " | " << uniformRequirements.requirements.size << std::endl;
 
 	for (size_t i = 0; i < meshes.size(); i++) {
 		vkBindBufferMemory(device, vertexBuffers[i], vertexMemory.memory, vertexMemory.offset + vertexOffsets[i]);
@@ -323,13 +323,13 @@ void particleRasterizer::initMemory(std::array<MemInit, 3> details) {
 
 	uniformBufferMapped = static_cast<char*>(data);
 
-	std::cout << static_cast<char*>(data) << std::endl;
-	std::cout << uniformBufferMapped << std::endl;
-	std::cout << uniformBufferMapped + sizeof(UniformBufferObject) << std::endl;
+	//std::cout << static_cast<char*>(data) << std::endl;
+	//std::cout << uniformBufferMapped << std::endl;
+	//std::cout << uniformBufferMapped + sizeof(UniformBufferObject) << std::endl;
 
-	char* data2 = uniformBufferMapped + sizeof(UniformBufferObject);
-	std::cout << sizeof(UniformBufferObject) << std::endl;
-	std::cout << static_cast<void*>(data2) << std::endl;
+	//char* data2 = uniformBufferMapped + sizeof(UniformBufferObject);
+	//std::cout << sizeof(UniformBufferObject) << std::endl;
+	//std::cout << static_cast<void*>(data2) << std::endl;
 }
 
 void particleRasterizer::initBufferData_A(MemoryDetails* stagingRequirements) {
@@ -378,8 +378,8 @@ void particleRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer,
 		std::vector<Vertex> newVert(meshes[i].vertices->size());
 		memcpy(newVert.data(), meshes[i].vertices->data(), meshes[i].vertices->size() * sizeof(Vertex));
 
-		std::cout << *reinterpret_cast<float*>(data) << std::endl;
-		std::cout << *(reinterpret_cast<float*>(data) + 8) << std::endl;
+		//std::cout << *reinterpret_cast<float*>(data) << std::endl;
+		//std::cout << *(reinterpret_cast<float*>(data) + 8) << std::endl;
 
 		if(vkBeginCommandBuffer(transferCommandBuffer, &beginInfo) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to begin transfer command buffer");
@@ -400,16 +400,16 @@ void particleRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer,
 		memoryRange.offset = stagingMemory.offset;
 		memoryRange.size = stagingMemory.range;
 
-		std::cout << "Fence: " << vkGetFenceStatus(device, transferFence);
+		//std::cout << "Fence: " << vkGetFenceStatus(device, transferFence);
 		//vkFlushMappedMemoryRanges(device, 1, &memoryRange);
 		vkQueueSubmit(transferQueue, 1, &submitInfo, transferFence);
-		std::cout<<"Fence: "<<vkGetFenceStatus(device, transferFence);
+		//std::cout<<"Fence: "<<vkGetFenceStatus(device, transferFence);
 		vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
-		std::cout << "Fence: " << vkGetFenceStatus(device, transferFence);
+		//std::cout << "Fence: " << vkGetFenceStatus(device, transferFence);
 		vkResetFences(device, 1, &transferFence);
-		std::cout << "Fence: " << vkGetFenceStatus(device, transferFence);
+		//std::cout << "Fence: " << vkGetFenceStatus(device, transferFence);
 		vkResetCommandBuffer(transferCommandBuffer, 0);
-		std::cout << *(reinterpret_cast<float*>(data) + 8) << std::endl;
+		//std::cout << *(reinterpret_cast<float*>(data) + 8) << std::endl;
 	}
 	//for (size_t i = 0; i < meshes.size(); i++) {
 	//	//indices
@@ -436,8 +436,8 @@ void particleRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer,
 		std::vector<uint16_t> newVert(meshes[i].indices->size());
 		memcpy(newVert.data(), meshes[i].indices->data(), meshes[i].indices->size() * sizeof(uint16_t));
 
-		std::cout << *reinterpret_cast<float*>(data) << std::endl;
-		std::cout << *(reinterpret_cast<float*>(data) + 8) << std::endl;
+		//std::cout << *reinterpret_cast<float*>(data) << std::endl;
+		//std::cout << *(reinterpret_cast<float*>(data) + 8) << std::endl;
 
 		if (vkBeginCommandBuffer(transferCommandBuffer, &beginInfo) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to begin transfer command buffer");
@@ -458,16 +458,16 @@ void particleRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer,
 		memoryRange.offset = stagingMemory.offset;
 		memoryRange.size = stagingMemory.range;
 
-		std::cout << "Fence: " << vkGetFenceStatus(device, transferFence);
+		//std::cout << "Fence: " << vkGetFenceStatus(device, transferFence);
 		//vkFlushMappedMemoryRanges(device, 1, &memoryRange);
 		vkQueueSubmit(transferQueue, 1, &submitInfo, transferFence);
-		std::cout << "Fence: " << vkGetFenceStatus(device, transferFence);
+		//std::cout << "Fence: " << vkGetFenceStatus(device, transferFence);
 		vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
-		std::cout << "Fence: " << vkGetFenceStatus(device, transferFence);
+		//std::cout << "Fence: " << vkGetFenceStatus(device, transferFence);
 		vkResetFences(device, 1, &transferFence);
-		std::cout << "Fence: " << vkGetFenceStatus(device, transferFence);
+		//std::cout << "Fence: " << vkGetFenceStatus(device, transferFence);
 		vkResetCommandBuffer(transferCommandBuffer, 0);
-		std::cout << *(reinterpret_cast<float*>(data) + 8) << std::endl;
+		//std::cout << *(reinterpret_cast<float*>(data) + 8) << std::endl;
 	}
 	vkUnmapMemory(device, stagingMemory.memory);
 

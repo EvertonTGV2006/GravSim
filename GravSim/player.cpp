@@ -33,42 +33,25 @@ void PlayerObject::updateViewMat() {
 }
 
 void PlayerObject::updateGLFWcallbacks() {
-	glfwSetWindowUserPointer(winmanager.window, this);
+	glfwSetWindowUserPointer(winmanager->window, this);
 	int x, y;
-	glfwGetFramebufferSize(winmanager.window, &x, &y);
+	glfwGetFramebufferSize(winmanager->window, &x, &y);
 	xpos = x/2; ypos = y/2;
-	glfwSetInputMode(winmanager.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	glfwSetInputMode(winmanager.window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-	glfwSetFramebufferSizeCallback(winmanager.window, framebufferResizeCallback);
-	glfwSetCursorPosCallback(winmanager.window, mouseMotionCallback);
-	glfwSetCursorPos(winmanager.window, xpos, ypos);
-	std::cout << "Setting Callbacks";
-	glfwSetKeyCallback(winmanager.window, keyCallback);
-	glfwSetScrollCallback(winmanager.window, scrollCallback);
-	glfwSetWindowCloseCallback(winmanager.window, windowCloseCallback);
+	glfwSetInputMode(winmanager->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	glfwSetInputMode(winmanager->window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+	glfwSetFramebufferSizeCallback(winmanager->window, framebufferResizeCallback);
+	glfwSetCursorPosCallback(winmanager->window, mouseMotionCallback);
+	glfwSetCursorPos(winmanager->window, xpos, ypos);
+	//std::cout << "Setting Callbacks";
+	stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Setting GLFW callbacks");
+	glfwSetKeyCallback(winmanager->window, keyCallback);
+	glfwSetScrollCallback(winmanager->window, scrollCallback);
+	glfwSetWindowCloseCallback(winmanager->window, windowCloseCallback);
+	glfwSetCharCallback(winmanager->window, charCallback);
 
 }
 
 void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
-	elements.resize(4);
-	elements[0].textPosition = glm::vec2(0.3, 0.7);
-	elements[0].textDimension = glm::vec2(10, 0.25);
-	elements[0].dataPointer = &str2;
-	elements[0].configuration = UI_REFERENCE_MODE_STRING;
-	elements[1].textDimension = glm::vec2(10, 0.25);
-	elements[1].textPosition = glm::vec2(0.8, 0);
-	elements[1].configuration = UI_REFERENCE_MODE_UINT32_T;
-	elements[1].dataPointer = &number;
-	elements[2].textDimension = glm::vec2(3, 0.1);
-	elements[2].textPosition = glm::vec2(-0.9, -0.9);
-	elements[2].dataPointer = frameIndex;
-	elements[2].labelPointer = &fLabel;
-	elements[2].configuration = UI_REFERENCE_MODE_LABEL_STR_VALUE;
-	elements[3].textDimension = glm::vec2(3, 0.1);
-	elements[3].textPosition = glm::vec2(-0.2, -0.9);
-	elements[3].dataPointer = fpsVal;
-	elements[3].labelPointer = &tLabel;
-	elements[3].configuration = UI_REFERENCE_MODE_LABEL_STR_VALUE;
 
 	std::string frameString1 = "Frame Count: ";
 	strings[0] = frameString1;
@@ -96,7 +79,18 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 	frameCounterText1.dataP = fpsVal;
 	texts[3] = frameCounterText1;
 
-	
+	UIText commandText{};
+	commandText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_B | UI_NEWLINE_FALSE | UI_DATA_CHAR_VEC;
+	commandText.colour = glm::vec3(0.9f, 0.9f, 0.92f);
+	commandText.dataP = &inputString;
+	texts[4] = commandText;
+
+	UIBox commandBox{};
+	commandBox.pos = glm::vec2(0.02f, 0.02f);
+	commandBox.size = glm::vec2(0.9f, 0.9f);
+	commandBox.colour = glm::vec3(1.0f, 1.0f, 1.0f);;
+	commandBox.dataP = &(texts[4]);
+	commandBox.textCount = 1;
 
 	UIBox frameCounterBox{};
 	frameCounterBox.pos = glm::vec2(0.02f, 0.02f);
@@ -105,9 +99,23 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 	frameCounterBox.dataP = &(texts[0]);
 	frameCounterBox.textCount = 4;
 
-	boxes.push_back(frameCounterBox);
+	UIBox playerTurnBox = frameCounterBox;
+	playerTurnBox.dataP = &texts[126];
+	playerTurnBox.textCount = 1;
 
-	
+	UIBox statBox{};
+	statBox.pos = glm::vec2(0.5f, 0.02f);
+	statBox.size = glm::vec2(0.5f, 0.8f);
+	statBox.colour = glm::vec3(1);
+	statBox.dataP = &(stat->texts[0]);
+	statBox.textCount = stat->currentMsgCount;
+
+
+	boxes.push_back(commandBox);
+	boxes.push_back(frameCounterBox);
+	boxes.push_back(statBox);
+
+	//inputString.push_back('w');
 }
 
 void PlayerObject::framebufferResizeCallback(GLFWwindow* window, int width, int height){
@@ -118,8 +126,8 @@ void PlayerObject::mouseMotionCallback(GLFWwindow* window, double xpos, double y
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
 	//std::cout << "Mouse callback" << std::endl;
 
-	double dx = xpos - app->xpos;
-	double dy = ypos - app->ypos;
+	float dx = float(xpos - app->xpos);
+	float dy = float(ypos - app->ypos);
 	app->xpos = xpos;
 	app->ypos = ypos;
 	if (app->playerOptions & PL_VIEW_INVERT_Y_AXIS) {
@@ -127,15 +135,15 @@ void PlayerObject::mouseMotionCallback(GLFWwindow* window, double xpos, double y
 	}
 	app->anglez += dy * app->yscale;
 	app->anglexy += dx * app->xscale;
-	if (app->anglez < -glm::half_pi<double>()) {
-		app->anglez = -glm::half_pi<double>();
+	if (app->anglez <= -glm::half_pi<float>()+0.001f) {
+		app->anglez = -glm::half_pi<float>() + 0.001f;
 	}
-	if (app->anglez > glm::half_pi<double>()) {
-		app->anglez=glm::half_pi<double>();
+	if (app->anglez >= glm::half_pi<float>()-0.001f) {
+		app->anglez=glm::half_pi<float>() - 0.001f;
 	}
 	app->viewDirection.z = glm::sin(app->anglez);
-	app->viewDirection.x = glm::sin(app->anglexy) * glm::sqrt(1 - glm::pow(app->viewDirection.z, 2));
-	app->viewDirection.y = glm::cos(app->anglexy) * glm::sqrt(1 - glm::pow(app->viewDirection.z, 2));
+	app->viewDirection.x = glm::sin(app->anglexy) * glm::sqrt(1.0f - glm::pow(app->viewDirection.z, 2.0f));
+	app->viewDirection.y = glm::cos(app->anglexy) * glm::sqrt(1.0f - glm::pow(app->viewDirection.z, 2.0f));
 
 	//std::cout << "sin + cos" << glm::pow(glm::sin(app->anglexy),2) + glm::cos(app->anglexy) << std::endl;;
 
@@ -147,7 +155,7 @@ void PlayerObject::mouseMotionCallback(GLFWwindow* window, double xpos, double y
 }
 void PlayerObject::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
-	std::cout << "Key: " << key << " | Action: " << action << std::endl;
+	//std::cout << "Key: " << key << " | Action: " << action << std::endl;
 
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		//std::cout << "Window should close cmd";
@@ -155,36 +163,36 @@ void PlayerObject::keyCallback(GLFWwindow* window, int key, int scancode, int ac
 		glfwSetWindowShouldClose(window, GLFW_TRUE);
 		//std::cout << "Close Window!" << std::endl;
 	}
-	else if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
-		if (app->timePause == false) { app->timePause = true; }
-		else if (app->timePause == true) { app->timePause = false; }
-	}
-	else if (key == GLFW_KEY_K && action == GLFW_PRESS) {
-		app->triggerStep = true;
-	}
-	else if (key == GLFW_KEY_TAB && action == GLFW_PRESS) {
-		app->timeAccel = true;
-	}
-	else if (key == GLFW_KEY_TAB && action == GLFW_RELEASE) {
-		app->timeAccel = false;	
-	}
-	else if (key == GLFW_KEY_V && action == GLFW_PRESS) {
-		app->validateParticles = true; //validate particles
-	}
-	else if (action == GLFW_PRESS && key == GLFW_KEY_P) {
-		if (glfwGetWindowMonitor(window) == NULL) {
-			glfwGetWindowPos(window, &app->windowxpos, &app->windowypos);
-			glfwSetWindowMonitor(window, glfwGetPrimaryMonitor(), 0, 0, 1920, 1080, GLFW_DONT_CARE);
-		}
-	}
-	else if (action == GLFW_PRESS && key == GLFW_KEY_O) {
-		if (glfwGetWindowMonitor(window) != NULL) {
-			glfwSetWindowMonitor(window, NULL, app->windowxpos, app->windowypos, 800, 600, GLFW_DONT_CARE);
-		}
-	}
-	else if (action == GLFW_PRESS && key == GLFW_KEY_Z) {
-		app->triggerStep = true;
-	}
+	//else if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
+	//	if (app->timePause == false) { app->timePause = true; }
+	//	else if (app->timePause == true) { app->timePause = false; }
+	//}
+	//else if (key == GLFW_KEY_K && action == GLFW_PRESS) {
+	//	app->triggerStep = true;
+	//}
+	//else if (key == GLFW_KEY_TAB && action == GLFW_PRESS) {
+	//	app->timeAccel = true;
+	//}
+	//else if (key == GLFW_KEY_TAB && action == GLFW_RELEASE) {
+	//	app->timeAccel = false;	
+	//}
+	//else if (key == GLFW_KEY_V && action == GLFW_PRESS) {
+	//	app->validateParticles = true; //validate particles
+	//}
+	//else if (action == GLFW_PRESS && key == GLFW_KEY_P) {
+	//	if (glfwGetWindowMonitor(window) == NULL) {
+	//		glfwGetWindowPos(window, &app->windowxpos, &app->windowypos);
+	//		glfwSetWindowMonitor(window, glfwGetPrimaryMonitor(), 0, 0, 1920, 1080, GLFW_DONT_CARE);
+	//	}
+	//}
+	//else if (action == GLFW_PRESS && key == GLFW_KEY_O) {
+	//	if (glfwGetWindowMonitor(window) != NULL) {
+	//		glfwSetWindowMonitor(window, NULL, app->windowxpos, app->windowypos, 800, 600, GLFW_DONT_CARE);
+	//	}
+	//}
+	//else if (action == GLFW_PRESS && key == GLFW_KEY_Z) {
+	//	app->triggerStep = true;
+	//}
 	else if (action == GLFW_PRESS) {
 			app->playerMoveFlags |= app->keyBindings[key];
 		}
@@ -193,24 +201,38 @@ void PlayerObject::keyCallback(GLFWwindow* window, int key, int scancode, int ac
 	}
 	//std::cout << app->pos.x << " " << app->pos.y << " " << app->pos.z << std::endl;
 	//std::cout << app->playerMoveFlags << std::endl;
+	if (action == GLFW_PRESS || action == GLFW_REPEAT) {
+		if (key == GLFW_KEY_ENTER && action == GLFW_PRESS) {
+			app->commandSubmit = true;
+		}
+		else if (key == GLFW_KEY_BACKSPACE) {
+			if (app->inputString.size() > 0) {
+				app->inputString.pop_back();
+			}
+		}
+	}
 }
 void PlayerObject::scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
 
 
-	app->viewZoom += yoffset* app->scrollScale * app->viewZoom;
+	app->viewZoom += float(yoffset)* app->scrollScale * app->viewZoom;
 	if (app->viewZoom > app->zoomMax) {
 		app->viewZoom = app->zoomMax;
 	}	
 	else if (app->viewZoom < app->zoomMin) {
 		app->viewZoom = app->zoomMin;
 	}
-	std::cout << app->viewZoom << std::endl;
+	//std::cout << app->viewZoom << std::endl;
+}
+void PlayerObject::charCallback(GLFWwindow* window, uint32_t code) {
+	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
+	app->inputString.push_back(code);
 }
 void PlayerObject::updatePlayerMovement() {
 	
 	currentTime = glfwGetTime();
-	deltaTime = currentTime - prevTime;
+	deltaTime = float(currentTime - prevTime);
 	prevTime = currentTime;
 
 
@@ -271,6 +293,7 @@ void PlayerObject::updatePlayerMovement() {
 
 void PlayerObject::windowCloseCallback(GLFWwindow* window) {
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
-	std::cout << "Window close callback";
+	//std::cout << "Window close callback";
+	app->stat->addMessage(MSG_LEVEL_DEBUG, "Window Closing");
 	app->windowShouldClose = true;
 }

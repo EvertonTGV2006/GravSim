@@ -51,6 +51,7 @@
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -70,6 +71,14 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <CopyLocalDeploymentContent>true</CopyLocalDeploymentContent>
+    <CopyCppRuntimeToOutputDir>true</CopyCppRuntimeToOutputDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <CopyLocalDeploymentContent>true</CopyLocalDeploymentContent>
+    <CopyCppRuntimeToOutputDir>true</CopyCppRuntimeToOutputDir>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -111,13 +120,20 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <Optimization>Disabled</Optimization>
+      <DisableSpecificWarnings>
+      </DisableSpecificWarnings>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\Users\garet\Documents\Visual Studio 2022\Libraries\glfw-3.4.bin.WIN64\lib-vc2022;C:\VulkanSDK\1.3.296.0\Lib;C:\Users\garet\Documents\Visual Studio 2022\Libraries\freetype-2.13.3\objs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3.lib;vulkan-1.lib;freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3_mt.lib;vulkan-1.lib;freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>CD %(SolutionDir)shaders\
+CALL compile.bat</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -129,16 +145,23 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <AdditionalIncludeDirectories>C:\Users\garet\Documents\Visual Studio 2022\Libraries\glm;C:\VulkanSDK\1.3.296.0\Include;C:\Users\garet\Documents\Visual Studio 2022\Libraries\glfw-3.4.bin.WIN64\include;C:\Users\garet\Documents\Visual Studio 2022\Libraries\stb-master</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\garet\Documents\Visual Studio 2022\Libraries\glm;C:\VulkanSDK\1.3.296.0\Include;C:\Users\garet\Documents\Visual Studio 2022\Libraries\glfw-3.4.bin.WIN64\include;C:\Users\garet\Documents\Visual Studio 2022\Libraries\stb-master;C:\Users\garet\Documents\Visual Studio 2022\Libraries\freetype-2.13.3\include</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>
+      </DisableSpecificWarnings>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\garet\Documents\Visual Studio 2022\Libraries\glfw-3.4.bin.WIN64\lib-vc2022;C:\VulkanSDK\1.3.296.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3.lib;vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Users\garet\Documents\Visual Studio 2022\Libraries\glfw-3.4.bin.WIN64\lib-vc2022;C:\VulkanSDK\1.3.296.0\Lib;C:\Users\garet\Documents\Visual Studio 2022\Libraries\freetype-2.13.3\objs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3_mt.lib;vulkan-1.lib;freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>CD %(SolutionDir)shaders\
+CALL compile.bat</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="particleRasterizer.cpp" />
@@ -147,6 +170,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="grav.cpp" />
     <ClCompile Include="player.cpp" />
+    <ClCompile Include="statusLogger.cpp" />
     <ClCompile Include="structs.cpp" />
     <ClCompile Include="uiRasterizer.cpp" />
     <ClCompile Include="window.cpp" />
@@ -157,9 +181,90 @@
     <ClInclude Include="geometry.h" />
     <ClInclude Include="grav.h" />
     <ClInclude Include="player.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="statusLogger.h" />
     <ClInclude Include="structs.h" />
     <ClInclude Include="uiRasterizer.h" />
     <ClInclude Include="window.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="textures\8BitDeck.png">
+      <DeploymentContent>true</DeploymentContent>
+    </Image>
+    <Image Include="textures\Enhancers.png">
+      <DeploymentContent>true</DeploymentContent>
+    </Image>
+    <Image Include="textures\icon.ico">
+      <DeploymentContent>true</DeploymentContent>
+    </Image>
+    <Image Include="textures\icon.png">
+      <DeploymentContent>true</DeploymentContent>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="profiles\default.toml">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\cardRasterizer\01.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\cardRasterizer\02.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\GravEngine\01.comp" />
+    <None Include="shaders\GravEngine\01.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\GravEngine\SortShaders\01.comp">
+      <DeploymentContent>false</DeploymentContent>
+    </None>
+    <None Include="shaders\GravEngine\SortShaders\01.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\GravEngine\SortShaders\02.comp">
+      <DeploymentContent>false</DeploymentContent>
+    </None>
+    <None Include="shaders\GravEngine\SortShaders\02.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\GravEngine\SortShaders\03.comp" />
+    <None Include="shaders\GravEngine\SortShaders\03.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\GravEngine\SortShaders\04.comp">
+      <DeploymentContent>false</DeploymentContent>
+    </None>
+    <None Include="shaders\GravEngine\SortShaders\04.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\GravEngine\SortShaders\05.comp" />
+    <None Include="shaders\GravEngine\SortShaders\05.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\GravEngine\SortShaders\06.comp" />
+    <None Include="shaders\GravEngine\SortShaders\07.comp" />
+    <None Include="shaders\GravEngine\SortShaders\08.comp" />
+    <None Include="shaders\GravEngine\SortShaders\09.comp" />
+    <None Include="shaders\GravEngine\SortShaders\10.comp" />
+    <None Include="shaders\particleRasterizer\01.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\particleRasterizer\01_1.vert" />
+    <None Include="shaders\particleRasterizer\02.frag" />
+    <None Include="shaders\particleRasterizer\02.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\uiRasterizer\01.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\uiRasterizer\01.vert" />
+    <None Include="shaders\uiRasterizer\02.frag" />
+    <None Include="shaders\uiRasterizer\02.spv">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="GravSim.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -161,6 +161,8 @@ void UIRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer, VkQue
 	vkResetFences(device, 1, &transferFence);
 	vkResetCommandBuffer(transferCommandBuffer, 0);
 
+	vkUnmapMemory(device, memory.memory);
+
 	vkDestroyFence(device, transferFence, nullptr);
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
@@ -475,7 +477,7 @@ void UIRasterizer::initFreetype() {
 
 	if (FT_New_Face(library, "C:/Windows/Fonts/CascadiaCode.ttf", 0, &face)) { throw std::runtime_error("Failed to load Font"); }
 
-	FT_Set_Pixel_Sizes(face, 0, 48);
+	FT_Set_Pixel_Sizes(face, 0, 128);
 
 
 	char character = 22;
@@ -504,8 +506,8 @@ void UIRasterizer::initFreetype() {
 		//std::cout << face->glyph->bitmap.width << ", " << face->glyph->bitmap_top << ", " << face->glyph->advance.x / 64 << std::endl;
 
 		textBitmapWrapper tempContainer;
-		tempContainer.character = i;
-		tempContainer.advance = face->glyph->advance.x / 64;
+		tempContainer.character = static_cast<char>(i);
+		tempContainer.advance = int16_t(face->glyph->advance.x) / 64;
 		tempContainer.bearingX = face->glyph->bitmap_left;
 		tempContainer.bearingY = face->glyph->bitmap_top;
 		tempContainer.address = new FT_Bitmap;
@@ -524,9 +526,9 @@ void UIRasterizer::initFreetype() {
 		textContainers.push_back(tempContainer);
 	}
 	
-	charWidth = 4*ceil(((float)(xMax + bxMax - xMin))/4);
+	charWidth = 4 * uint16_t(ceil(((float)(xMax + bxMax - xMin)) / 4));
 	texWidth = charCount * charWidth;
-	texHeight = 4 * ceil(((float)(yMax - yMin))/4);
+	texHeight = 4 * uint16_t(ceil(((float)(yMax - yMin)) / 4));
 	charAdvance = advMax;
 	rawCharDimensions.y = rawCharDimensions.x * float(texHeight) / float(charWidth);
 	int16_t orgHeight = -yMin;
@@ -649,7 +651,7 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 	tBox.textCount = 6;
 	tBox.dataP = &tTexts[0];
 
-	player->boxes.resize(1);
+	//player->boxes.resize(1);
 	//player->boxes.push_back(tBox);
 
 	float px;
@@ -669,6 +671,8 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 
 	UIPushConstants pc{};
 
+	std::vector<uint32_t> boxCountc;
+	boxCountc.push_back(0);
 
 	for (uint32_t i = 0; i < player->boxes.size(); i++) {
 		//blockCounts.clear();
@@ -709,6 +713,15 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 		//		}
 		//	}
 		//}
+		vBlockCount.clear();
+		nBlockCount.clear();
+		hBlockCount.clear();
+		hBlockCountc.clear();
+		nBlockCounth.clear();
+		vBlockCountn.clear();
+
+
+		
 
 		vBlockCount.push_back(0);
 		nBlockCount.push_back(0);
@@ -826,11 +839,11 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 				break;
 			case UI_ALIGNMENT_H_C:
 				px = 0.5;
-				dx = hBlockCountc[k] / 2;
+				dx = float(hBlockCountc[k]) / 2.0f;
 				break;
 			case UI_ALIGNMENT_H_R:
 				px = 1;
-				dx = hBlockCountc[k];
+				dx = float(hBlockCountc[k]);
 				break;
 			default:
 				throw std::runtime_error("UI_ALIGNENT_H fall through");
@@ -842,11 +855,11 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 				break;
 			case UI_ALIGNMENT_V_C:
 				py = 0.5;
-				dy = vBlockCountn[vBlockIndex] / 2 - lineIndex;
+				dy = float(vBlockCountn[vBlockIndex]) / 2.0f - float(lineIndex);
 				break;
 			case UI_ALIGNMENT_V_B:
 				py = 1;
-				dy = vBlockCountn[vBlockIndex] - lineIndex;
+				dy = float(vBlockCountn[vBlockIndex]) - float(lineIndex);
 				break;
 			default:
 				throw std::runtime_error("UI_ALIGNENT_V fall through");
@@ -857,14 +870,13 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 			pc.charDimensions = charDimensions;
 			pc.screenPosition = blockScreenCoords;
 			pc.renderStage = 3;
-			pc.texAdvance = texAdvance;
-			pc.texDimensions = glm::vec2(1.0f / charCount, 1);
-			pc.instanceOffset = charIndex;
+			pc.texAdvance = texAdvance*0.9f;//0.9f makes text on the right align correctly, as to why I have no idea;
+			pc.texDimensions = glm::vec2(1.0f / charCount, 1.0f);
+			pc.instanceOffset = charIndex + boxCountc[i];
 			pc.inColour = glm::vec4(workingText->colour.x, workingText->colour.y, workingText->colour.z, 0.0f);
 			vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &pc);
-			vkCmdDraw(commandBuffer, vertices.size(), hBlockCountc[k], 0, 0);
+			vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), hBlockCountc[k], 0, 0);
 			charIndex += hBlockCountc[k];
-
 			localPos.push_back(blockScreenCoords);
 
 			texIndex += hBlockCount[k];
@@ -881,6 +893,7 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 			}
 
 		}
+		boxCountc.push_back(static_cast<uint32_t>(charVec.size()));
 
 	}
 	memcpy(uniformsMapped[frameIndex], charVec.data(), charVec.size() * sizeof(charVec[0]));
@@ -938,13 +951,13 @@ void UIRasterizer::populateCharVector(UIText* text,uint32_t* charCounts) {
 	case UI_DATA_CHAR_VEC:
 		charVec.resize(charVec.size() + reinterpret_cast<std::vector<char>*>(text->dataP)->size());
 		std::memcpy(charVec.data() + charVec.size() - reinterpret_cast<std::vector<char>*>(text->dataP)->size(), reinterpret_cast<std::vector<char>*>(text->dataP)->data(), reinterpret_cast<std::vector<char>*>(text->dataP)->size());
-		*charCounts = reinterpret_cast<std::vector<char>*>(text->dataP)->size();
+		*charCounts = static_cast<uint32_t>(reinterpret_cast<std::vector<char>*>(text->dataP)->size());
 		break;
 	case UI_DATA_STRING:
 		for (uint32_t i = 0; i < reinterpret_cast<std::string*>(text->dataP)->size(); i++) {
 			charVec.push_back((*reinterpret_cast<std::string*>(text->dataP))[i]);
 		}
-		*charCounts = reinterpret_cast<std::string*>(text->dataP)->size();
+		*charCounts = static_cast<uint32_t>(reinterpret_cast<std::string*>(text->dataP)->size());
 		break;
 	default:
 		throw std::runtime_error("Unsupported text data type");

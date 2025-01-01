@@ -16,15 +16,15 @@
 
 void SphereGeometry::createSphereLongLat(uint16_t LOD) {
 
-	uint16_t sectors = glm::pow(2, 3 * LOD);
+	uint16_t sectors = uint16_t(glm::pow(2, 3 * LOD));
 	uint16_t stacks = sectors / 2;
 
 
 
-	std::cout << sectors << " | " << stacks << std::endl;
+	//std::cout << sectors << " | " << stacks << std::endl;
 
-	double sectorStep = glm::two_pi<double>() / sectors;
-	double stackStep = glm::pi<double>() / stacks;
+	float sectorStep = glm::two_pi<float>() / sectors;
+	float stackStep = glm::pi<float>() / stacks;
 
 	vertices->clear();
 	indices->clear();
@@ -47,15 +47,15 @@ void SphereGeometry::createSphereLongLat(uint16_t LOD) {
 	
 
 	for (int i = 0; i < sectors; i++) {
-		double sectorAngle = i * sectorStep;
+		float sectorAngle = i * sectorStep;
 		for (int j = 1; j < stacks; j++) {
-			double stackAngle = -glm::half_pi<double>() + j * stackStep;
+			float stackAngle = -glm::half_pi<float>() + j * stackStep;
 			Vertex newVertex;
 			//std::cout << j << " | ";
 			
-			newVertex.pos.x = glm::sin(sectorAngle) * glm::sqrt(1 - glm::pow(glm::sin(stackAngle), 2));
+			newVertex.pos.x = glm::sin(sectorAngle) * glm::sqrt(1.0f - glm::pow(glm::sin(stackAngle), 2.0f));
 			newVertex.pos.y = glm::sin(stackAngle);
-			newVertex.pos.z = glm::cos(sectorAngle) * glm::sqrt(1 - glm::pow(glm::sin(stackAngle), 2));
+			newVertex.pos.z = glm::cos(sectorAngle) * glm::sqrt(1.0f - glm::pow(glm::sin(stackAngle), 2.0f));
 			newVertex.colour = randomColour(mode);
 			newVertex.texCoord = glm::vec2(0);
 			newVertex.pos *= scale;
@@ -176,7 +176,7 @@ void SphereGeometry::createSphereLongLat(uint16_t LOD) {
 
 
 
-	uint16_t indexStart = vertices->size();
+	uint16_t indexStart = static_cast<uint16_t>(vertices->size());
 	vertices->push_back(ground1);
 	vertices->push_back(ground2);
 	vertices->push_back(ground3);
@@ -419,9 +419,9 @@ void SphereGeometry::iterateIcosphere(bool edgeToggle) {
 	if (!edgeToggle) {
 		//this algorithm is inefficient and creates 2 x the required amount of vertices! due to the fact that each edge (which spawns a vertex) is shared by two triangles.
 		uint16_t indexoffset = 0;
-		uint16_t safeValue = vertices->size(); //we know that starting list is free of duplicates
+		uint16_t safeValue = static_cast<uint16_t>(vertices->size()); //we know that starting list is free of duplicates
 		for (uint16_t index = 0; index < indicesold.size(); index += 3) {
-			indexoffset = vertices->size();
+			indexoffset = static_cast<uint32_t>(vertices->size());
 			std::array<Vertex, 3>rootVertices = { (*vertices)[indicesold[index]], (*vertices)[indicesold[index + 1]], (*vertices)[indicesold[index + 2]] };
 			std::array<Vertex, 3>newVertices{};
 			newVertices[0].pos = glm::normalize(rootVertices[0].pos + rootVertices[1].pos) * scale;
@@ -469,7 +469,7 @@ void SphereGeometry::iterateIcosphere(bool edgeToggle) {
 		std::vector<uint16_t>workingEdgeIndices;
 
 		workingVertices = *vertices;
-		uint16_t startVertexCount = vertices->size();
+		uint16_t startVertexCount = static_cast<uint16_t>(vertices->size());
 
 		uint16_t endVertexCount = (uint16_t)vertices->size() + ((uint16_t)indices->size() >> 1);
 		uint16_t endIndexCount = (uint16_t)indices->size() * 4;
@@ -582,9 +582,9 @@ void SphereGeometry::iterateIcosphere(bool edgeToggle) {
 			newEdge2.vert0 = workingEdges[2 * edgeIndex2].vert1;
 			newEdge2.vert1 = workingEdges[2 * edgeIndex0].vert1;
 
-			uint16_t newEdgeIndex0 = workingEdges.size();
-			uint16_t newEdgeIndex1 = workingEdges.size() + 1;
-			uint16_t newEdgeIndex2 = workingEdges.size() + 2;
+			uint16_t newEdgeIndex0 = static_cast<uint16_t>(workingEdges.size());
+			uint16_t newEdgeIndex1 = static_cast<uint16_t>(workingEdges.size()) + 1;
+			uint16_t newEdgeIndex2 = static_cast<uint16_t>(workingEdges.size()) + 2;
 
 			//std::cout << " " << newEdge0.vert0 << " " << newEdge0.vert1 << " " << newEdge1.vert0 << " " << newEdge1.vert1 << " " << newEdge2.vert0 << " " << newEdge2.vert1 << " | ";
 
@@ -734,11 +734,11 @@ void SphereGeometry::iterateIcosphere(bool edgeToggle) {
 
 	std::chrono::duration<double, std::milli> duration = end - start;
 
-	std::cout << "This iteration took: " << duration << " to make "<<vertices->size()<<" vertices with "<<indices->size() <<" indices" << std::endl;
+	//std::cout << "This iteration took: " << duration << " to make "<<vertices->size()<<" vertices with "<<indices->size() <<" indices" << std::endl;
 }
 
 void SphereGeometry::cleanGeometry(uint16_t safeValue, std::vector<Vertex>* cleanVertices, std::vector<uint16_t>* cleanIndices) { // does not work
-	std::cout << "Unclean: Vertices: " << cleanVertices->size() << " Indices: " << cleanIndices->size() << std::endl;
+	//std::cout << "Unclean: Vertices: " << cleanVertices->size() << " Indices: " << cleanIndices->size() << std::endl;
 	for (uint16_t iterator = safeValue; iterator < cleanVertices->size(); iterator++) {
 		glm::vec3 searchKey = (*vertices)[iterator].pos;
 		for (uint16_t cursor = safeValue; cursor < cleanVertices->size(); cursor++) {
@@ -746,7 +746,7 @@ void SphereGeometry::cleanGeometry(uint16_t safeValue, std::vector<Vertex>* clea
 				for (uint16_t indexCursor = 0; indexCursor < cleanIndices->size(); indexCursor++) {
 					if ((*cleanIndices)[indexCursor] == cursor) {
 						(*cleanIndices)[indexCursor] = iterator;
-						std::cout << "Changing index at "<<indexCursor<<" from " << cursor << " to " << iterator << std::endl;
+						//std::cout << "Changing index at "<<indexCursor<<" from " << cursor << " to " << iterator << std::endl;
 						//break;
 					}
 				}
@@ -756,7 +756,7 @@ void SphereGeometry::cleanGeometry(uint16_t safeValue, std::vector<Vertex>* clea
 			}
 		}
 	}
-	std::cout << "Cleaned: Vertices: " << cleanVertices->size() << " Indices: " << cleanIndices->size() << std::endl;
+	//std::cout << "Cleaned: Vertices: " << cleanVertices->size() << " Indices: " << cleanIndices->size() << std::endl;
 }
 
 
@@ -788,7 +788,7 @@ glm::vec3 SphereGeometry::randomColour(uint16_t mode) {
 }
 
 void ParticleGeometry::createParticles(uint32_t size) {
-	std::srand(glfwGetTime());
+	std::srand(uint32_t(glfwGetTime()));
 
 	particles->reserve(size);
 
@@ -828,15 +828,15 @@ void ParticleGeometry::createParticles(uint32_t size) {
 
 		part.newIndex = 0;
 		glm::ivec3 cellPos;
-		cellPos.x = floor(part.position.x * GRID_DIMENSIONS.x / DOMAIN_DIMENSIONS.x);
-		cellPos.y = floor(part.position.y * GRID_DIMENSIONS.y / DOMAIN_DIMENSIONS.y);
-		cellPos.z = floor(part.position.z * GRID_DIMENSIONS.z / DOMAIN_DIMENSIONS.z);
+		cellPos.x = int(floor(part.position.x * GRID_DIMENSIONS.x / DOMAIN_DIMENSIONS.x));
+		cellPos.y = int(floor(part.position.y * GRID_DIMENSIONS.y / DOMAIN_DIMENSIONS.y));
+		cellPos.z = int(floor(part.position.z * GRID_DIMENSIONS.z / DOMAIN_DIMENSIONS.z));
 		part.cell = cellPos.x + GRID_DIMENSIONS.x * cellPos.y + GRID_DIMENSIONS.x * GRID_DIMENSIONS.y * cellPos.z;
 
 		//part.mass = glm::gaussRand<float>(500.0f, 60.0f);
 		particles->push_back(part);
 	}
-	std::cout << particles->size();
+	//std::cout << particles->size();
 	
 	std::sort(particles->begin(), particles->end(), [](Particle a, Particle b) {return a.cell < b.cell; });
 
