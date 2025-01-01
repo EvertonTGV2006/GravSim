@@ -94,7 +94,7 @@ public:
 
 	std::vector<char> str1 = { 'H','e','l','l','o',' ','W','o','r','l','d' };
 	//std::vector<char> str = { 'A', 'n', 'y', 't', 'h', 'i', 'n', 'g' };
-	 std::string str2 = "Anything";
+	std::string str2 = "TEST_TEXT";
 	std::string fLabel = "Frame Count: ";
 	std::string tLabel = "FPS: ";
 
