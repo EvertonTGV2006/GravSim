@@ -98,12 +98,6 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 	frameCounterBox.colour = glm::vec3(1.0f, 1.0f, 1.0f);
 	frameCounterBox.dataP = &(texts[0]);
 	frameCounterBox.textCount = 4;
-	
-	UIText playerTurnText;
-	playerTurnText.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_B | UI_NEWLINE_FALSE | UI_DATA_STRING;
-	playerTurnText.colour = glm::vec3(0.5f, 0.9f, 0.85f);
-	playerTurnText.dataP = playerTurnStr;
-	texts[126] = playerTurnText;
 
 	UIBox playerTurnBox = frameCounterBox;
 	playerTurnBox.dataP = &texts[126];
@@ -115,77 +109,13 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 	statBox.colour = glm::vec3(1);
 	statBox.dataP = &(stat->texts[0]);
 	statBox.textCount = stat->currentMsgCount;
-	
+
 
 	boxes.push_back(commandBox);
 	boxes.push_back(frameCounterBox);
-	boxes.push_back(playerTurnBox);
 	boxes.push_back(statBox);
 
 	//inputString.push_back('w');
-	
-
-	
-}
-void PlayerObject::initScoreBoxes(std::vector<std::vector<std::string>*>* playerScoreReasons, std::vector<uint32_t*>* playerScores, std::vector<std::string>pNames) {
-	playerNames = pNames;
-
-	uint32_t textZero = 5;
-	uint32_t minScore = static_cast<uint32_t>(std::min((*playerScoreReasons)[0]->size(), (*playerScoreReasons)[1]->size()));
-	uint32_t maxScore = static_cast<uint32_t>(std::max((*playerScoreReasons)[0]->size(), (*playerScoreReasons)[1]->size()));
-	uint32_t maxIndex = ((*playerScoreReasons)[0]->size() > (*playerScoreReasons)[1]->size()) ? 0 : 1;
-	std::cout << maxIndex << std::endl;
-
-	UIText commandText{};
-	commandText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_STRING;
-	commandText.colour = glm::vec3(0.9f, 0.9f, 0.92f);
-	commandText.dataP = &playerNames[0];
-	texts[textZero] = commandText;
-	commandText.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_STRING;
-	commandText.dataP = &playerNames[1];
-	texts[textZero + 1] = commandText;
-	commandText.config = commandText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_TRUE | UI_DATA_UINT32_T;
-	commandText.dataP = (*playerScores)[0];
-	texts[textZero + 2] = commandText;
-	commandText.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_UINT32_T;
-	commandText.dataP = (*playerScores)[1];
-	texts[textZero + 3] = commandText;
-
-
-	for (uint32_t i = 0; i < minScore; i++) {
-		commandText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_TRUE | UI_DATA_STRING;
-		commandText.dataP = &(*(*playerScoreReasons)[0])[i];
-		texts[textZero + 2 * i + 4] = commandText;
-		commandText.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_STRING;
-		commandText.dataP = &(*(*playerScoreReasons)[1])[i];
-		texts[textZero + 2 * i + 5] = commandText;
-	}
-	for (uint32_t i = minScore; i < maxScore; i++) {
-		if (maxIndex == 0) {
-			commandText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_TRUE | UI_DATA_STRING;
-			commandText.dataP = &(*(*playerScoreReasons)[0])[i];
-		}
-		else if (maxIndex == 1) {
-			commandText.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_T | UI_NEWLINE_TRUE | UI_DATA_STRING;
-			commandText.dataP = &(*(*playerScoreReasons)[1])[i];
-		}
-
-
-		texts[textZero + 4 + minScore + i] = commandText;
-	}
-	UIBox commandBox{};
-	commandBox.pos = glm::vec2(0.02f, 0.12f);
-	commandBox.size = glm::vec2(0.9f, 0.9f);
-	commandBox.colour = glm::vec3(1.0f, 1.0f, 1.0f);
-	commandBox.dataP = &(texts[textZero]);
-	commandBox.textCount = 4 + minScore + maxScore;
-	boxes.push_back(commandBox);
-	
-}
-void PlayerObject::destroyScoreBoxes() {
-	if (boxes.size() > 4) {
-		boxes.pop_back();
-	}
 }
 
 void PlayerObject::framebufferResizeCallback(GLFWwindow* window, int width, int height){

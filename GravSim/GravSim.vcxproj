@@ -164,9 +164,6 @@ CALL compile.bat</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="cardEngine.cpp" />
-    <ClCompile Include="cardRasterizer.cpp" />
-    <ClCompile Include="networking.cpp" />
     <ClCompile Include="particleRasterizer.cpp" />
     <ClCompile Include="engine.cpp" />
     <ClCompile Include="geometry.cpp" />
@@ -179,9 +176,6 @@ CALL compile.bat</Command>
     <ClCompile Include="window.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="cardEngine.h" />
-    <ClInclude Include="cardRasterizer.h" />
-    <ClInclude Include="networking.h" />
     <ClInclude Include="particleRasterizer.h" />
     <ClInclude Include="engine.h" />
     <ClInclude Include="geometry.h" />

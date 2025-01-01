@@ -30,37 +30,9 @@
 #include <limits> // Necessary for std::numeric_limits
 #include <algorithm> // Necessary for std::clamp
 #include "toml.hpp"
-#include "networking.h"
 
 
-void VulkanEngine::initNetworking() {
-    std::string filename = "profiles/default.toml";
 
-    auto config = toml::parse_file(filename);
-    std::optional<std::string> usrStr = config["usrn"].value<std::string>();
-    std::array<char, 8> usrn{};
-    for (size_t i = 0; i < usrStr.value().size(); i++) {
-        usrn[i] = usrStr.value()[i];
-    }
-    nc.usrn = usrn;
-
-    std::optional<std::string> ipaddropt = config["server"].value<std::string>();
-    std::optional<int> portaddropt = config["port"].value<int>();
-
-    if (portaddropt.has_value() == false || ipaddropt.has_value() == false) {
-        throw std::runtime_error("Invalid networking config");
-    }
-    nc.ipaddr = ipaddropt.value();
-    nc.portaddr = portaddropt.value();
-    nc.stockPtr = &cardEngine.stock;
-    nc.stat = stat;
-
-    nc.initWinsock(); /*we have now connected to the server and have an opponent*/
-
-    player->usrn = nc.usrn;
-    player->oppn = nc.oppn;
-
-}
 
 void VulkanEngine::initEngine() {
     stat->addMessage(MSG_LEVEL_STARTUP, "Starting Engine");
@@ -69,11 +41,8 @@ void VulkanEngine::initEngine() {
     winmanager.initWindow();
     player->winmanager = &winmanager;
     player->updateGLFWcallbacks();
-    player->playerTurnStr = &playerTurnString;
     player->initUIElements(&frameCounter, &fpsVal);
 
-    cardEngine.stat = stat;
-    cardRasterizer.stat = stat;
     uiRasterizer.stat = stat;
 
     std::vector<Mesh> meshes;
@@ -112,11 +81,6 @@ void VulkanEngine::initEngine() {
     vkGetPhysicalDeviceProperties(physicalDevice, &properties);
 
 
-    if (!onlineGame) {
-        cardEngine.initStock();
-        cardEngine.setupGame();
-    }
-
 
 
     std::vector<std::vector<char>> shaderCode;
@@ -125,7 +89,6 @@ void VulkanEngine::initEngine() {
     shaderFiles.insert(std::end(shaderFiles), std::begin(gravEngine.shaderFiles), std::end(gravEngine.shaderFiles));
     shaderFiles.insert(std::end(shaderFiles), std::begin(particleRasterizer.shaderFiles), std::end(particleRasterizer.shaderFiles));
     shaderFiles.insert(std::end(shaderFiles), std::begin(uiRasterizer.shaderFiles), std::end(uiRasterizer.shaderFiles));
-    shaderFiles.insert(std::end(shaderFiles), std::begin(cardRasterizer.shaderFiles), std::end(cardRasterizer.shaderFiles));
 
     partt.join();
 
@@ -151,19 +114,10 @@ void VulkanEngine::initEngine() {
     ui.aspectRatio = &swapChainAspectRatio;
     ui.shaderCode = { &shaderCode[8], &shaderCode[9] };
 
-    CardInit cardInit{};
-    cardInit.descriptorPool = descriptorPool;
-    cardInit.device = device;
-    cardInit.memProperties = memProperties;
-    cardInit.player = player;
-    cardInit.renderPass = renderPass;
-    cardInit.msaaSamples = msaaSamples;
-    cardInit.shaderCode = { &shaderCode[10], &shaderCode[11] };
-    cardInit.gameTable = cardEngine.getTable();
+
 
 
     std::thread uitA(&UIRasterizer::initUI_A, &uiRasterizer, ui);
-    std::thread cardRA(&CardRasterizer::initCard_A, &cardRasterizer, cardInit);
     //uiRasterizer.initUI_A(ui);
 
 
@@ -195,13 +149,13 @@ void VulkanEngine::initEngine() {
     
     rasttA.join();
     uitA.join();
-    cardRA.join();
+
 
     particleRasterizer.storeGravStorageBuffer(gravEngine.getInterleavedStorageBuffer());
 
     allocateMemory();
 
-    cardRasterizer.initCard_B();
+
     uiRasterizer.initUI_B();
     particleRasterizer.initRast_B();
     gravEngine.initGrav_B();
@@ -280,198 +234,9 @@ void VulkanEngine::executeGraphics() {
         std::this_thread::sleep_until(nextFrameScheduled);
         nextFrameScheduled += std::chrono::microseconds(targetFrameTime_uS);
     }
-    //update stat boxes;
-    player->boxes[3].textCount = 0/*stat->currentMsgCount*/;
 
 
-    if (onlineGame) {
-        //check if networking is still alive
-        if (nc.net.sendShutdown == true) {
-            player->windowShouldClose = true; //call for program exit if network disconnects
-            //std::cout << "Networking disconnected, exiting" << std::endl;
-            stat->addMessage(MSG_LEVEL_URGENT, "Networking disconnected, exiting");
-        }
-
-        //check if any commands received over network;
-        if (nc.net.packetReady == true) {
-            //parse packet if so
-            HeaderData* hPtr = reinterpret_cast<HeaderData*>(&nc.net.packetData);
-            if (hPtr->packetType != CMD_PACKET) {
-                std::cout << "Received erroneous packet, ignoring" << std::endl;
-                nc.net.packetReady = false;
-                nc.net.packetFinished = true;
-            }
-            else {
-                CmdPacket* pkt = reinterpret_cast<CmdPacket*>(&nc.net.packetData);
-                char lastChar = 0;
-                for (char i = CMD_LENGTH - 1; i > 0; i--) {
-                    if (pkt->cmd[i] != 0) {
-                        lastChar = i;
-                        break;
-                    }
-                }
-                std::string cmdStr;
-                commandString.clear();
-                commandString.push_back(pkt->cmd[0]);
-                for (char i = 1; i <= lastChar; i++) { //ignore first char
-                    cmdStr.push_back(pkt->cmd[i]);
-                    commandString.push_back(pkt->cmd[i]);
-                }
-                nc.net.packetReady = false;
-                nc.net.packetFinished = true;
-
-                if (commandString[1] == '/') { //special command actions
-                    if (cmdStr == "/newgame0" || cmdStr == "/newgame1") {//player index is 0
-                        if (nc.isGameHost) {
-                            cardEngine.initStock();
-                        }
-                        nc.negotiateStock();
-                        cardEngine.setupGame();
-                        player->destroyScoreBoxes();
-                        if (cmdStr == "/newgame0") {
-                            cardRasterizer.playerIndex = 0;
-                        }
-                        else {
-                            cardRasterizer.playerIndex = 1;
-                        }
-                        commandSubmitFrame = true;
-                    }
-                }
-                else {
-                    uint32_t errCode = cardEngine.cardCommand(commandString);
-                    if (errCode != COMMAND_SUCCESS) {
-                        //std::cout << "Received invalid command from sever, ignoring... " << std::endl;
-                        stat->addMessage(MSG_LEVEL_DEBUG, "Received erroneous command from server, ignoring");
-                    }
-                    else {
-                        commandSubmitFrame = true;
-                    }
-                }
-            }
-        }
-        if (player->commandSubmit == true) {
-            player->commandSubmit = false;
-            if (cardRasterizer.playerIndex == cardEngine.handToPlay) {
-                commandString.clear();
-                commandString.push_back(cardRasterizer.playerIndex);
-                for (uint32_t i = 0; i < player->inputString.size(); i++) {
-                    commandString.push_back(player->inputString[i]);
-                }
-                uint32_t errCode = 0;
-                if (commandString[1] == '/') {
-                    errCode = COMMAND_SUCCESS;
-                }
-                else {
-                    errCode = cardEngine.cardCommand(commandString);
-                }
-                if (errCode == COMMAND_SUCCESS) {
-                    player->inputString.clear();
-                    commandSubmitFrame = true;
-                    CmdPacket pkt1{};
-                    pkt1.header.packetType = CMD_PACKET;
-                    memcpy(&pkt1.header.pName, nc.usrn.data(), nc.usrn.size());
-                    memcpy(&pkt1.cmd, commandString.data(), commandString.size());
-                    nc.net.sendPacket(reinterpret_cast<char*>(&pkt1));
-                    //send packet
-                }
-            }
-            else {
-                if (player->inputString[0] == '/') {
-                    //special command;
-                    commandString.push_back(cardRasterizer.playerIndex);
-                    for (uint32_t i = 0; i < player->inputString.size(); i++) {
-                        commandString.push_back(player->inputString[i]);
-                    }
-                    commandSubmitFrame = true;
-                    CmdPacket pkt1{};
-                    pkt1.header.packetType = CMD_PACKET;
-                    memcpy(&pkt1.header.pName, nc.usrn.data(), nc.usrn.size());
-                    memcpy(&pkt1.cmd, commandString.data(), commandString.size());
-                    nc.net.sendPacket(reinterpret_cast<char*>(&pkt1));
-                    //std::cout << "Sent packet to server" << std::endl;
-                    stat->addMessage(MSG_LEVEL_NETWORK_HIGH, "Sent packet to server");
-                }
-                else {
-                    //std::cout << "Not your turn!" << std::endl;
-                    stat->addMessage(MSG_LEVEL_USER, "Not your turn!");
-                }
-            }
-        }
-    }
-    else {
-        if (player->commandSubmit == true) {
-            player->commandSubmit = false;
-            commandString.clear();
-            commandString.push_back(cardRasterizer.playerIndex);
-            for (uint32_t i = 0; i < player->inputString.size(); i++) {
-                commandString.push_back(player->inputString[i]);
-            }
-
-            uint32_t errCode = cardEngine.cardCommand(commandString);
-            if (errCode == COMMAND_SUCCESS) {
-                player->inputString.clear();
-                cardRasterizer.playerIndex = (cardEngine.DHand.size() + cardEngine.NDHand.size() + cardEngine.stock.size()) % 2;
-                commandSubmitFrame = true;
-            }
-        }
-    }
-
-
-
-    if (firstFrame) {
-        commandSubmitFrame = true;
-    }
-    if (commandSubmitFrame == true && cardEngine.gameFinished == true) {
-        std::vector<std::string> playerNames;
-        playerNames.resize(2);
-        if (isDealer) {
-            playerNames[0] = std::string(nc.usrn.begin(), nc.usrn.end());
-            playerNames[1] = std::string(nc.oppn.begin(), nc.oppn.end());
-        }
-        else {
-            playerNames[0] = std::string(nc.oppn.begin(), nc.oppn.end());
-            playerNames[1] = std::string(nc.usrn.begin(), nc.usrn.end());
-        }
-        //std::cout << *cardEngine.playerScores[0] << *cardEngine.playerScores[1] << std::endl;;
-        player->initScoreBoxes(&cardEngine.playerScoreReasons, &cardEngine.playerScores, playerNames);
-    }
-    //upadte playerturnstring
-    if (commandSubmitFrame) {
-        //to-do
-        if (onlineGame) {
-            playerTurnString.clear();
-            if (cardRasterizer.playerIndex == cardEngine.handToPlay) {
-                
-                for (uint32_t i = 0; i < nc.usrn.size();i++) {
-                    if (nc.usrn[i] == 0) {
-                        break;
-                    }
-                    playerTurnString.push_back(nc.usrn[i]);
-                }
-            }
-            else {
-                for (uint32_t i = 0; i < nc.oppn.size(); i++) {
-                    if (nc.oppn[i] == 0) {
-                        break;
-                    }
-                    playerTurnString.push_back(nc.oppn[i]);
-                }
-            }
-        }
-        else {
-            if (cardRasterizer.playerIndex == 1) {
-                playerTurnString = "Player 1";
-            }
-            else {
-                playerTurnString = "Player 2";
-            }
-        }
-        for (uint32_t i = 0; i < playerTurnStringEnd.size(); i++) {
-            playerTurnString.push_back(playerTurnStringEnd[i]);
-        }
-    }
-
-
+    player->boxes[2].textCount = 0;
 
     vkWaitForFences(device, 1, &flightFences[frameIndex], VK_TRUE, UINT64_MAX);
     vkResetFences(device, 1, &flightFences[frameIndex]);
@@ -534,10 +299,8 @@ void VulkanEngine::executeGraphics() {
     ubo.proj = glm::perspective(glm::radians(45.0f), (float)swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 1000.0f);
     ubo.zeta = glm::mat4(1);
 
-    //particleRasterizer.drawObjects(drawCommandBuffers[frameIndex], frameIndex, ubo);
+    particleRasterizer.drawObjects(drawCommandBuffers[frameIndex], frameIndex, ubo);
     //std::cout << "Draw";
-    
-    cardRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex, commandSubmitFrame, ubo.view, ubo.proj);
 
     uiRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex);
 
@@ -561,23 +324,23 @@ void VulkanEngine::executeGraphics() {
     waitInfo1.semaphore = imageSemaphores[frameIndex];
     waitInfo1.stageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
-    //VkSemaphoreSubmitInfo waitInfo2{};
-    //waitInfo2.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-    //waitInfo2.semaphore = gravRenderSemaphores[frameIndex];
-    //waitInfo2.stageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+    VkSemaphoreSubmitInfo waitInfo2{};
+    waitInfo2.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+    waitInfo2.semaphore = gravRenderSemaphores[frameIndex];
+    waitInfo2.stageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
 
     VkSemaphoreSubmitInfo signalInfo1{};
     signalInfo1.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
     signalInfo1.semaphore = renderSemaphores[frameIndex];
     signalInfo1.stageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 
-    //VkSemaphoreSubmitInfo signalInfo2{};
-    //signalInfo2.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-    //signalInfo2.semaphore = renderGravSemaphores[(frameIndex+1)%FRAMES_IN_FLIGHT];
-    //signalInfo2.stageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    VkSemaphoreSubmitInfo signalInfo2{};
+    signalInfo2.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+    signalInfo2.semaphore = renderGravSemaphores[(frameIndex+1)%FRAMES_IN_FLIGHT];
+    signalInfo2.stageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 
-    std::array<VkSemaphoreSubmitInfo, 1> waitInfos = { waitInfo1};
-    std::array<VkSemaphoreSubmitInfo, 1> signalInfos = { signalInfo1};
+    std::array<VkSemaphoreSubmitInfo, 2> waitInfos = { waitInfo1, waitInfo2};
+    std::array<VkSemaphoreSubmitInfo, 2> signalInfos = { signalInfo1, signalInfo2};
 
     VkSubmitInfo2 submitInfo2{};
     submitInfo2.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
@@ -622,7 +385,7 @@ void VulkanEngine::executeGraphics() {
     ct = std::chrono::high_resolution_clock::now();
     dt = std::chrono::duration<double>(ct - pt);
     pt = ct;
-    //gravEngine.simGrav(dt.count());
+    gravEngine.simGrav(dt.count());
 
     frameTimes.push_back(dt);
 
@@ -1107,7 +870,6 @@ void VulkanEngine::allocateMemory() {
     gravEngine.getMemoryRequirements(&memRequirements, &counts);
     particleRasterizer.getMemoryRequirements(&memRequirements, &counts);
     uiRasterizer.getMemoryRequirements(&memRequirements, &counts);
-    cardRasterizer.getMemoryRequirements(&memRequirements, &counts);
 
 
     //now filter and check for duplicate memory types and alignments
@@ -1184,28 +946,27 @@ void VulkanEngine::allocateMemory() {
     gravEngine.initMemory({ memoryContainers[0], memoryContainers[1],memoryContainers[2],memoryContainers[3] });
     particleRasterizer.initMemory({ memoryContainers[4],memoryContainers[5],memoryContainers[6]});
     uiRasterizer.initMemory({ memoryContainers[7], memoryContainers[8], memoryContainers[9] });
-    cardRasterizer.initMemory({ memoryContainers[10], memoryContainers[11], memoryContainers[12], memoryContainers[13] });
 
 }
 void VulkanEngine::initSubclassData() {
 
     VkDeviceMemory stagingMemory;
 
-    std::array<MemoryDetails,4> memRequirements;
+    std::array<MemoryDetails,3> memRequirements;
     particleRasterizer.initBufferData_A(&memRequirements[0]);
     gravEngine.syncBufferData_A(&memRequirements[1]);
     uiRasterizer.initBufferData_A(&memRequirements[2]);
-    cardRasterizer.initBufferData_A(&memRequirements[3]);
+
     
     //memRequirements[0].flags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
     VkMemoryAllocateInfo memoryInfo{};
     memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memoryInfo.allocationSize = memRequirements[0].requirements.size + memRequirements[1].requirements.size + memRequirements[2].requirements.size + memRequirements[3].requirements.size;
+    memoryInfo.allocationSize = memRequirements[0].requirements.size + memRequirements[1].requirements.size + memRequirements[2].requirements.size;
     memoryInfo.memoryTypeIndex = findMemoryType(memRequirements[0]);
     if (vkAllocateMemory(device, &memoryInfo, nullptr, &stagingMemory) != VK_SUCCESS) { throw std::runtime_error("Failed to allocated memory"); }
 
-    std::array<MemInit, 4> memInitStructs;
+    std::array<MemInit, 3> memInitStructs;
 
     memInitStructs[0].memory = stagingMemory;
     memInitStructs[0].offset = 0;
@@ -1218,10 +979,6 @@ void VulkanEngine::initSubclassData() {
     memInitStructs[2].memory = stagingMemory;
     memInitStructs[2].offset = memInitStructs[1].offset + memInitStructs[1].range;
     memInitStructs[2].range = static_cast<uint32_t>(memRequirements[2].requirements.size);
-
-    memInitStructs[3].memory = stagingMemory;
-    memInitStructs[3].offset = memInitStructs[2].offset + memInitStructs[2].range;
-    memInitStructs[3].range = static_cast<uint32_t>(memRequirements[3].requirements.size);
 
     VkCommandBufferAllocateInfo commandInfo{};
     commandInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1237,7 +994,6 @@ void VulkanEngine::initSubclassData() {
     particleRasterizer.initBufferData_B(transferCommandBuffer, graphicsQueue, memInitStructs[0]);
     gravEngine.syncBufferData_B(true, memInitStructs[1]);
     uiRasterizer.initBufferData_B(transferCommandBuffer, graphicsQueue, memInitStructs[2]);
-    cardRasterizer.initBufferData_B(transferCommandBuffer, graphicsQueue, memInitStructs[3]);
 
     vkFreeMemory(device, stagingMemory, nullptr);
     vkFreeCommandBuffers(device, graphicsCommandPool, 1, &transferCommandBuffer);
@@ -1874,7 +1630,6 @@ void VulkanEngine::cleanup() {
     particleRasterizer.cleanup();
     gravEngine.cleanup();
     uiRasterizer.cleanup();
-    cardRasterizer.cleanup();
 
     writeOutSampleData();
 
@@ -1917,7 +1672,4 @@ void VulkanEngine::cleanup() {
     vkDestroyInstance(instance, nullptr);
     winmanager.cleanup();
 
-    if (onlineGame) {
-        nc.cleanup();
-    }
 }
