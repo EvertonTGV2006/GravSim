@@ -364,3 +364,4 @@ FodyWeavers.xsd
 /GravSim/data_prePointRender.csv
 /GravSim/data.csv
 /GravSim/out.csv
+*.txt

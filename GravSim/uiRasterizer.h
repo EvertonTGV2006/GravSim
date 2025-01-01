@@ -135,7 +135,6 @@ private:
 	glm::vec2 charDimensions = glm::vec2(0.03f, 0.13f);
 	int16_t charStart = 32;
 	int16_t charCount = 128 - charStart;
-	int16_t stringLength = 256;
 
 	std::vector<glm::vec2> vertices;
 
