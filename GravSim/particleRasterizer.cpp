@@ -37,11 +37,12 @@ void particleRasterizer::initRast_A(RastInit details) {
 	planets[1].theta = 0.0f;
 
 	for (uint32_t i = 2; i < planets.size(); i++) {
-		planets[i].pos = glm::vec3(glm::linearRand<float>(0, 10)*4e7, glm::linearRand<float>(0, 10)*3e7, glm::linearRand<float>(0, 10)*1e1);
+		planets[i].pos = glm::vec3(glm::linearRand<float>(0, 10)*7e7, glm::linearRand<float>(0, 10)*8e7, glm::linearRand<float>(0, 10)*1e1);
 		planets[i].radius = glm::linearRand<float>(0.1f, 2.0f)*1e6;
 		//planets[i].vel = glm::vec3(glm::linearRand<float>(0, 1)*1e3, glm::linearRand<float>(0, 1)*1e3, glm::linearRand<float>(0, 1)*1e0 );
 		planets[i].vel = glm::sqrt(float(6.67e-11) * planets[0].mass * glm::linearRand<float>(0.7f, 1.4f) / glm::length(planets[i].pos)) * glm::cross(glm::normalize(planets[i].pos), glm::vec3(0.0f, 0.0f, 1.0f));
 		planets[i].mass = glm::linearRand<float>(0.1f, 2.0f);
+		planets[i].mass = planets[0].mass * glm::pow(planets[i].radius / planets[0].radius, 3.0f);
 		planets[i].axis = glm::vec3(glm::linearRand<float>(0, 1), glm::linearRand<float>(0, 1), glm::linearRand<float>(0, 1));
 		planets[i].theta = 0.0f;
 	}
@@ -111,7 +112,7 @@ void particleRasterizer::createPipeline() {
 
 	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
 	//rasterizer.cullMode = VK_CULL_MODE_NONE;
-	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
 	rasterizer.depthBiasEnable = VK_FALSE;
 
 	VkPipelineMultisampleStateCreateInfo multisampling{};
@@ -629,29 +630,40 @@ void particleRasterizer::drawObjects(VkCommandBuffer commandBuffer, uint32_t fra
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &lineBuffers[i], offsets);
 		model[0][0] = frameIndex * lineVertices[i].size();
 		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &model);
-		vkCmdDraw(commandBuffer, lineSegments, 1, (lineVertices[i].size() * (frameIndex + 1)) - lineSegments, 0);
-		//copy data to vertex buffer;
-		
-		
-		
-		//std::cout << frameIndex << " _ " << i << " _ ";
-		//std::cout << (void*)(lineBuffersMapped[i] + lineVertices[i].size() * sizeof(LineVertex) * frameIndex )<< " | ";
-		//std::cout << (void*)(lineVertices[i].data() + lineCursor * sizeof(LineVertex)) << " | ";
-		//std::cout << (void*)((lineVertices[i].size() - lineCursor) * sizeof(LineVertex) )<< "\t|\t";
+		//vkCmdDraw(commandBuffer, lineSegments, 1, (lineVertices[i].size() * (frameIndex + 1)) - lineSegments, 0);
+		////copy data to vertex buffer;
+		//
+		//
+		//
+		////std::cout << frameIndex << " _ " << i << " _ ";
+		////std::cout << (void*)(lineBuffersMapped[i] + lineVertices[i].size() * sizeof(LineVertex) * frameIndex )<< " | ";
+		////std::cout << (void*)(lineVertices[i].data() + lineCursor * sizeof(LineVertex)) << " | ";
+		////std::cout << (void*)((lineVertices[i].size() - lineCursor) * sizeof(LineVertex) )<< "\t|\t";
 
 
-		//std::cout << (void*)(lineBuffersMapped[i] + lineVertices[i].size() * sizeof(LineVertex) * frameIndex + lineCursor * sizeof(LineVertex)) << " | ";
-		//std::cout << (void*)lineVertices.data() << " | ";
-		//std::cout << (void*)(lineCursor * sizeof(LineVertex)) << std::endl;
+		////std::cout << (void*)(lineBuffersMapped[i] + lineVertices[i].size() * sizeof(LineVertex) * frameIndex + lineCursor * sizeof(LineVertex)) << " | ";
+		////std::cout << (void*)lineVertices.data() << " | ";
+		////std::cout << (void*)(lineCursor * sizeof(LineVertex)) << std::endl;
 
 
-		memcpy(lineBuffersMapped[i] + lineVertices[i].size() * sizeof(LineVertex) * frameIndex + (lineVertices[i].size() - lineCursor) * sizeof(LineVertex), lineVertices[i].data(), lineCursor * sizeof(LineVertex)); //copy data before cursor position to back of buffer
+		//memcpy(lineBuffersMapped[i] + lineVertices[i].size() * sizeof(LineVertex) * frameIndex + (lineVertices[i].size() - lineCursor) * sizeof(LineVertex), lineVertices[i].data(), lineCursor * sizeof(LineVertex)); //copy data before cursor position to back of buffer
+		//memcpy(lineBuffersMapped[i] + lineVertices[i].size() * sizeof(LineVertex) * frameIndex, (char*)lineVertices[i].data() + lineCursor * sizeof(LineVertex), (lineVertices[i].size() - lineCursor) * sizeof(LineVertex)); //copy data after cursor position to front of buffer
+		//
 
+		memcpy(lineBuffersMapped[i] + lineVertices[i].size() * sizeof(LineVertex) * frameIndex, lineVertices[i].data(), lineVertices[i].size() * sizeof(LineVertex));
+
+		model[0][0] = (float(frameIndex) - 1.0f) * lineVertices[i].size() + lineCursor;
+		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &model);
+		vkCmdDraw(commandBuffer, lineCursor, 1, lineVertices[i].size()*frameIndex, 0);
 		
-		memcpy(lineBuffersMapped[i] + lineVertices[i].size() * sizeof(LineVertex) * frameIndex, (char*)lineVertices[i].data() + lineCursor * sizeof(LineVertex), (lineVertices[i].size() - lineCursor) * sizeof(LineVertex)); //copy data after cursor position to front of buffer
-		
+		if (lineSegments == 1024) {
+			model[0][0] = frameIndex * lineVertices[i].size() + lineCursor;
+			vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &model);
+			vkCmdDraw(commandBuffer, lineVertices[i].size() - lineCursor, 1, lineCursor + lineVertices[i].size()*frameIndex, 0);
+		}
 	}
 	if (lineFrame == 0) {
+		/*lineCursor = (lineCursor + 1) % lineVertices[0].size();*/
 		lineSegments = (lineSegments < 1024) ? lineSegments + 1 : 1024;
 	}
 

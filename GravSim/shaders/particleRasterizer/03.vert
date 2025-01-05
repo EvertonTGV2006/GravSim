@@ -69,8 +69,8 @@ void main() {
 
     fragColor = baseColour * baseColourWeight + intColour * intColourWeight + finColour * finColourWeight;
     //fragColor = vec3(1);
+    fragColor = HSVtoRGB(vertIndex * 360.0f, 1.0f, vertIndex * vertIndex);
 
-    
     //vec3 Color = {1.0f, 1.0f, 1.0f};
     //float mass = inVelocity.w;
     gl_Position = ubo.proj*ubo.view*vec4(inPosition, 1.0);

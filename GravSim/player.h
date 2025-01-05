@@ -49,7 +49,7 @@ public:
 
 	WindowManager* winmanager;
 
-	uint32_t playerOptions = PL_VIEW_LOCK_FOCUS | PL_VIEW_LOCK_UP;
+	uint32_t playerOptions = PL_VIEW_LOCK_FOCUS | PL_VIEW_LOCK_UP | PL_VIEW_INVERT_Y_AXIS;
 
 	glm::mat4 viewMat;
 

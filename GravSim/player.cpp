@@ -286,7 +286,7 @@ void PlayerObject::updatePlayerMovement() {
 
 
 
-	pos += playerVelocityDirection * (float)deltaTime * playerVelocityScale;
+	pos += playerVelocityDirection * (float)deltaTime * playerVelocityScale * 6e7f;
 
 
 	//std::cout << pos.x << " | " << pos.y << " | " << pos.z << std::endl;

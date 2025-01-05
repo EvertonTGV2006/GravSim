@@ -302,6 +302,8 @@ void VulkanEngine::executeGraphics() {
     float farPlane = 1e10;
 
     ubo.proj = glm::perspective(glm::radians(75.0f), (float)swapChainExtent.width / (float)swapChainExtent.height, /*0.1f*/nearPlane, /*1000.0f*/farPlane);
+    ubo.proj[1][1] *= -1;
+    
     //ubo.zeta = glm::mat4(1);
 
     particleRasterizer.drawObjects(drawCommandBuffers[frameIndex], frameIndex, ubo, (firstFrame) ? 0.00001f : (float)dt.count());
