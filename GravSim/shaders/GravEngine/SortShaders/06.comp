@@ -133,23 +133,30 @@ void evaulateParticleForce(in UParticle p1, in UParticle p2, out vec3 F){
     float massProd;
 
     float scale = 0.00001;
-    const float a = 1;
-    const float b = 2;
-    const float c = -3;
-    const float d = 0.3;
-    const float zeroPos = 0.01;
+    //const float a = 1;
+    //const float b = 2;
+    //const float c = -3;
+    //const float d = 0.3;
+    //const float zeroPos = 0.01;
     //so = 0 when a * 2 ** b(x-f) = c * 2 ** d(x-f);
     //so b(x-f) / d(x-f) = log 2 c / a;
     // x-f = d/b * log2 c/a;
     // f = d/b * log2 c/a + zeroPos
-    float f = (d / b) * (log(-c/a)/log(2)) + zeroPos;
+    //float f = (d / b) * (log(-c/a)/log(2)) + zeroPos;
 
     if(sep2 != 0){
         sep2Inv = 1 / sep2;
         massProd = p1.mass * p2.mass;
         F = CONSTANT_G * massProd * sep2Inv * sep;
         //F = (a * pow(2, -b * (sep2 - f)) + c * pow(2, -d * (sep2 - f))) * sep * scale;
+            const float cellSize = 10/16;
 
+    const float a = 0.0f;
+    const float c = 10.0f;
+    const float d = 2.0f;
+
+        float Fmult = CONSTANT_G * ((-1/(c*c*sep2*sep2))+d/(c*sep2+a));
+        //F = -Fmult * normalize(sep);
     }
     else{
         F = vec3(0,0,0);

@@ -1,6 +1,8 @@
 #include "particleRasterizer.h"
 
 #include <cmath>
+#include <glm/gtc/random.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 void particleRasterizer::initRast_A(RastInit details) {
 	device = details.device;
@@ -20,6 +22,29 @@ void particleRasterizer::initRast_A(RastInit details) {
 
 	createBuffers();
 
+	planets[0].pos = glm::vec3(0.0f, 0.0f, 0.0f);
+	planets[0].radius = 6378e3;
+	planets[0].vel = glm::vec3(0.0f, 0.0f, 0.0f);
+	planets[0].mass = 5.9722e24;
+	planets[0].axis = glm::vec3(0.0f, glm::asin(glm::radians(23.5f)), glm::acos(glm::radians(23.5f)));
+	planets[0].theta = 0.0f;
+
+	planets[1].pos = glm::vec3(0.4055e9/*10.0f*/, 0.0f, 0.0f);
+	planets[1].radius = 1738e3/*0.5f*/;
+	planets[1].vel = glm::vec3(0.0f, 0.970e3/*0.5f*/, 0.0f);
+	planets[1].mass = 0.07346e24;
+	planets[1].axis = glm::vec3(0.0f, 0.0f, 1.0f);
+	planets[1].theta = 0.0f;
+
+	for (uint32_t i = 2; i < planets.size(); i++) {
+		planets[i].pos = glm::vec3(glm::linearRand<float>(0, 10)*4e7, glm::linearRand<float>(0, 10)*3e7, glm::linearRand<float>(0, 10)*1e1);
+		planets[i].radius = glm::linearRand<float>(0.1f, 2.0f)*1e6;
+		//planets[i].vel = glm::vec3(glm::linearRand<float>(0, 1)*1e3, glm::linearRand<float>(0, 1)*1e3, glm::linearRand<float>(0, 1)*1e0 );
+		planets[i].vel = glm::sqrt(float(6.67e-11) * planets[0].mass * glm::linearRand<float>(0.7f, 1.4f) / glm::length(planets[i].pos)) * glm::cross(glm::normalize(planets[i].pos), glm::vec3(0.0f, 0.0f, 1.0f));
+		planets[i].mass = glm::linearRand<float>(0.1f, 2.0f);
+		planets[i].axis = glm::vec3(glm::linearRand<float>(0, 1), glm::linearRand<float>(0, 1), glm::linearRand<float>(0, 1));
+		planets[i].theta = 0.0f;
+	}
 }
 void particleRasterizer::initRast_B() {
 	createDescriptorSets();
@@ -29,9 +54,9 @@ void particleRasterizer::initRast_B() {
 void particleRasterizer::createPipeline() {
 
 	//first create shader modules
-	std::array<VkShaderModule, 2> shaderModules;
-	std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
-	std::array<VkShaderStageFlagBits, 2> flagBits{ VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
+	std::array<VkShaderModule, 4> shaderModules;
+	std::array<VkPipelineShaderStageCreateInfo, 4> shaderStages;
+	std::array<VkShaderStageFlagBits, 4> flagBits{ VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT,VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
 
 
 	for (uint32_t i = 0; i < shaderCode.size(); i++) {
@@ -52,8 +77,8 @@ void particleRasterizer::createPipeline() {
 		shaderStages[i].flags = 0;
 	}
 	
-	auto bindingDescription = Particle::getParticleInputBindings();
-	auto attributeDescriptions = Particle::getParticleAttributeDescriptions();
+	auto bindingDescription = Vertex::getBindingDescription();
+	auto attributeDescriptions = Vertex::getAttributeDescriptions();
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -61,11 +86,10 @@ void particleRasterizer::createPipeline() {
 	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
-	
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	inputAssembly.primitiveRestartEnable = VK_FALSE;
 
 
@@ -85,7 +109,7 @@ void particleRasterizer::createPipeline() {
 	rasterizer.polygonMode = VK_POLYGON_MODE_FILL; //for point rendering
 	rasterizer.lineWidth = 1.0f;
 
-	rasterizer.cullMode = VK_CULL_MODE_FRONT_BIT;
+	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
 	//rasterizer.cullMode = VK_CULL_MODE_NONE;
 	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rasterizer.depthBiasEnable = VK_FALSE;
@@ -141,15 +165,12 @@ void particleRasterizer::createPipeline() {
 
 	if (vkCreatePipelineLayout(device, &layoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) { throw std::runtime_error("Failed to create particleRasterizer pipelineLayout"); }
 
+	std::array<VkPipelineShaderStageCreateInfo, 2> pipelineStages = { shaderStages[0], shaderStages[1] };
+
 	VkGraphicsPipelineCreateInfo createInfo{};
-
-
-	VkPipelineShaderStageCreateInfo shaderStages2[] = { shaderStages[0], shaderStages[1] };
-
-
 	createInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	createInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
-	createInfo.pStages = shaderStages.data();
+	createInfo.stageCount = static_cast<uint32_t>(pipelineStages.size());
+	createInfo.pStages = pipelineStages.data();
 	createInfo.pVertexInputState = &vertexInputInfo;
 	createInfo.pInputAssemblyState = &inputAssembly;
 	createInfo.pViewportState = &viewportState;
@@ -164,6 +185,29 @@ void particleRasterizer::createPipeline() {
 	createInfo.basePipelineHandle = VK_NULL_HANDLE;
 
 	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &createInfo, nullptr, &pipeline) != VK_SUCCESS) { throw std::runtime_error("Failed to create particleRasterizer pipeline"); }
+
+	//now create line pipeline
+	auto lineBindingDescription = LineVertex::getBindingDescription();
+	auto lineAttributeDescriptions = LineVertex::getAttributeDescriptions();
+
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(lineAttributeDescriptions.size());
+	vertexInputInfo.pVertexBindingDescriptions = &lineBindingDescription;
+	vertexInputInfo.pVertexAttributeDescriptions = lineAttributeDescriptions.data();
+
+	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+	inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+	pipelineStages = { shaderStages[2], shaderStages[3] };
+
+	createInfo.pStages = pipelineStages.data();
+
+	//depthStencil.depthTestEnable = VK_FALSE;
+	//depthStencil.depthWriteEnable = VK_FALSE;
+
+	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &createInfo, nullptr, &linePipeline) != VK_SUCCESS) { throw std::runtime_error("Failed to create particleRasterizer linePipeline"); }
 
 	for (uint32_t i = 0; i < shaderModules.size(); i++) {
 		vkDestroyShaderModule(device, shaderModules[i], nullptr);
@@ -280,6 +324,31 @@ void particleRasterizer::createBuffers() {
 	vertexOffsets.push_back(static_cast<uint32_t>(vertexRequirements.requirements.size));
 	indexOffsets.push_back(static_cast<uint32_t>(indexRequirements.requirements.size));
 
+	//now make line buffer
+	lineBuffers.resize(8);
+	lineVertices.resize(8);
+	for (uint32_t i = 0; i < lineBuffers.size(); i++) {
+		vertexInfo.size = lineCount * sizeof(LineVertex) * FRAMES_IN_FLIGHT;
+
+		if (vkCreateBuffer(device, &vertexInfo, nullptr, &lineBuffers[i]) != VK_SUCCESS) { throw std::runtime_error("Failed to create particleRasterizer lineBuffer"); }
+
+		VkMemoryRequirements lineMem;
+
+		vkGetBufferMemoryRequirements(device, lineBuffers[i], &lineMem);
+
+		if (i == 0) {
+			lineRequirements.requirements = lineMem;
+			lineBufferOffsets.push_back(0);
+		}
+		else {
+			lineBufferOffsets.push_back(static_cast<uint32_t>(lineRequirements.requirements.size));
+			lineRequirements.requirements.size += lineMem.size;
+		}
+	}
+	lineBufferOffsets.push_back(static_cast<uint32_t>(lineRequirements.requirements.size));
+
+
+
 	//now make uniform buffer
 	VkDeviceSize bufferSize = sizeof(UniformBufferObject) * FRAMES_IN_FLIGHT;
 	VkBufferCreateInfo bufferInfo{};
@@ -295,15 +364,16 @@ void particleRasterizer::createBuffers() {
 
 	vertexRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	indexRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	lineRequirements.flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 	uniformRequirements.flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
 }
 
-void particleRasterizer::initMemory(std::array<MemInit, 3> details) {
+void particleRasterizer::initMemory(std::array<MemInit, 4> details) {
 	vertexMemory = details[0];
 	indexMemory = details[1];
 	uniformBufferMemory = details[2];
-
+	lineMemory = details[3];
 	
 	//std::cout << vertexMemory.range << " | " << vertexRequirements.requirements.size << std::endl;
 	//std::cout << indexMemory.range << " | " << indexRequirements.requirements.size << std::endl;
@@ -313,15 +383,24 @@ void particleRasterizer::initMemory(std::array<MemInit, 3> details) {
 		vkBindBufferMemory(device, vertexBuffers[i], vertexMemory.memory, vertexMemory.offset + vertexOffsets[i]);
 		vkBindBufferMemory(device, indexBuffers[i], indexMemory.memory, indexMemory.offset + indexOffsets[i]);
 	}
+	for (uint32_t i = 0; i < lineBuffers.size(); i++) {
+		vkBindBufferMemory(device, lineBuffers[i], lineMemory.memory, lineMemory.offset + lineBufferOffsets[i]);
+	}
 	vkBindBufferMemory(device, uniformBuffer, uniformBufferMemory.memory, uniformBufferMemory.offset);
 
 	void* data;
 
 	vkMapMemory(device, uniformBufferMemory.memory, uniformBufferMemory.offset, uniformBufferMemory.range, 0, &data);
 
-
-
 	uniformBufferMapped = static_cast<char*>(data);
+
+	vkMapMemory(device, lineMemory.memory, lineMemory.offset, lineMemory.range, 0, &data);
+
+	char* lineMapped = static_cast<char*>(data);
+	lineBuffersMapped.resize(lineBuffers.size());
+	for (uint32_t i = 0; i < lineBuffers.size(); i++) {
+		lineBuffersMapped[i] = lineMapped + lineBufferOffsets[i];
+	}
 
 	//std::cout << static_cast<char*>(data) << std::endl;
 	//std::cout << uniformBufferMapped << std::endl;
@@ -483,8 +562,41 @@ void particleRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer,
 	//vkDestroyBuffer(device, stagingBuffer, nullptr);
 	
 }
-void particleRasterizer::drawObjects(VkCommandBuffer commandBuffer, uint32_t frameIndex, UniformBufferObject ubo) {
+void particleRasterizer::drawObjects(VkCommandBuffer commandBuffer, uint32_t frameIndex, UniformBufferObject ubo, float dt) {
 	glm::mat4 model(1);
+	dt = dt * 1e5;
+	for (uint32_t i = 0; i < planets.size(); i++) {
+		ubo.models[i] = planets[i].getModelMatrix(12.0f);
+		planets[i].pos += dt * planets[i].vel;
+		for (uint32_t j = 0; j < planets.size(); j++) {
+			if (i == j) {
+				continue;
+			}
+			else {
+				glm::vec3 sep = planets[j].pos - planets[i].pos;
+				float FMult = 6.67e-11 * pow(glm::length(sep), -3.0f) * planets[j].mass;
+				if (i == 0) {
+					FMult = 0.0f;
+				}
+				planets[i].vel += FMult * sep * dt;
+			}
+		}
+		planets[i].theta += dt / 1e4;
+
+		if (lineFrame == 0) {
+			LineVertex newVertex{};
+			newVertex.pos = planets[i].pos;
+			newVertex.baseColour = glm::vec3(0.0f, 0.0f, 1.0f);
+			newVertex.intColour = glm::vec3(0.0f, 1.0f, 0.0f);
+			newVertex.finColour = glm::vec3(0.0f, 0.0f, 0.0f);
+			lineVertices[i][lineCursor] = newVertex;
+		}
+	}
+	glm::vec4 unClipPos = ubo.proj * ubo.view * ubo.models[0] * glm::vec4((*meshes[0].vertices)[5].pos, 1.0f);
+	glm::vec4 clipPos = unClipPos / unClipPos.w;
+
+	//std::cout << dt<<" | "<<glm::to_string(planets[1].pos) << " | " << glm::to_string(planets[1].vel) << std::endl;
+	//std::cout << glm::to_string(unClipPos) <<" | "<<glm::to_string(clipPos) << std::endl/* << glm::to_string(ubo.proj * ubo.view * ubo.models[1]) << std::endl*/;
 
 	//render pass is already going so start by binding pipeline
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
@@ -499,21 +611,59 @@ void particleRasterizer::drawObjects(VkCommandBuffer commandBuffer, uint32_t fra
 	VkDeviceSize offsets[] = { 0 };
 
 	for (size_t i = 0; i < meshes.size(); i++) {
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &gravStorageBuffer, offsets);
-		//vkCmdBindIndexBuffer(commandBuffer, indexBuffers[i], 0, VK_INDEX_TYPE_UINT16);
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffers[i], offsets);
+		vkCmdBindIndexBuffer(commandBuffer, indexBuffers[i], 0, VK_INDEX_TYPE_UINT16);
 		//for single model
-		//vkCmdDrawIndexed(commandBuffer, meshes[i].indexCount, 1, 0, 0, 0);
+		vkCmdDrawIndexed(commandBuffer, meshes[i].indexCount, planets.size(), 0, 0, 0);
 		//for instanced model everywhere
 		//vkCmdDrawIndexed(commandBuffer, meshes[i].indexCount, particleCount, 0, 0, 0);
-		vkCmdDraw(commandBuffer, particleCount, 1, particleCount * frameIndex, 0);
+		//vkCmdDraw(commandBuffer, particleCount, 1, particleCount * frameIndex, 0);
 	}
+	if (lineFrame == 0) {
+		lineCursor = (lineCursor + 1) % lineVertices[0].size();
+	}
+
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, linePipeline);
+	vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &model);
+	for (uint32_t i = 0; i < lineBuffers.size(); i++) {
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &lineBuffers[i], offsets);
+		model[0][0] = frameIndex * lineVertices[i].size();
+		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &model);
+		vkCmdDraw(commandBuffer, lineSegments, 1, (lineVertices[i].size() * (frameIndex + 1)) - lineSegments, 0);
+		//copy data to vertex buffer;
+		
+		
+		
+		//std::cout << frameIndex << " _ " << i << " _ ";
+		//std::cout << (void*)(lineBuffersMapped[i] + lineVertices[i].size() * sizeof(LineVertex) * frameIndex )<< " | ";
+		//std::cout << (void*)(lineVertices[i].data() + lineCursor * sizeof(LineVertex)) << " | ";
+		//std::cout << (void*)((lineVertices[i].size() - lineCursor) * sizeof(LineVertex) )<< "\t|\t";
+
+
+		//std::cout << (void*)(lineBuffersMapped[i] + lineVertices[i].size() * sizeof(LineVertex) * frameIndex + lineCursor * sizeof(LineVertex)) << " | ";
+		//std::cout << (void*)lineVertices.data() << " | ";
+		//std::cout << (void*)(lineCursor * sizeof(LineVertex)) << std::endl;
+
+
+		memcpy(lineBuffersMapped[i] + lineVertices[i].size() * sizeof(LineVertex) * frameIndex + (lineVertices[i].size() - lineCursor) * sizeof(LineVertex), lineVertices[i].data(), lineCursor * sizeof(LineVertex)); //copy data before cursor position to back of buffer
+
+		
+		memcpy(lineBuffersMapped[i] + lineVertices[i].size() * sizeof(LineVertex) * frameIndex, (char*)lineVertices[i].data() + lineCursor * sizeof(LineVertex), (lineVertices[i].size() - lineCursor) * sizeof(LineVertex)); //copy data after cursor position to front of buffer
+		
+	}
+	if (lineFrame == 0) {
+		lineSegments = (lineSegments < 1024) ? lineSegments + 1 : 1024;
+	}
+
+	lineFrame = (lineFrame + 1) % 6;
 }	
 
 void particleRasterizer::getMemoryRequirements(std::vector<MemoryDetails>* mem, std::vector<uint16_t>* count) {
 	mem->push_back(vertexRequirements);
 	mem->push_back(indexRequirements);
 	mem->push_back(uniformRequirements);
-	count->push_back(3);
+	mem->push_back(lineRequirements);
+	count->push_back(4);
 }
 void particleRasterizer::storeGravStorageBuffer(VkBuffer buffer) {
 	gravStorageBuffer = buffer;
@@ -524,13 +674,17 @@ void particleRasterizer::cleanup() {
 		vkDestroyBuffer(device, vertexBuffers[i], nullptr);
 		vkDestroyBuffer(device, indexBuffers[i], nullptr);
 	}
+	for (size_t i = 0; i < lineBuffers.size(); i++) {
+		vkDestroyBuffer(device, lineBuffers[i], nullptr);
+	}
 	vkUnmapMemory(device, uniformBufferMemory.memory);
+	vkUnmapMemory(device, lineMemory.memory);
 	vkDestroyBuffer(device, uniformBuffer, nullptr);
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
 
 	//vkFreeDescriptorSets(device, descriptorPool, descriptorSets.size(), descriptorSets.data());
 
-
+	vkDestroyPipeline(device, linePipeline, nullptr);
 	vkDestroyPipeline(device, pipeline, nullptr);
 	vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);

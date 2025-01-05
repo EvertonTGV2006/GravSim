@@ -15,8 +15,9 @@ layout(push_constant) uniform pc {
 } constants;
 
 layout(location = 0) in vec3 inPosition;
-layout(location = 1) in vec3 inColor;
-layout(location = 2) in vec2 inTexCoord;
+layout(location = 1) in vec3 baseColour;
+layout(location = 2) in vec3 intColour;
+layout(location = 3) in vec3 finColour;
 
 layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec3 fragNormal;
@@ -51,7 +52,7 @@ vec3 HSVtoRGB(float hue, float sat, float val){
 }
 
 
-
+const uint lineCount = 1024 - 1;
 
 
 void main() {
@@ -60,23 +61,33 @@ void main() {
     gl_PointSize = 1.0;
     uint i = gl_InstanceIndex;
 
+    float vertIndex = ((gl_VertexIndex - constants.model[0][0])/ lineCount);
+
+    float baseColourWeight = (0.5f <= vertIndex && vertIndex <= 1.0f) ? 2.0f * (vertIndex - 0.5f) : 0.0f;
+    float intColourWeight = 1.0f - 2.0f * abs(vertIndex - 0.5f);
+    float finColourWeight = (0.0f <= vertIndex && vertIndex <=0.5f) ? 1.0f - 2.0f * (vertIndex - 0.5f) : 0.0f;
+
+    fragColor = baseColour * baseColourWeight + intColour * intColourWeight + finColour * finColourWeight;
+    //fragColor = vec3(1);
+
+    
     //vec3 Color = {1.0f, 1.0f, 1.0f};
     //float mass = inVelocity.w;
-    gl_Position = ubo.proj*ubo.view*ubo.models[i]*vec4(inPosition, 1.0);
-    fragPos = (ubo.models[i]*vec4(inPosition, 1.0)).xyz;
+    gl_Position = ubo.proj*ubo.view*vec4(inPosition, 1.0);
+    fragPos = (vec4(inPosition, 1.0)).xyz;
     //float velMod = length(inVelocity);
     //velMod = clamp(velMod, velMin, velMax);
     //float velModAdj = (velMod - velMin) * 360 / (velMax - velMin); 
 
     //fragColor = HSVtoRGB(velModAdj, 1.0f, 1.0f);
 
-    fragColor = inColor;
+
     //fragColor = normalize(inVelocity.xyz) + inColor * 0.3;
-    fragNormal = (ubo.models[i]*vec4(inPosition.xyz, 0.0)).xyz;
+    fragNormal = (vec4(inPosition.xyz, 0.0)).xyz;
 
     
     
-    fragTexCoord = inTexCoord;
+    fragTexCoord = vec2(0.0f, 0.0f);
     
 }
 

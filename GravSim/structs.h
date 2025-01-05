@@ -57,8 +57,7 @@ enum UIOptions {
 };
 
 
-
-
+const uint32_t MAX_PLANET_ARRAY_SIZE = 6;
 
 
 struct QueueFamilyIndices {
@@ -86,11 +85,21 @@ struct Edge {
     uint16_t vert0;
     uint16_t vert1;
 };
+struct LineVertex {
+    glm::vec3 pos;
+    glm::vec3 baseColour;
+    glm::vec3 intColour;
+    glm::vec3 finColour;
+
+    static VkVertexInputBindingDescription getBindingDescription();
+    static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions();
+};
+
 struct UniformBufferObject {
-    glm::mat4 model;
     glm::mat4 view;
     glm::mat4 proj;
-    glm::mat4 zeta;
+    std::array<glm::mat4, MAX_PLANET_ARRAY_SIZE> models;
+    //alignas(256 * 4 - 640) float filler;
 };
 struct OptionalSettings {
     bool Anisotropy;
@@ -145,6 +154,17 @@ struct Particle {
 
     static std::array<VkVertexInputAttributeDescription, 4> getParticleAttributeDescriptions();
     static VkVertexInputBindingDescription getParticleInputBindings();
+};
+struct Planet {
+    glm::vec3 pos;
+    float mass;
+    glm::vec3 vel;
+    float radius;
+    glm::vec3 axis;
+    float theta;
+
+
+    glm::mat4 getModelMatrix(float);
 };
 
 struct ComputeConstants {

@@ -16,7 +16,7 @@ struct RastInit {
 
 	VkPhysicalDeviceMemoryProperties memProperties;
 
-	std::array<std::vector<char>*, 2> shaderCode;
+	std::array<std::vector<char>*, 4> shaderCode;
 	std::vector<Mesh> meshes;
 
 	VkBuffer gravStorageBuffer;
@@ -29,7 +29,7 @@ public:
 	void initRast_A(RastInit);
 	void initRast_B();
 
-	void initMemory(std::array<MemInit, 3>);
+	void initMemory(std::array<MemInit, 4>);
 	void initBufferData_A(MemoryDetails*);
 	void initBufferData_B(VkCommandBuffer, VkQueue, MemInit);
 
@@ -37,17 +37,19 @@ public:
 
 	MemoryDetails vertexRequirements{};
 	MemoryDetails indexRequirements{};
+	MemoryDetails lineRequirements{};
 
 	MemoryDetails uniformRequirements{};
 	
+	std::array<Planet, MAX_PLANET_ARRAY_SIZE> planets{};
 
 	void cleanup();
 
-	void drawObjects(VkCommandBuffer, uint32_t, UniformBufferObject);
+	void drawObjects(VkCommandBuffer, uint32_t, UniformBufferObject, float);
 
 	static const uint32_t FRAMES_IN_FLIGHT = 3;
 
-	std::vector<std::string> shaderFiles = { "shaders/particleRasterizer/01.spv", "shaders/particleRasterizer/02.spv" };
+	std::vector<std::string> shaderFiles = { "shaders/particleRasterizer/01.spv", "shaders/particleRasterizer/02.spv", "shaders/particleRasterizer/03.spv", "shaders/particleRasterizer/04.spv" };
 	void storeGravStorageBuffer(VkBuffer);
 
 private:
@@ -64,8 +66,12 @@ private:
 	std::array<VkDescriptorSet, FRAMES_IN_FLIGHT> descriptorSets;
 	VkDescriptorSetLayout descriptorSetLayout;
 
+	VkPipeline linePipeline;
+
 	std::vector<VkBuffer> vertexBuffers;
 	std::vector<VkBuffer> indexBuffers;
+
+
 	MemInit vertexMemory;
 	MemInit indexMemory;
 	uint32_t storageSize;
@@ -73,6 +79,18 @@ private:
 	std::vector<uint32_t> indexOffsets;
 
 	VkDeviceSize maxBufferSize = 0;
+
+	
+	std::vector<VkBuffer> lineBuffers;
+	std::vector<uint32_t> lineBufferOffsets;
+	MemInit lineMemory;
+	std::vector<char*> lineBuffersMapped;
+
+	static const uint32_t lineCount = 1024;
+	uint32_t lineFrame = 0;
+	std::vector<std::array<LineVertex, lineCount>> lineVertices;
+	uint32_t lineCursor = 0;
+	uint32_t lineSegments = 0;
 
 	VkBuffer stagingBuffer;
 	MemInit stagingMemory;
@@ -85,7 +103,7 @@ private:
 	VkBuffer gravStorageBuffer;
 
 
-	std::array<std::vector<char>*, 2> shaderCode;
+	std::array<std::vector<char>*, 4> shaderCode;
 
 	std::vector<Mesh> meshes;
 

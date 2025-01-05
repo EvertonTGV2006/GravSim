@@ -53,7 +53,7 @@ void VulkanEngine::initEngine() {
     sphere.vertices = meshes[0].vertices;
     sphere.indices = meshes[0].indices;
 
-    std::thread spheret(&SphereGeometry::createSphereIcosphere, &sphere, 0);
+    std::thread spheret(&SphereGeometry::createSphereIcosphere, &sphere, 4);
 
     ParticleGeometry part{};
     part.particles = &particles;
@@ -112,7 +112,7 @@ void VulkanEngine::initEngine() {
     ui.renderPass = renderPass;
     ui.msaaSamples = msaaSamples;
     ui.aspectRatio = &swapChainAspectRatio;
-    ui.shaderCode = { &shaderCode[8], &shaderCode[9] };
+    ui.shaderCode = { &shaderCode[10], &shaderCode[11] };
 
 
 
@@ -138,7 +138,7 @@ void VulkanEngine::initEngine() {
     rast.memProperties = memProperties;
     rast.meshes = meshes;
     rast.particleCount = partCount;
-    rast.shaderCode = { &shaderCode[6], &shaderCode[7] };
+    rast.shaderCode = { &shaderCode[6], &shaderCode[7], &shaderCode[8], &shaderCode[9]};
 
     gravtA.join();
 
@@ -234,7 +234,9 @@ void VulkanEngine::executeGraphics() {
         std::this_thread::sleep_until(nextFrameScheduled);
         nextFrameScheduled += std::chrono::microseconds(targetFrameTime_uS);
     }
-
+    ct = std::chrono::high_resolution_clock::now();
+    dt = std::chrono::duration<double>(ct - pt);
+    pt = ct;
 
     player->boxes[2].textCount = 0;
 
@@ -294,17 +296,22 @@ void VulkanEngine::executeGraphics() {
     player->updatePlayerMovement();
     player->updateViewMat();
     UniformBufferObject ubo{};
-    ubo.model = glm::mat4(1);
+    //ubo.model = glm::mat4(1);
     ubo.view = player->viewMat;
-    ubo.proj = glm::perspective(glm::radians(45.0f), (float)swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 1000.0f);
-    ubo.zeta = glm::mat4(1);
+    float nearPlane = 1e6;
+    float farPlane = 1e10;
 
-    particleRasterizer.drawObjects(drawCommandBuffers[frameIndex], frameIndex, ubo);
+    ubo.proj = glm::perspective(glm::radians(75.0f), (float)swapChainExtent.width / (float)swapChainExtent.height, /*0.1f*/nearPlane, /*1000.0f*/farPlane);
+    //ubo.zeta = glm::mat4(1);
+
+    particleRasterizer.drawObjects(drawCommandBuffers[frameIndex], frameIndex, ubo, (firstFrame) ? 0.00001f : (float)dt.count());
     //std::cout << "Draw";
 
     uiRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex);
 
     //ubo.view = glm::lookAt(glm::vec3(0.0f, -0.5f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f ), glm::vec3(0.0f, 0.0f, 1.0f));
+
+
 
     glm::mat4 newProj = glm::perspective(glm::radians(60.0f), 1.0f, 1.0f, -1.0f);
 
@@ -382,9 +389,7 @@ void VulkanEngine::executeGraphics() {
         throw std::runtime_error("failed to present swap chain image!");
     }
 
-    ct = std::chrono::high_resolution_clock::now();
-    dt = std::chrono::duration<double>(ct - pt);
-    pt = ct;
+
     gravEngine.simGrav(dt.count());
 
     frameTimes.push_back(dt);
@@ -944,8 +949,8 @@ void VulkanEngine::allocateMemory() {
     }
     //now finally dispatch all the MemInit structs to subclasses
     gravEngine.initMemory({ memoryContainers[0], memoryContainers[1],memoryContainers[2],memoryContainers[3] });
-    particleRasterizer.initMemory({ memoryContainers[4],memoryContainers[5],memoryContainers[6]});
-    uiRasterizer.initMemory({ memoryContainers[7], memoryContainers[8], memoryContainers[9] });
+    particleRasterizer.initMemory({ memoryContainers[4],memoryContainers[5],memoryContainers[6], memoryContainers[7]});
+    uiRasterizer.initMemory({ memoryContainers[8], memoryContainers[9], memoryContainers[10] });
 
 }
 void VulkanEngine::initSubclassData() {

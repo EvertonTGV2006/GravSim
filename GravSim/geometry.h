@@ -19,7 +19,7 @@ public:
 	std::vector<uint16_t> edgeIndices;
 	std::map<uint16_t, uint16_t> LODoffsets;
 	uint16_t mode = 0;
-	float scale = 0.01f;
+	float scale = 1.0f;
 	void createSphereLongLat(uint16_t);
 	void createSphereIcosphere(uint16_t);
 	void createIcosahedron(bool);

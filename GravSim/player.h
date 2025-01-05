@@ -37,11 +37,13 @@ public:
 	std::atomic_bool windowShouldClose;
 	bool validateParticles = false;
 
-	glm::vec3 pos = { 0,-0.3,-1.8 };
-	glm::vec3 viewDirection = {0, 0.3, 1.8 };
+	//glm::vec3 pos = { 0,-0.3,-1.8 };
+	//glm::vec3 viewDirection = {0, 0.3, 1.8 };
+	glm::vec3 pos = { 1e9, 0.0f, 0.9e9 };
+	glm::vec3 viewDirection = { -10.0f, 0.0f, -9.0f };
 	glm::vec3 viewFocus = { 0, 0, 0 };
-	glm::vec3 viewUp = { 0,0,1 };
-	float viewZoom = 1.0f;
+	glm::vec3 viewUp = { 0,0,1.0f };
+	float viewZoom = 1e6;
 	const float zoomMin = 0.01f;
 	const float zoomMax = 100.0f;
 

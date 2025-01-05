@@ -26,9 +26,10 @@ void PlayerObject::updateViewMat() {
 	//else {
 	//	viewFocus = pos + viewDirection * viewZoom;
 	//}
+	up = viewUp;
 
 	//viewMat = glm::lookAt(pos, viewFocus, up);
-	viewMat = glm::lookAt(pos, pos + (viewDirection*viewZoom), up);
+	viewMat = glm::lookAt(pos, pos + (viewDirection*viewZoom)/*glm::vec3(0.0f,0.0f,0.0f)*/, up);
 
 }
 
