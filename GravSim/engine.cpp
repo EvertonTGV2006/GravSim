@@ -24,6 +24,8 @@
 
 #include <thread>
 #include <chrono>
+#include <algorithm>
+#include <numeric>
 
 //for chooseSwapExtent();
 #include <cstdint> // Necessary for uint32_t
@@ -943,9 +945,15 @@ void VulkanEngine::allocateMemory() {
         k += orderedMemCounts[i];
     }
     //now finally dispatch all the MemInit structs to subclasses
-    gravEngine.initMemory({ memoryContainers[0], memoryContainers[1],memoryContainers[2],memoryContainers[3] });
-    particleRasterizer.initMemory({ memoryContainers[4],memoryContainers[5],memoryContainers[6]});
-    uiRasterizer.initMemory({ memoryContainers[7], memoryContainers[8], memoryContainers[9] });
+
+    std::vector<uint16_t> memOffsets;
+    memOffsets.resize(counts.size());
+    //now do prefix sum
+    std::exclusive_scan(counts.begin(), counts.end(), memOffsets.data(), 0);
+
+    gravEngine.initMemory(&memoryContainers[0] + memOffsets[0]);
+    particleRasterizer.initMemory(&memoryContainers[0] + memOffsets[1]);
+    uiRasterizer.initMemory(&memoryContainers[0] + memOffsets[2]);
 
 }
 void VulkanEngine::initSubclassData() {
