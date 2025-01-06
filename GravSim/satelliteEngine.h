@@ -10,44 +10,48 @@
 struct SatInit {
 	VkDevice device;
 	VkDescriptorPool descriptorPool;
-	VkCommandPool commandPool;
 
 	VkPhysicalDeviceMemoryProperties memProperties;
 
 	std::array<Planet, MAX_PLANET_ARRAY_SIZE>* planets;
 
-	std::array<std::vector <char>*,2> shaderCode;
+	std::vector<std::vector <char>*> shaderCode;
 };
 struct SatPushConstants {
 	float deltaTime;
 };
 
+
 class SatelliteEngine
 {
 public:
 	static const uint32_t FRAMES_IN_FLIGHT = 3;
-	static const uint32_t SATELLITE_COUNT = 1024;
+
 	
 	std::array<Planet, MAX_PLANET_ARRAY_SIZE>* planets;
 
 	void initSatEngine_A(SatInit);
 	void initSatEngine_B();
 	void getMemoryRequirements(std::vector<MemoryDetails>*, std::vector<uint16_t>*);
-	void initMemory(std::array<MemInit, 3>);
+	void initMemory(MemInit*);
+	void initBufferData_A(MemoryDetails*);
+	void initBufferData_B(VkCommandBuffer, VkQueue, MemInit);
 
 	std::vector<std::string> shaderFiles = { "shaders/satelliteEngine/01.spv", "shaders/satelliteEngine/02.spv" };
 
-	void simulateSats();
+	void simulateSats(VkCommandBuffer, uint32_t, float);
 
-	MemoryDetails storageRequirements{};
+	MemoryDetails lineRequirements{};
+	MemoryDetails satRequirements{};
 	MemoryDetails uniformRequirements{};
+
+	SatExternalMembers getSatellitePtrs();
 
 	void cleanup();
 
 private:
 	VkDevice device;
 	VkDescriptorPool descriptorPool;
-	VkCommandPool commandPool;
 
 	VkPhysicalDeviceMemoryProperties memProperties;
 
@@ -62,15 +66,25 @@ private:
 	VkBuffer lineBuffer;
 	VkDeviceSize lineSize;
 	MemInit lineMemory;
+	uint32_t lineCursor;
+	uint32_t lineSegments;
 
 	std::array<VkBuffer, FRAMES_IN_FLIGHT> satBuffers;
 	VkDeviceSize satSize;
 	MemInit satMemory;
 
 	VkBuffer uniformBuffer;
-	MemInit uniformBufferMemory;
+	MemInit uniformMemory;
 	VkDeviceSize uniformSize;
-	std::array<char*, MAX_PLANET_ARRAY_SIZE> uniformBuffersMapped;
+	std::array<char*, FRAMES_IN_FLIGHT> uniformBuffersMapped;
+
+	VkBuffer stagingBuffer;
+
+	uint32_t lineFrame;
+	const uint32_t FRAMES_PER_LINE = 60;
+	const uint32_t WRITE_FRAME = 0;
+
+	std::array<Satellite, SATELLITE_COUNT> satData;
 
 	void createPipeline();
 	void createDescriptorSets();

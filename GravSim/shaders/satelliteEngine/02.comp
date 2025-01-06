@@ -1,0 +1,56 @@
+#version 460
+
+#extension GL_EXT_scalar_block_layout : enable
+
+struct Planet{
+    vec4 pos;
+    vec4 vel;
+    vec4 axis;
+    vec4 unused;
+    mat4 padding;
+};
+struct Satellite{
+    vec4 pos;
+    vec4 vel;
+};
+struct LineVertex{
+    vec4 pos;
+    vec4 base;
+    vec4 inter;
+    vec4 fin;
+};
+
+
+const float G = 6.67e-11;
+const uint MAX_PLANETS_ARRAY_SIZE = 2;
+const uint SATELLITE_COUNT = 64;
+const uint LINE_VERTEX_COUNT = 1024;
+
+layout(binding = 0) uniform UniformBufferObject{
+    Planet planets[MAX_PLANETS_ARRAY_SIZE];
+} ubo;
+
+layout(binding = 1) buffer inSSBO{
+    Satellite inSats[SATELLITE_COUNT];
+};
+layout(binding = 2) buffer outSSBO{
+    Satellite outSats[SATELLITE_COUNT];
+};
+layout(binding = 3) buffer lineSSBO{
+    LineVertex vertices[SATELLITE_COUNT * LINE_VERTEX_COUNT];
+};
+layout(push_constant) uniform pc {
+    float dt;             
+} constants;
+
+void main(){
+    uint lineCursor = uint(constants.dt);
+    uint i = gl_GlobalInvocationID.x;
+    LineVertex sampleVertex;
+    sampleVertex.pos = inSats[i].pos;
+    sampleVertex.base = vec4(0.0f, 0.0f, 1.0f, 0.0f);
+    sampleVertex.inter = vec4(0.0f, 1.0f, 0.0f, 0.0f);
+    sampleVertex.fin = vec4(1.0f, 0.0f, 0.0f, 0.0f);
+    uint vertIndex = i * LINE_VERTEX_COUNT + lineCursor;
+    vertices[vertIndex] = sampleVertex;
+}

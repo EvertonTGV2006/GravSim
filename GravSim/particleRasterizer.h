@@ -49,7 +49,8 @@ public:
 	static const uint32_t FRAMES_IN_FLIGHT = 3;
 
 	std::vector<std::string> shaderFiles = { "shaders/particleRasterizer/01.spv", "shaders/particleRasterizer/02.spv", "shaders/particleRasterizer/03.spv", "shaders/particleRasterizer/04.spv" };
-	void storeGravStorageBuffer(VkBuffer);
+	
+	void setExternalPtrs(SatExternalMembers);
 
 private:
 	VkDevice device;
@@ -85,6 +86,9 @@ private:
 	MemInit lineMemory;
 	std::vector<char*> lineBuffersMapped;
 
+	VkBuffer* satLineBuffer;
+	uint32_t* satLineCursor;
+	uint32_t* satLineSegments;
 
 	uint32_t lineFrame = 0;
 	std::vector<std::array<LineVertex, LINE_VERTEX_COUNT>> lineVertices;

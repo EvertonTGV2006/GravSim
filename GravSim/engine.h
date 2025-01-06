@@ -25,6 +25,7 @@
 #include "particleRasterizer.h"
 #include "grav.h"
 #include "uiRasterizer.h"
+#include "satelliteEngine.h"
 
 
 class VulkanEngine {
@@ -128,6 +129,7 @@ private:
 	particleRasterizer particleRasterizer;
 	GravEngine gravEngine;
 	UIRasterizer uiRasterizer;
+	SatelliteEngine satEngine;
 	bool swapDealers = false;
 
 	std::vector<MemInit> memoryContainers;

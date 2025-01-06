@@ -1,0 +1,62 @@
+#version 460
+
+
+struct Planet{
+    vec4 pos;
+    vec4 vel;
+    vec4 axis;
+    vec4 unused;
+    mat4 padding;
+};
+struct Satellite{
+    vec4 pos;
+    vec4 vel;
+};
+struct LineVertex{
+    vec4 pos;
+    vec4 base;
+    vec4 inter;
+    vec4 fin;
+};
+
+
+const float G = 6.67e-11;
+const uint MAX_PLANETS_ARRAY_SIZE = 2;
+const uint SATELLITE_COUNT = 64;
+const uint LINE_VERTEX_COUNT = 1024;
+
+layout(binding = 0) uniform UniformBufferObject{
+    Planet planets[MAX_PLANETS_ARRAY_SIZE];
+} ubo;
+
+layout(binding = 1) buffer inSSBO{
+    Satellite inSats[SATELLITE_COUNT];
+};
+layout(binding = 2) buffer outSSBO{
+    Satellite outSats[SATELLITE_COUNT];
+};
+layout(binding = 3) buffer lineSSBO{
+    LineVertex vertices[SATELLITE_COUNT * LINE_VERTEX_COUNT];
+};
+layout(push_constant) uniform pc {
+    float dt;             
+} constants;
+
+vec3 evaluatePlanetAccel(Satellite sat, Planet pl){
+    vec3 sep = sat.pos.xyz - pl.pos.xyz;
+    float aMult = G * pl.pos.w / dot(sep, sep);
+    vec3 a = aMult * -normalize(sep);
+    return a;
+}
+
+
+void main(){
+    uint i = gl_GlobalInvocationID.x;
+    vec3 a = vec3(0);
+    for(uint j = 0; j < MAX_PLANETS_ARRAY_SIZE; j++){
+        a += evaluatePlanetAccel(inSats[i], ubo.planets[j]);
+    }
+    outSats[i] = inSats[i];
+    outSats[i].pos.xyz = inSats[i].pos.xyz + inSats[i].vel.xyz * constants.dt;
+    outSats[i].vel.xyz = inSats[i].vel.xyz + a * constants.dt;
+}

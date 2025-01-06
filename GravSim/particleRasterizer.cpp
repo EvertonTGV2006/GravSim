@@ -326,8 +326,8 @@ void particleRasterizer::createBuffers() {
 	indexOffsets.push_back(static_cast<uint32_t>(indexRequirements.requirements.size));
 
 	//now make line buffer
-	lineBuffers.resize(8);
-	lineVertices.resize(8);
+	lineBuffers.resize(MAX_PLANET_ARRAY_SIZE);
+	lineVertices.resize(MAX_PLANET_ARRAY_SIZE);
 	for (uint32_t i = 0; i < lineBuffers.size(); i++) {
 		vertexInfo.size = LINE_VERTEX_COUNT * sizeof(LineVertex) * FRAMES_IN_FLIGHT;
 
@@ -371,7 +371,7 @@ void particleRasterizer::createBuffers() {
 }
 
 void particleRasterizer::initMemory(MemInit* detPtr) {
-	std::array<MemInit, 3> details;
+	std::array<MemInit, 4> details;
 	memcpy(details.data(), detPtr, details.size() * sizeof(MemInit));
 
 	vertexMemory = details[0];
@@ -665,6 +665,26 @@ void particleRasterizer::drawObjects(VkCommandBuffer commandBuffer, uint32_t fra
 			vkCmdDraw(commandBuffer, lineVertices[i].size() - lineCursor, 1, lineCursor + lineVertices[i].size()*frameIndex, 0);
 		}
 	}
+	//now draw satellite lines
+
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, satLineBuffer, offsets);
+	for (uint32_t i = 0; i < SATELLITE_COUNT; i++) {
+		model[0][0] = (float(i)-1) * LINE_VERTEX_COUNT + *satLineCursor;
+		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &model);
+		vkCmdDraw(commandBuffer, lineCursor, 1, i* LINE_VERTEX_COUNT, 0);
+
+		if (*satLineSegments == 1024) {
+			model[0][0] = i * LINE_VERTEX_COUNT + *satLineCursor;
+			vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &model);
+			vkCmdDraw(commandBuffer, LINE_VERTEX_COUNT - *satLineCursor, 1, i* LINE_VERTEX_COUNT + *satLineCursor, 0);
+		}
+	}
+
+
+
+
+
+
 	if (lineFrame == 0) {
 		/*lineCursor = (lineCursor + 1) % lineVertices[0].size();*/
 		lineSegments = (lineSegments < 1024) ? lineSegments + 1 : 1024;
@@ -680,7 +700,11 @@ void particleRasterizer::getMemoryRequirements(std::vector<MemoryDetails>* mem, 
 	mem->push_back(lineRequirements);
 	count->push_back(4);
 }
-
+void particleRasterizer::setExternalPtrs(SatExternalMembers details) {
+	satLineBuffer = details.lineBuffer;
+	satLineCursor = details.lineCursor;
+	satLineSegments = details.lineSegments;
+}
 
 void particleRasterizer::cleanup() {
 	for (size_t i = 0; i < meshes.size(); i++) {

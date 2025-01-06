@@ -57,7 +57,8 @@ enum UIOptions {
 };
 
 const uint32_t LINE_VERTEX_COUNT = 1024;
-const uint32_t MAX_PLANET_ARRAY_SIZE = 6;
+const uint32_t SATELLITE_COUNT = 64;
+const uint32_t MAX_PLANET_ARRAY_SIZE = 2;
 
 
 struct QueueFamilyIndices {
@@ -86,10 +87,10 @@ struct Edge {
     uint16_t vert1;
 };
 struct LineVertex {
-    glm::vec3 pos;
-    glm::vec3 baseColour;
-    glm::vec3 intColour;
-    glm::vec3 finColour;
+    alignas(16) glm::vec3 pos;
+    alignas(16) glm::vec3 baseColour;
+    alignas(16) glm::vec3 intColour;
+    alignas(16) glm::vec3 finColour;
 
     static VkVertexInputBindingDescription getBindingDescription();
     static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions();
@@ -162,7 +163,8 @@ struct Planet {
     float radius;
     glm::vec3 axis;
     float theta;
-
+    glm::vec4 unused;
+    glm::mat4 padding;
 
     glm::mat4 getModelMatrix(float);
 };
@@ -229,4 +231,10 @@ struct UIBox {
     glm::vec2 offset;
     glm::vec3 colour;
     UIText* dataP;
+};
+
+struct SatExternalMembers {
+    VkBuffer* lineBuffer;
+    uint32_t* lineCursor;
+    uint32_t* lineSegments;
 };
