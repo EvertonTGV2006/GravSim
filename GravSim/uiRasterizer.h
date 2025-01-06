@@ -47,7 +47,7 @@ public:
 	void initUI_A(UIInit);
 	void initUI_B();
 
-	void initMemory(std::array<MemInit, 3>);
+	void initMemory(MemInit*);
 	
 	void getMemoryRequirements(std::vector<MemoryDetails>*, std::vector<uint16_t>*);
 

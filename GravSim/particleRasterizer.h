@@ -28,7 +28,7 @@ public:
 	void initRast_A(RastInit);
 	void initRast_B();
 
-	void initMemory(std::array<MemInit, 4>);
+	void initMemory(MemInit*);
 	void initBufferData_A(MemoryDetails*);
 	void initBufferData_B(VkCommandBuffer, VkQueue, MemInit);
 

@@ -40,7 +40,10 @@ void UIRasterizer::initUI_B() {
 	createPipeline();
 }
 
-void UIRasterizer::initMemory(std::array<MemInit, 3> details) {
+void UIRasterizer::initMemory(MemInit* detPtr) {
+	std::array<MemInit, 3> details;
+	memcpy(details.data(), detPtr, details.size() * sizeof(MemInit));
+
 	vertexMemory = details[0];
 	uniformBufferMemory = details[1];
 	texMemory = details[2];

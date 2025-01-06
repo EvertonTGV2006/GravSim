@@ -420,7 +420,10 @@ void GravEngine::createStorageBuffers() {
 	deltaRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 }
 
-void GravEngine::initMemory(std::array<MemInit, 4> details) {
+void GravEngine::initMemory(MemInit* detPtr) {
+	std::array<MemInit, 4> details;
+	memcpy(details.data(), detPtr, details.size() * sizeof(MemInit));
+
 	storageMemory = details[0].memory;
 	storageMemOffset = details[0].offset;
 	if (storageRequirements.requirements.size != details[0].range) { throw std::runtime_error("Mismatch in GravStorageMemory size"); }
