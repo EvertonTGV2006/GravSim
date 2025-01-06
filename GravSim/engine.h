@@ -42,6 +42,7 @@ public:
 	std::string playerTurnString;
 	std::string playerTurnStringEnd = "'s Turn";
 
+	std::array<Planet, MAX_PLANET_ARRAY_SIZE> planets{};
 	
 	void initEngine();
 

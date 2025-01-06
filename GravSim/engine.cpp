@@ -139,10 +139,10 @@ void VulkanEngine::initEngine() {
     rast.meshes = meshes;
     rast.particleCount = partCount;
     rast.shaderCode = { &shaderCode[6], &shaderCode[7], &shaderCode[8], &shaderCode[9]};
+    rast.planets = &planets;
 
     gravtA.join();
 
-    rast.gravStorageBuffer = gravEngine.getInterleavedStorageBuffer();
 
     std::thread rasttA(&particleRasterizer::initRast_A, &particleRasterizer, rast);
     //particleRasterizer.initRast_A(rast);
@@ -151,7 +151,7 @@ void VulkanEngine::initEngine() {
     uitA.join();
 
 
-    particleRasterizer.storeGravStorageBuffer(gravEngine.getInterleavedStorageBuffer());
+   // particleRasterizer.storeGravStorageBuffer(gravEngine.getInterleavedStorageBuffer());
 
     allocateMemory();
 
@@ -296,7 +296,7 @@ void VulkanEngine::executeGraphics() {
     player->updatePlayerMovement();
     player->updateViewMat();
     UniformBufferObject ubo{};
-    //ubo.model = glm::mat4(1);
+
     ubo.view = player->viewMat;
     float nearPlane = 1e6;
     float farPlane = 1e10;
@@ -304,18 +304,15 @@ void VulkanEngine::executeGraphics() {
     ubo.proj = glm::perspective(glm::radians(75.0f), (float)swapChainExtent.width / (float)swapChainExtent.height, /*0.1f*/nearPlane, /*1000.0f*/farPlane);
     ubo.proj[1][1] *= -1;
     
-    //ubo.zeta = glm::mat4(1);
-
     particleRasterizer.drawObjects(drawCommandBuffers[frameIndex], frameIndex, ubo, (firstFrame) ? 0.00001f : (float)dt.count());
-    //std::cout << "Draw";
+
 
     uiRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex);
 
-    //ubo.view = glm::lookAt(glm::vec3(0.0f, -0.5f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f ), glm::vec3(0.0f, 0.0f, 1.0f));
 
 
 
-    glm::mat4 newProj = glm::perspective(glm::radians(60.0f), 1.0f, 1.0f, -1.0f);
+
 
 
     vkCmdEndRenderPass(drawCommandBuffers[frameIndex]);
@@ -333,23 +330,23 @@ void VulkanEngine::executeGraphics() {
     waitInfo1.semaphore = imageSemaphores[frameIndex];
     waitInfo1.stageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
-    VkSemaphoreSubmitInfo waitInfo2{};
-    waitInfo2.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-    waitInfo2.semaphore = gravRenderSemaphores[frameIndex];
-    waitInfo2.stageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+    //VkSemaphoreSubmitInfo waitInfo2{};
+    //waitInfo2.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+    //waitInfo2.semaphore = gravRenderSemaphores[frameIndex];
+    //waitInfo2.stageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
 
     VkSemaphoreSubmitInfo signalInfo1{};
     signalInfo1.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
     signalInfo1.semaphore = renderSemaphores[frameIndex];
     signalInfo1.stageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 
-    VkSemaphoreSubmitInfo signalInfo2{};
-    signalInfo2.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-    signalInfo2.semaphore = renderGravSemaphores[(frameIndex+1)%FRAMES_IN_FLIGHT];
-    signalInfo2.stageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    //VkSemaphoreSubmitInfo signalInfo2{};
+    //signalInfo2.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+    //signalInfo2.semaphore = renderGravSemaphores[(frameIndex+1)%FRAMES_IN_FLIGHT];
+    //signalInfo2.stageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 
-    std::array<VkSemaphoreSubmitInfo, 2> waitInfos = { waitInfo1, waitInfo2};
-    std::array<VkSemaphoreSubmitInfo, 2> signalInfos = { signalInfo1, signalInfo2};
+    std::array<VkSemaphoreSubmitInfo, 1> waitInfos = { waitInfo1};
+    std::array<VkSemaphoreSubmitInfo, 1> signalInfos = { signalInfo1 };
 
     VkSubmitInfo2 submitInfo2{};
     submitInfo2.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
@@ -392,7 +389,7 @@ void VulkanEngine::executeGraphics() {
     }
 
 
-    gravEngine.simGrav(dt.count());
+    //gravEngine.simGrav(dt.count());
 
     frameTimes.push_back(dt);
 

@@ -19,9 +19,8 @@ struct RastInit {
 	std::array<std::vector<char>*, 4> shaderCode;
 	std::vector<Mesh> meshes;
 
-	VkBuffer gravStorageBuffer;
-
 	uint32_t particleCount;
+	std::array<Planet, MAX_PLANET_ARRAY_SIZE>* planets;
 };
 
 class particleRasterizer {
@@ -41,7 +40,7 @@ public:
 
 	MemoryDetails uniformRequirements{};
 	
-	std::array<Planet, MAX_PLANET_ARRAY_SIZE> planets{};
+	std::array<Planet, MAX_PLANET_ARRAY_SIZE>* planets;
 
 	void cleanup();
 
@@ -86,9 +85,9 @@ private:
 	MemInit lineMemory;
 	std::vector<char*> lineBuffersMapped;
 
-	static const uint32_t lineCount = 1024;
+
 	uint32_t lineFrame = 0;
-	std::vector<std::array<LineVertex, lineCount>> lineVertices;
+	std::vector<std::array<LineVertex, LINE_VERTEX_COUNT>> lineVertices;
 	uint32_t lineCursor = 0;
 	uint32_t lineSegments = 0;
 
@@ -99,9 +98,6 @@ private:
 	MemInit uniformBufferMemory;
 	char* uniformBufferMapped;
 	uint32_t uniformBufferSize;
-
-	VkBuffer gravStorageBuffer;
-
 
 	std::array<std::vector<char>*, 4> shaderCode;
 

@@ -56,7 +56,7 @@ enum UIOptions {
     UI_NEWLINE_FALSE = 2 << 8
 };
 
-
+const uint32_t LINE_VERTEX_COUNT = 1024;
 const uint32_t MAX_PLANET_ARRAY_SIZE = 6;
 
 
@@ -165,6 +165,12 @@ struct Planet {
 
 
     glm::mat4 getModelMatrix(float);
+};
+struct Satellite {
+    glm::vec3 pos;
+    float mass;
+    glm::vec3 vel;
+    float unused;
 };
 
 struct ComputeConstants {
