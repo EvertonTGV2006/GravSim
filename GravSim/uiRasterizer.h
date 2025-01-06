@@ -21,7 +21,7 @@ struct UIInit {
 	VkSampleCountFlagBits msaaSamples;
 
 	VkPhysicalDeviceMemoryProperties memProperties;
-	std::array<std::vector<char>*, 2> shaderCode;
+	std::vector<std::vector<char>*> shaderCode;
 
 	float* aspectRatio;
 

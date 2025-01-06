@@ -87,10 +87,16 @@ void VulkanEngine::initEngine() {
 
     std::vector<std::vector<char>> shaderCode;
     std::vector<std::string> shaderFiles;
+    std::vector<uint16_t> shaderCounts;
 
+    shaderCounts.push_back(shaderFiles.size());
     shaderFiles.insert(std::end(shaderFiles), std::begin(gravEngine.shaderFiles), std::end(gravEngine.shaderFiles));
+    shaderCounts.push_back(shaderFiles.size());
     shaderFiles.insert(std::end(shaderFiles), std::begin(particleRasterizer.shaderFiles), std::end(particleRasterizer.shaderFiles));
+    shaderCounts.push_back(shaderFiles.size());
     shaderFiles.insert(std::end(shaderFiles), std::begin(uiRasterizer.shaderFiles), std::end(uiRasterizer.shaderFiles));
+    shaderCounts.push_back(shaderFiles.size());
+    uint16_t shaderCursor = 0;
 
     partt.join();
 
@@ -104,8 +110,11 @@ void VulkanEngine::initEngine() {
     grav.memProperties = memProperties;
     grav.particles = &particles;
     grav.offsets = &offsets;
-    grav.shaderCode = { &shaderCode[0], &shaderCode[1], &shaderCode[2], &shaderCode[3], &shaderCode[4], &shaderCode[5]};
+    for (uint16_t i = shaderCounts[shaderCursor]; i < shaderCounts[shaderCursor + 1]; i++) {
+        grav.shaderCode.push_back(&shaderCode[i]);
+    }
 
+    shaderCursor = 2;
     UIInit ui{};
     ui.descriptorPool = descriptorPool;
     ui.device = device;
@@ -114,7 +123,9 @@ void VulkanEngine::initEngine() {
     ui.renderPass = renderPass;
     ui.msaaSamples = msaaSamples;
     ui.aspectRatio = &swapChainAspectRatio;
-    ui.shaderCode = { &shaderCode[10], &shaderCode[11] };
+    for (uint16_t i = shaderCounts[shaderCursor]; i < shaderCounts[shaderCursor + 1]; i++) {
+        ui.shaderCode.push_back(&shaderCode[i]);
+    }
 
 
 
@@ -132,6 +143,7 @@ void VulkanEngine::initEngine() {
     meshes[0].indexCount = static_cast<uint32_t>(meshes[0].indices->size());
     //gravt.join();
 
+    shaderCursor = 1;
     RastInit rast{};
     rast.device = device;
     rast.descriptorPool = descriptorPool;
@@ -140,8 +152,9 @@ void VulkanEngine::initEngine() {
     rast.memProperties = memProperties;
     rast.meshes = meshes;
     rast.particleCount = partCount;
-    rast.shaderCode = { &shaderCode[6], &shaderCode[7], &shaderCode[8], &shaderCode[9]};
-    rast.planets = &planets;
+    for (uint16_t i = shaderCounts[shaderCursor]; i < shaderCounts[shaderCursor + 1]; i++) {
+        rast.shaderCode.push_back(&shaderCode[i]);
+    }
 
     gravtA.join();
 

@@ -11,7 +11,7 @@ void GravEngine::initGrav_A(GravInit details) {
 	gravQueue = details.gravQueue;
 	memProperties = details.memProperties;
 
-	shaderCode = details.shaderCode;
+	memcpy(shaderCode.data(), details.shaderCode.data(), shaderCode.size()*sizeof(shaderCode[0]));
 	particles = details.particles;
 	pOffsets = details.offsets;
 
