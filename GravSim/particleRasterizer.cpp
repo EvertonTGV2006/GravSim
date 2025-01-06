@@ -299,7 +299,10 @@ void particleRasterizer::createBuffers() {
 
 }
 
-void particleRasterizer::initMemory(std::array<MemInit, 3> details) {
+void particleRasterizer::initMemory(MemInit* detPtr) {
+	std::array<MemInit, 3> details;
+	memcpy(details.data(), detPtr, details.size() * sizeof(MemInit));
+
 	vertexMemory = details[0];
 	indexMemory = details[1];
 	uniformBufferMemory = details[2];
