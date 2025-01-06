@@ -9,7 +9,7 @@ void particleRasterizer::initRast_A(RastInit details) {
 
 	msaaSamples = details.msaaSamples;
 
-	shaderCode = details.shaderCode;
+	memcpy(shaderCode.data(), details.shaderCode.data(), shaderCode.size() * sizeof(shaderCode[0]));
 
 	meshes = details.meshes;
 	particleCount = details.particleCount;

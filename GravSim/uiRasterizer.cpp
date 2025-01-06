@@ -22,7 +22,7 @@ void UIRasterizer::initUI_A(UIInit details) {
 	msaaSamples = details.msaaSamples;
 
 	memProperties = details.memProperties;
-	shaderCode = details.shaderCode;
+	memcpy(shaderCode.data(), details.shaderCode.data(), shaderCode.size() * sizeof(shaderCode[0]));
 
 	player = details.player;
 

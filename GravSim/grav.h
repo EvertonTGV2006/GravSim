@@ -15,7 +15,7 @@ struct GravInit {
 
 	VkPhysicalDeviceMemoryProperties memProperties;
 
-	std::array<std::vector<char>*, 6> shaderCode;
+	std::vector<std::vector<char>*> shaderCode;
 	std::vector<Particle>* particles;
 	std::vector<uint32_t>* offsets;
 };

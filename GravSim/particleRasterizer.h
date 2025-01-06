@@ -16,7 +16,7 @@ struct RastInit {
 
 	VkPhysicalDeviceMemoryProperties memProperties;
 
-	std::array<std::vector<char>*, 2> shaderCode;
+	std::vector<std::vector<char>*> shaderCode;
 	std::vector<Mesh> meshes;
 
 	VkBuffer gravStorageBuffer;
