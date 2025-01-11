@@ -375,7 +375,7 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 
 
 
-	vkCmdDispatch(commandBuffer, SATELLITE_COUNT, 1, 1);
+	vkCmdDispatch(commandBuffer, 1, 1, 1);
 
 	if (lineFrame == WRITE_FRAME) {
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, linePipeline);
@@ -383,7 +383,7 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 		dt = lineCursor;
 		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float), &dt);
 
-		vkCmdDispatch(commandBuffer, SATELLITE_COUNT, 1, 1);
+		vkCmdDispatch(commandBuffer, 1, 1, 1);
 		VkMemoryBarrier mem{};
 		mem.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
 		mem.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;

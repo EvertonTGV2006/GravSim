@@ -50,6 +50,7 @@ layout(binding = 4) buffer lineInfoSSBO{
 layout(push_constant) uniform pc {
     float dt;             
 } constants;
+layout(local_size_x = SATELLITE_COUNT) in;
 
 void main(){
     uint lineCursor = uint(constants.dt);
