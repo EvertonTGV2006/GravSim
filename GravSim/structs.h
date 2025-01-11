@@ -95,6 +95,13 @@ struct LineVertex {
     static VkVertexInputBindingDescription getBindingDescription();
     static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions();
 };
+struct LineInfo {
+    float eccentricity;
+    float apoapsis;
+    float periapsis;
+    float semimajoraxis;
+    float cost;
+};
 
 struct UniformBufferObject {
     glm::mat4 view;
@@ -156,15 +163,18 @@ struct Particle {
     static std::array<VkVertexInputAttributeDescription, 4> getParticleAttributeDescriptions();
     static VkVertexInputBindingDescription getParticleInputBindings();
 };
-struct Planet {
-    glm::vec3 pos;
+struct Planet {//FIX THIS TO WORK WITH SHADERS --TO DO--
+    alignas(16) glm::vec3 pos_0;
+    alignas(16) glm::vec3 pos_1;
+    alignas(16) glm::vec3 pos_2;
     float mass;
-    glm::vec3 vel;
+    alignas(16) glm::vec3 vel_0;
+    alignas(16) glm::vec3 vel_1;
+    alignas(16) glm::vec3 vel_2;
     float radius;
     glm::vec3 axis;
     float theta;
     glm::vec4 unused;
-    glm::mat4 padding;
 
     glm::mat4 getModelMatrix(float);
 };
@@ -174,6 +184,7 @@ struct Satellite {
     glm::vec3 vel;
     float unused;
 };
+
 
 struct ComputeConstants {
     double deltaTime;
@@ -203,15 +214,6 @@ struct textBitmapWrapper {
     int16_t bearingY;
     FT_Bitmap* address;
 };
-struct UIElement {
-    glm::vec2 textPosition;
-    glm::vec2 textDimension;
-    uint32_t configuration;
-    void* dataPointer;
-    void* labelPointer;
-    uint32_t* fPointer;
-    void getCharVector(std::vector<char>*, std::vector<uint32_t>*);
-};
 
 
 
@@ -237,4 +239,5 @@ struct SatExternalMembers {
     VkBuffer* lineBuffer;
     uint32_t* lineCursor;
     uint32_t* lineSegments;
+    VkBuffer* lineInfoBuffer;
 };

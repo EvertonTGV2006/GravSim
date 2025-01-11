@@ -44,6 +44,7 @@ public:
 	MemoryDetails lineRequirements{};
 	MemoryDetails satRequirements{};
 	MemoryDetails uniformRequirements{};
+	MemoryDetails lineInfoRequirements{};
 
 	SatExternalMembers getSatellitePtrs();
 
@@ -69,6 +70,10 @@ private:
 	uint32_t lineCursor;
 	uint32_t lineSegments;
 
+	VkBuffer lineInfoBuffer;
+	VkDeviceSize lineInfoSize;
+	MemInit lineInfoMemory;
+
 	std::array<VkBuffer, FRAMES_IN_FLIGHT> satBuffers;
 	VkDeviceSize satSize;
 	MemInit satMemory;
@@ -80,8 +85,8 @@ private:
 
 	VkBuffer stagingBuffer;
 
-	uint32_t lineFrame;
-	const uint32_t FRAMES_PER_LINE = 60;
+	uint32_t lineFrame = 0;
+	const uint32_t FRAMES_PER_LINE = 200;
 	const uint32_t WRITE_FRAME = 0;
 
 	std::array<Satellite, SATELLITE_COUNT> satData;
@@ -89,5 +94,25 @@ private:
 	void createPipeline();
 	void createDescriptorSets();
 	void createBuffers();
+
+	void createInitialSatellites(void*, uint32_t, uint32_t, float, float,float, float, uint32_t);
+	void updatePlanets(float);
+
+
+	std::array<std::array<Planet, MAX_PLANET_ARRAY_SIZE>, 4> tempPlanets;
+	std::array<glm::vec3, MAX_PLANET_ARRAY_SIZE> tempAccelerations;
+
+	std::array<glm::vec3, MAX_PLANET_ARRAY_SIZE> dx_1;
+	std::array<glm::vec3, MAX_PLANET_ARRAY_SIZE> dv_1;
+	std::array<glm::vec3, MAX_PLANET_ARRAY_SIZE> dx_2;
+	std::array<glm::vec3, MAX_PLANET_ARRAY_SIZE> dv_2;
+	std::array<glm::vec3, MAX_PLANET_ARRAY_SIZE> dx_3;
+	std::array<glm::vec3, MAX_PLANET_ARRAY_SIZE> dv_3;
+	std::array<glm::vec3, MAX_PLANET_ARRAY_SIZE> dx_4;
+	std::array<glm::vec3, MAX_PLANET_ARRAY_SIZE> dv_4;
+	std::array<glm::vec3, MAX_PLANET_ARRAY_SIZE> dx;
+	std::array<glm::vec3, MAX_PLANET_ARRAY_SIZE> dv;
+
+	void updateAccelerations(uint32_t);
 };
 

@@ -2,11 +2,24 @@
 
 #define MAX_PLANETS_ARRAY_SIZE 2
 
+struct LineInfo{
+    float eccentricity;
+    float apoapsis;
+    float periapsis;
+    float cost;
+};
+
+const uint SATELLITE_COUNT = 64;
+const uint LINE_VERTEX_COUNT = 1024;
+
 layout(binding = 0) uniform UniformBufferObject {
     mat4 view;
     mat4 proj;
     mat4 models[MAX_PLANETS_ARRAY_SIZE];
 } ubo;
+layout(binding = 1) uniform LineInfoUniforms{
+    LineInfo infos[SATELLITE_COUNT];
+};
 
 
 layout(push_constant) uniform pc {
@@ -62,6 +75,8 @@ void main() {
     uint i = gl_InstanceIndex;
 
     float vertIndex = ((gl_VertexIndex - constants.model[0][0])/ lineCount);
+    uint infoIndex = uint(constants.model[0][1]);
+    LineInfo info = infos[infoIndex];
 
     float baseColourWeight = (0.5f <= vertIndex && vertIndex <= 1.0f) ? 2.0f * (vertIndex - 0.5f) : 0.0f;
     float intColourWeight = 1.0f - 2.0f * abs(vertIndex - 0.5f);
@@ -71,6 +86,7 @@ void main() {
     //fragColor = vec3(1);
     fragColor = HSVtoRGB(vertIndex * 360.0f, 1.0f, vertIndex * vertIndex);
 
+    
     //vec3 Color = {1.0f, 1.0f, 1.0f};
     //float mass = inVelocity.w;
     gl_Position = ubo.proj*ubo.view*vec4(inPosition, 1.0);

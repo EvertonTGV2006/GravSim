@@ -19,6 +19,12 @@ struct LineVertex{
     vec4 inter;
     vec4 fin;
 };
+struct LineInfo{
+    float eccentricity;
+    float apoapsis;
+    float periapsis;
+    float cost;
+};
 
 
 const float G = 6.67e-11;
@@ -29,7 +35,6 @@ const uint LINE_VERTEX_COUNT = 1024;
 layout(binding = 0) uniform UniformBufferObject{
     Planet planets[MAX_PLANETS_ARRAY_SIZE];
 } ubo;
-
 layout(binding = 1) buffer inSSBO{
     Satellite inSats[SATELLITE_COUNT];
 };
@@ -38,6 +43,9 @@ layout(binding = 2) buffer outSSBO{
 };
 layout(binding = 3) buffer lineSSBO{
     LineVertex vertices[SATELLITE_COUNT * LINE_VERTEX_COUNT];
+};
+layout(binding = 4) buffer lineInfoSSBO{
+    LineInfo infos[SATELLITE_COUNT];
 };
 layout(push_constant) uniform pc {
     float dt;             
@@ -53,4 +61,21 @@ void main(){
     sampleVertex.fin = vec4(1.0f, 0.0f, 0.0f, 0.0f);
     uint vertIndex = i * LINE_VERTEX_COUNT + lineCursor;
     vertices[vertIndex] = sampleVertex;
+
+    float oldCost = infos[i].cost;
+    float newCost = max(1.0f/length(inSats[i].pos.xyz-ubo.planets[1].pos.xyz), oldCost * 0.999f);
+
+    vec3 r = inSats[i].pos.xyz - ubo.planets[0].pos.xyz;
+    vec3 v = inSats[i].vel.xyz;
+
+    float mu = G * ubo.planets[0].pos.w;
+
+    vec3 eVec = cross(v, cross(r, v))/mu - normalize(r);
+
+    float eccentricity = length(eVec);
+
+    infos[i].cost = newCost;
+    infos[i].eccentricity = eccentricity;
+
+
 }

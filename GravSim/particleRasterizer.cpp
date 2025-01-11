@@ -22,30 +22,38 @@ void particleRasterizer::initRast_A(RastInit details) {
 
 	createBuffers();
 
-	(*planets)[0].pos = glm::vec3(0.0f, 0.0f, 0.0f);
+	(*planets)[0].pos_0 = glm::vec3(0.0f, 0.0f, 0.0f);
 	(*planets)[0].radius = 6378e3;
-	(*planets)[0].vel = glm::vec3(0.0f, 0.0f, 0.0f);
+	(*planets)[0].vel_0 = glm::vec3(0.0f, 0.0f, 0.0f);
 	(*planets)[0].mass = 5.9722e24;
 	(*planets)[0].axis = glm::vec3(0.0f, glm::asin(glm::radians(23.5f)), glm::acos(glm::radians(23.5f)));
 	(*planets)[0].theta = 0.0f;
 
-	(*planets)[1].pos = glm::vec3(0.4055e9/*10.0f*/, 0.0f, 0.0f);
+	(*planets)[1].pos_0 = glm::vec3(0.4055e9/*10.0f*/, 0.0f, 0.0f);
 	(*planets)[1].radius = 1738e3/*0.5f*/;
-	(*planets)[1].vel = glm::vec3(0.0f, 0.970e3/*0.5f*/, 0.0f);
+	(*planets)[1].vel_0 = glm::vec3(0.0f, 0.970e3/*0.5f*/, 0.0f);
 	(*planets)[1].mass = 0.07346e24;
 	(*planets)[1].axis = glm::vec3(0.0f, 0.0f, 1.0f);
 	(*planets)[1].theta = 0.0f;
 
 	for (uint32_t i = 2; i < planets->size(); i++) {
-		(*planets)[i].pos = glm::vec3(glm::linearRand<float>(0, 10)*7e7, glm::linearRand<float>(0, 10)*8e7, glm::linearRand<float>(0, 10)*1e1);
+		(*planets)[i].pos_0 = glm::vec3(glm::linearRand<float>(0, 10) * 7e7, glm::linearRand<float>(0, 10) * 8e7, glm::linearRand<float>(0, 10) * 1e1);
 		(*planets)[i].radius = glm::linearRand<float>(0.1f, 2.0f)*1e6;
 		//(*planets)[i].vel = glm::vec3(glm::linearRand<float>(0, 1)*1e3, glm::linearRand<float>(0, 1)*1e3, glm::linearRand<float>(0, 1)*1e0 );
-		(*planets)[i].vel = glm::sqrt(float(6.67e-11) * (*planets)[0].mass * glm::linearRand<float>(0.7f, 1.4f) / glm::length((*planets)[i].pos)) * glm::cross(glm::normalize((*planets)[i].pos), glm::vec3(0.0f, 0.0f, 1.0f));
+		(*planets)[i].vel_0 = glm::sqrt(float(6.67e-11) * (*planets)[0].mass * glm::linearRand<float>(0.7f, 1.4f) / glm::length((*planets)[i].pos_0)) * glm::cross(glm::normalize((*planets)[i].pos_0), glm::vec3(0.0f, 0.0f, 1.0f));
 		//(*planets)[i].mass = glm::linearRand<float>(0.1f, 2.0f);
 		(*planets)[i].mass = (*planets)[0].mass * glm::pow((*planets)[i].radius / (*planets)[0].radius, 3.0f);
 		(*planets)[i].axis = glm::vec3(glm::linearRand<float>(0, 1), glm::linearRand<float>(0, 1), glm::linearRand<float>(0, 1));
 		(*planets)[i].theta = 0.0f;
 	}
+
+	for (uint32_t i = 0; i < planets->size(); i++) {
+		(*planets)[i].pos_1 = (*planets)[i].pos_0;
+		(*planets)[i].vel_1 = (*planets)[i].vel_0;
+		(*planets)[i].pos_2 = (*planets)[i].pos_0;
+		(*planets)[i].vel_2 = (*planets)[i].vel_0;
+	}
+
 }
 void particleRasterizer::initRast_B() {
 	createDescriptorSets();
@@ -224,9 +232,15 @@ void particleRasterizer::createDescriptorSets() {
 	ubo.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	ubo.pImmutableSamplers = nullptr;
 
+	VkDescriptorSetLayoutBinding lInfo{};
+	lInfo.binding = 1;
+	lInfo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	lInfo.descriptorCount = 1;
+	lInfo.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	lInfo.pImmutableSamplers = nullptr;
 
 
-	std::array<VkDescriptorSetLayoutBinding, 1> bindings = { ubo };
+	std::array<VkDescriptorSetLayoutBinding, 2> bindings = { ubo, lInfo };
 
 	VkDescriptorSetLayoutCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -255,10 +269,13 @@ void particleRasterizer::createDescriptorSets() {
 		bufferInfo.offset = i * sizeof(UniformBufferObject);
 		bufferInfo.range = sizeof(UniformBufferObject);
 
+		VkDescriptorBufferInfo lIBuffer{};
+		lIBuffer.buffer = *satLineInfoBuffer;
+		lIBuffer.offset = 0;
+		lIBuffer.range = sizeof(LineInfo) * SATELLITE_COUNT;
 
 
-
-		std::array<VkWriteDescriptorSet, 1> descriptorWrites{};
+		std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
 
 		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrites[0].dstSet = descriptorSets[i];
@@ -267,6 +284,14 @@ void particleRasterizer::createDescriptorSets() {
 		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		descriptorWrites[0].descriptorCount = 1;
 		descriptorWrites[0].pBufferInfo = &bufferInfo;
+
+		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrites[1].dstSet = descriptorSets[i];
+		descriptorWrites[1].dstBinding = 1;
+		descriptorWrites[1].dstArrayElement = 0;
+		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrites[1].descriptorCount = 1;
+		descriptorWrites[1].pBufferInfo = &lIBuffer;
 
 		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 	}
@@ -568,28 +593,28 @@ void particleRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer,
 }
 void particleRasterizer::drawObjects(VkCommandBuffer commandBuffer, uint32_t frameIndex, UniformBufferObject ubo, float dt) {
 	glm::mat4 model(1);
-	dt = dt * 1e5;
+	dt = dt * 1e3;
 	for (uint32_t i = 0; i < planets->size(); i++) {
-		ubo.models[i] = (*planets)[i].getModelMatrix(12.0f);
-		(*planets)[i].pos += dt * (*planets)[i].vel;
-		for (uint32_t j = 0; j < planets->size(); j++) {
-			if (i == j) {
-				continue;
-			}
-			else {
-				glm::vec3 sep = (*planets)[j].pos - (*planets)[i].pos;
-				float FMult = 6.67e-11 * pow(glm::length(sep), -3.0f) * (*planets)[j].mass;
-				if (i == 0) {
-					FMult = 0.0f;
-				}
-				(*planets)[i].vel += FMult * sep * dt;
-			}
-		}
-		(*planets)[i].theta += dt / 1e4;
+		ubo.models[i] = (*planets)[i].getModelMatrix(1.0f);
+		//(*planets)[i].pos_0 += dt * (*planets)[i].vel_0;
+		//for (uint32_t j = 0; j < planets->size(); j++) {
+		//	if (i == j) {
+		//		continue;
+		//	}
+		//	else {
+		//		glm::vec3 sep = (*planets)[j].pos_0 - (*planets)[i].pos_0;
+		//		float FMult = 6.67e-11 * pow(glm::length(sep), -3.0f) * (*planets)[j].mass;
+		//		if (i == 0) {
+		//			FMult = 0.0f;
+		//		}
+		//		(*planets)[i].vel_0 += FMult * sep * dt;
+		//	}
+		//}
+		//(*planets)[i].theta += dt / 1e4;
 
 		if (lineFrame == 0) {
 			LineVertex newVertex{};
-			newVertex.pos = (*planets)[i].pos;
+			newVertex.pos = (*planets)[i].pos_0;
 			newVertex.baseColour = glm::vec3(0.0f, 0.0f, 1.0f);
 			newVertex.intColour = glm::vec3(0.0f, 1.0f, 0.0f);
 			newVertex.finColour = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -670,8 +695,9 @@ void particleRasterizer::drawObjects(VkCommandBuffer commandBuffer, uint32_t fra
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, satLineBuffer, offsets);
 	for (uint32_t i = 0; i < SATELLITE_COUNT; i++) {
 		model[0][0] = (float(i)-1) * LINE_VERTEX_COUNT + *satLineCursor;
+		model[0][1] = i;
 		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &model);
-		vkCmdDraw(commandBuffer, lineCursor, 1, i* LINE_VERTEX_COUNT, 0);
+		vkCmdDraw(commandBuffer, *satLineCursor, 1, i* LINE_VERTEX_COUNT, 0);
 
 		if (*satLineSegments == 1024) {
 			model[0][0] = i * LINE_VERTEX_COUNT + *satLineCursor;
@@ -704,6 +730,7 @@ void particleRasterizer::setExternalPtrs(SatExternalMembers details) {
 	satLineBuffer = details.lineBuffer;
 	satLineCursor = details.lineCursor;
 	satLineSegments = details.lineSegments;
+	satLineInfoBuffer = details.lineInfoBuffer;
 }
 
 void particleRasterizer::cleanup() {

@@ -2,11 +2,11 @@
 
 
 struct Planet{
-    vec4 pos;
-    vec4 vel;
+    //0-th is position at current time, 1-st is position at T+.5dt, 2-nd is position at T+dt
+    vec4 pos[3];
+    vec4 vel[3];
     vec4 axis;
-    vec4 unused;
-    mat4 padding;
+    vec4 padding;
 };
 struct Satellite{
     vec4 pos;
@@ -17,6 +17,12 @@ struct LineVertex{
     vec4 base;
     vec4 inter;
     vec4 fin;
+};
+struct LineInfo{
+    float eccentricity;
+    float apoapsis;
+    float periapsis;
+    float cost;
 };
 
 
@@ -38,25 +44,130 @@ layout(binding = 2) buffer outSSBO{
 layout(binding = 3) buffer lineSSBO{
     LineVertex vertices[SATELLITE_COUNT * LINE_VERTEX_COUNT];
 };
+layout(binding = 4) buffer lineInfoSSBO{
+    LineInfo infos[SATELLITE_COUNT];
+};
 layout(push_constant) uniform pc {
     float dt;             
 } constants;
 
-vec3 evaluatePlanetAccel(Satellite sat, Planet pl){
-    vec3 sep = sat.pos.xyz - pl.pos.xyz;
-    float aMult = G * pl.pos.w / dot(sep, sep);
-    vec3 a = aMult * -normalize(sep);
+// vec3 evaluatePlanetAccelEuler(Satellite sat, Planet pl, uint index){ //OLD CODE, OBSOLETE REPLACED BY evaluateAccelBase;
+//     vec3 sep = sat.pos.xyz - pl.pos[index].xyz;
+//     float aMult = G * pl.pos.w / dot(sep, sep);
+//     vec3 a = aMult * -normalize(sep);
+//     return a;
+// }
+vec3 evaluateAccelBase(Satellite sat, uint index){
+    vec3 a = vec3(0);
+    for(uint j = 0; j < MAX_PLANETS_ARRAY_SIZE; j++){
+        vec3 sep = sat.pos.xyz - ubo.planets[j].pos[index].xyz;
+        float aMult = G * ubo.planets[j].pos[2].w / dot(sep, sep);
+        a += aMult * - normalize(sep);
+    }
     return a;
+}
+
+// Satellite evaluatePlanetAccelEulerImproved(Satellite sat, Planet pl){ //OBSOLETE, REPLACED BY updateSatellitePositionEulerImproved;
+//     //requires rethink  of planet positions, need planet position data to be available for several timesteps;
+//     //but for now we take planet position data as separate inputs
+//     //
+//     vec3 dv_1 = evaluateAccelBase(sat, 0) * constants.dt;
+//     vec3 dx_1 = sat.vel.xyz * constants.dt;
+//     Satellite sat_1 = sat;
+//     sat_1.pos.xyz = sat.pos.xyz + dx_1;
+//     vec3 dv_2 = evaluateAccelBase(sat_1, 2) * constants.dt;
+//     vec3 dx_2 = (sat.vel.xyz + dv_1) * constants.dt;
+
+//     vec3 dv = 0.5f * dv_1 + 0.5f * dv_2;
+//     vec3 dx = 0.5f * dx_1 + 0.5f * dx_2;
+//     Satellite sat_2 = sat;
+//     sat_2.pos.xyz += dx;
+//     sat_2.vel.xyz += dv;
+// }
+
+Satellite updateSatellite_Euler(Satellite sat_0){
+    Satellite sat_1 = sat_0;
+
+    vec3 dv = evaluateAccelBase(sat_0, 0) * constants.dt;
+    vec3 dx = sat_0.vel.xyz * constants.dt;
+
+    sat_1.vel.xyz = sat_0.vel.xyz + dv;
+    sat_1.pos.xyz = sat_0.pos.xyz + dx;
+
+    return sat_1;
+}
+
+Satellite updateSatellite_EulerImproved(Satellite sat_0){
+    Satellite sat_1 = sat_0;
+    Satellite sat_2 = sat_0;
+
+    vec3 dv_1 = evaluateAccelBase(sat_0, 0) * constants.dt;
+    vec3 dx_1 = sat_0.vel.xyz * constants.dt;
+    sat_1.vel.xyz = sat_0.vel.xyz + dv_1;
+    sat_1.pos.xyz = sat_0.pos.xyz + dx_1;
+
+    vec3 dv_2 = evaluateAccelBase(sat_1, 2) * constants.dt;
+    vec3 dx_2 = (sat_0.vel.xyz + dv_1) * constants.dt;
+
+    vec3 dv = (dv_1 + dv_2) / 2;
+    vec3 dx = (dx_1 + dx_2) / 2;
+
+    sat_2.vel.xyz = sat_0.vel.xyz + dv;
+    sat_2.pos.xyz = sat_0.pos.xyz + dx;
+
+    return sat_2;
+}
+
+Satellite updateSatellite_RK4(Satellite sat_0){
+    Satellite sat_1 = sat_0;
+    Satellite sat_2 = sat_0;
+    Satellite sat_3 = sat_0;
+    Satellite sat_4 = sat_0;
+
+    vec3 dv_1 = evaluateAccelBase(sat_0, 0) * constants.dt;
+    vec3 dx_1 = sat_0.vel.xyz * constants.dt;
+    sat_1.vel.xyz = sat_0.vel.xyz + 0.5 * dv_1;
+    sat_1.pos.xyz = sat_0.pos.xyz + 0.5 * dx_1;
+
+    vec3 dv_2 = evaluateAccelBase(sat_1, 1) * constants.dt;
+    vec3 dx_2 = (sat_0.vel.xyz + 0.5 * dv_1) * constants.dt;
+    sat_2.vel.xyz = sat_0.vel.xyz + 0.5 * dv_2;
+    sat_2.pos.xyz = sat_0.pos.xyz + 0.5 * dx_2;
+
+    vec3 dv_3 = evaluateAccelBase(sat_2, 1) * constants.dt;
+    vec3 dx_3 = (sat_0.vel.xyz + 0.5 * dv_2) * constants.dt;
+    sat_3.vel.xyz = sat_0.vel.xyz + dv_3;
+    sat_3.pos.xyz = sat_0.pos.xyz + dx_3;
+
+    vec3 dv_4 = evaluateAccelBase(sat_3, 2) * constants.dt;
+    vec3 dx_4 = (sat_0.vel.xyz + dv_3) * constants.dt;
+
+    vec3 dv = (dv_1 + 2 * dv_2 + 2 * dv_3 + dv_4) / 6;
+    vec3 dx = (dx_1 + 2 * dx_2 + 2 * dx_3 + dx_4) / 6;
+
+    sat_4.vel.xyz = sat_0.vel.xyz + dv;
+    sat_4.pos.xyz = sat_0.pos.xyz + dx;
+
+    return sat_4;
 }
 
 
 void main(){
     uint i = gl_GlobalInvocationID.x;
-    vec3 a = vec3(0);
-    for(uint j = 0; j < MAX_PLANETS_ARRAY_SIZE; j++){
-        a += evaluatePlanetAccel(inSats[i], ubo.planets[j]);
-    }
-    outSats[i] = inSats[i];
-    outSats[i].pos.xyz = inSats[i].pos.xyz + inSats[i].vel.xyz * constants.dt;
-    outSats[i].vel.xyz = inSats[i].vel.xyz + a * constants.dt;
+//     vec3 a = vec3(0); //OLD CODE, REPLACED BY CODE BELOW
+//     for(uint j = 0; j < MAX_PLANETS_ARRAY_SIZE; j++){
+//         a += evaluatePlanetAccelEuler(inSats[i], ubo.planets[j]);
+//     }
+//     outSats[i] = inSats[i];
+//     outSats[i].pos.xyz = inSats[i].pos.xyz + inSats[i].vel.xyz * constants.dt;
+//     outSats[i].vel.xyz = inSats[i].vel.xyz + a * constants.dt;
+
+    //EULER:
+    //outSats[i] = updateSatellite_Euler(inSats[i]);
+
+    //EULER IMPROVED
+    //outSats[i] = updateSatellite_EulerImproved(inSats[i]);
+
+    //RK-4
+    outSats[i] = updateSatellite_RK4(inSats[i]);
 }

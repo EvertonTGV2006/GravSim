@@ -89,6 +89,7 @@ private:
 	VkBuffer* satLineBuffer;
 	uint32_t* satLineCursor;
 	uint32_t* satLineSegments;
+	VkBuffer* satLineInfoBuffer;
 
 	uint32_t lineFrame = 0;
 	std::vector<std::array<LineVertex, LINE_VERTEX_COUNT>> lineVertices;
