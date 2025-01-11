@@ -57,12 +57,6 @@ void VulkanEngine::initEngine() {
 
     std::thread spheret(&SphereGeometry::createSphereIcosphere, &sphere, 4);
 
-    ParticleGeometry part{};
-    part.particles = &particles;
-    part.offsets = &offsets;
-
-    std::thread partt(&ParticleGeometry::createParticles, &part, partCount);
-
     createInstance();
     setupDebugMessenger();
     createSurface();
@@ -90,37 +84,22 @@ void VulkanEngine::initEngine() {
     std::vector<std::string> shaderFiles;
     std::vector<uint16_t> shaderCounts;
 
-    shaderCounts.push_back(shaderFiles.size());
-    shaderFiles.insert(std::end(shaderFiles), std::begin(gravEngine.shaderFiles), std::end(gravEngine.shaderFiles));
-    shaderCounts.push_back(shaderFiles.size());
+
+    shaderCounts.push_back(static_cast<uint16_t>(shaderFiles.size()));
     shaderFiles.insert(std::end(shaderFiles), std::begin(particleRasterizer.shaderFiles), std::end(particleRasterizer.shaderFiles));
-    shaderCounts.push_back(shaderFiles.size());
+    shaderCounts.push_back(static_cast<uint16_t>(shaderFiles.size()));
     shaderFiles.insert(std::end(shaderFiles), std::begin(uiRasterizer.shaderFiles), std::end(uiRasterizer.shaderFiles));
-    shaderCounts.push_back(shaderFiles.size());
+    shaderCounts.push_back(static_cast<uint16_t>(shaderFiles.size()));
     shaderFiles.insert(std::end(shaderFiles), std::begin(satEngine.shaderFiles), std::end(satEngine.shaderFiles));
-    shaderCounts.push_back(shaderFiles.size());
+    shaderCounts.push_back(static_cast<uint16_t>(shaderFiles.size()));
     
     
     uint16_t shaderCursor = 0;
 
-    partt.join();
-    stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Created particle data");
-
     readFiles(shaderFiles, &shaderCode);
 
-    GravInit grav{};
-    grav.commandPool = computeCommandPool;
-    grav.descriptorPool = descriptorPool;
-    grav.device = device;
-    grav.gravQueue = computeQueue;
-    grav.memProperties = memProperties;
-    grav.particles = &particles;
-    grav.offsets = &offsets;
-    for (uint16_t i = shaderCounts[shaderCursor]; i < shaderCounts[shaderCursor + 1]; i++) {
-        grav.shaderCode.push_back(&shaderCode[i]);
-    }
 
-    shaderCursor = 2;
+    shaderCursor = 1;
     UIInit ui{};
     ui.descriptorPool = descriptorPool;
     ui.device = device;
@@ -133,7 +112,7 @@ void VulkanEngine::initEngine() {
         ui.shaderCode.push_back(&shaderCode[i]);
     }
 
-    shaderCursor = 3;
+    shaderCursor = 2;
     SatInit sat{};
     sat.descriptorPool = descriptorPool;
     sat.device = device;
@@ -150,8 +129,6 @@ void VulkanEngine::initEngine() {
     //uiRasterizer.initUI_A(ui);
 
 
-    std::thread gravtA(&GravEngine::initGrav_A, &gravEngine, grav);
-    //gravEngine.initGrav_A(grav);
 
     spheret.join();
     stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Initialised shader geometry");
@@ -160,7 +137,7 @@ void VulkanEngine::initEngine() {
     meshes[0].indexCount = static_cast<uint32_t>(meshes[0].indices->size());
     //gravt.join();
 
-    shaderCursor = 1;
+    shaderCursor = 0;
     RastInit rast{};
     rast.device = device;
     rast.descriptorPool = descriptorPool;
@@ -168,13 +145,10 @@ void VulkanEngine::initEngine() {
     rast.msaaSamples = msaaSamples;
     rast.memProperties = memProperties;
     rast.meshes = meshes;
-    rast.particleCount = partCount;
     rast.planets = &planets;
     for (uint16_t i = shaderCounts[shaderCursor]; i < shaderCounts[shaderCursor + 1]; i++) {
         rast.shaderCode.push_back(&shaderCode[i]);
     }
-
-    gravtA.join();
 
 
     std::thread rasttA(&particleRasterizer::initRast_A, &particleRasterizer, rast);
@@ -199,7 +173,6 @@ void VulkanEngine::initEngine() {
     stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Initialized UI Rasterizer B");
     particleRasterizer.initRast_B();
     stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Initialized Particle Rasterizer B");
-    gravEngine.initGrav_B();
     satEngine.initSatEngine_B();
     stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Initialized Satellite Engine B");
 
@@ -211,15 +184,12 @@ void VulkanEngine::initEngine() {
     //rastB.join();
     //gravtB.join();
 
-    renderGravSemaphores = gravEngine.getInterleavedSemaphores(gravRenderSemaphores);
-
     initSubclassData();
 
     //gravEngine.createRandomData();
 
     
 
-    frameTimes.reserve(1000);
 
     std::chrono::time_point endTime = std::chrono::high_resolution_clock::now();
 
@@ -439,7 +409,6 @@ void VulkanEngine::executeGraphics() {
 
     //gravEngine.simGrav(dt.count());
 
-    frameTimes.push_back(dt);
 
     //if (frameTimes.size() % 200 == 0) {
     //    std::cout << "Player Pos: ";
@@ -448,9 +417,6 @@ void VulkanEngine::executeGraphics() {
     //    std::cout << std::endl;
     //}
 
-    if (gravEngine.endTrigger) {
-        glfwSetWindowShouldClose(winmanager.window, GLFW_TRUE);
-    }
 
     //gravEngine.createRandomData();
 
@@ -471,10 +437,6 @@ void VulkanEngine::executeGraphics() {
 
 
     //check if validate particles
-    if (player->validateParticles == true && gravEngine.computeIndex==0) {
-        particleDataFetch();
-        player->validateParticles = false;
-   }
 }
 void VulkanEngine::runCompute() {
     while (!glfwWindowShouldClose(winmanager.window)) {
@@ -919,7 +881,6 @@ void VulkanEngine::createCommandBuffers() {
 void VulkanEngine::allocateMemory() {
     std::vector<MemoryDetails> memRequirements;
     std::vector<uint16_t> counts;
-    gravEngine.getMemoryRequirements(&memRequirements, &counts);
     particleRasterizer.getMemoryRequirements(&memRequirements, &counts);
     uiRasterizer.getMemoryRequirements(&memRequirements, &counts);
     satEngine.getMemoryRequirements(&memRequirements, &counts);
@@ -973,15 +934,29 @@ void VulkanEngine::allocateMemory() {
     memory.resize(mergedMemRequirements.size());
     VkMemoryAllocateInfo memoryInfo{};
     memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+
+    uint32_t hostCounter = 0;
+    uint32_t deviceCounter = 0;
+
     for (size_t i = 0; i < mergedMemRequirements.size(); i++) {
         //std::cout << "Size: " << mergedMemRequirements[i].requirements.size << " Flags: " << mergedMemRequirements[i].flags << std::endl;
         memoryInfo.allocationSize = mergedMemRequirements[i].requirements.size;
         memoryInfo.memoryTypeIndex = findMemoryType(mergedMemRequirements[i]);
         if (vkAllocateMemory(device, &memoryInfo, nullptr, &memory[i]) != VK_SUCCESS) { throw std::runtime_error("Failed to allocated memory"); }
         //if (mergedMemRequirements[i].flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
-            //stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Allocated " + std::string(uint32_t(mergedMemRequirements[i].requirements.size)))
+        //    stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Allocated " + std::to_string(uint32_t(mergedMemRequirements[i].requirements.size)) + "\t bytes of host visible memory with alignment " + std::to_string(uint32_t(mergedMemRequirements[i].requirements.alignment)));
         //}
+        //else {
+        //    stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Allocated " + std::to_string(uint32_t(mergedMemRequirements[i].requirements.size)) + "\t bytes of device memory with alignment " + std::to_string(uint32_t(mergedMemRequirements[i].requirements.alignment)));
+        //}
+        if (mergedMemRequirements[i].flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) { hostCounter += static_cast<uint32_t>(mergedMemRequirements[i].requirements.size); }
+        else { deviceCounter += static_cast<uint32_t>(mergedMemRequirements[i].requirements.size); }
+
     }
+
+    stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Allocated " + std::to_string(deviceCounter) + " bytes of device local memory");
+    stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Allocated " + std::to_string(hostCounter) + " bytes of host visible memory");
+
     //now create vector of MemInit structs in order of memRequirements.
     memoryContainers.resize(memRequirements.size());
     k = 0;
@@ -1004,32 +979,30 @@ void VulkanEngine::allocateMemory() {
     //now do prefix sum
     std::exclusive_scan(counts.begin(), counts.end(), memOffsets.data(), 0);
 
-    gravEngine.initMemory(&memoryContainers[0] + memOffsets[0]);
-    particleRasterizer.initMemory(&memoryContainers[0] + memOffsets[1]);
-    uiRasterizer.initMemory(&memoryContainers[0] + memOffsets[2]);
-    satEngine.initMemory(&memoryContainers[0] + memOffsets[3]);
+    particleRasterizer.initMemory(&memoryContainers[0] + memOffsets[0]);
+    uiRasterizer.initMemory(&memoryContainers[0] + memOffsets[1]);
+    satEngine.initMemory(&memoryContainers[0] + memOffsets[2]);
 
 }
 void VulkanEngine::initSubclassData() {
 
     VkDeviceMemory stagingMemory;
 
-    std::array<MemoryDetails,4> memRequirements;
+    std::array<MemoryDetails,3> memRequirements;
     particleRasterizer.initBufferData_A(&memRequirements[0]);
-    gravEngine.syncBufferData_A(&memRequirements[1]);
-    uiRasterizer.initBufferData_A(&memRequirements[2]);
-    satEngine.initBufferData_A(&memRequirements[3]);
+    uiRasterizer.initBufferData_A(&memRequirements[1]);
+    satEngine.initBufferData_A(&memRequirements[2]);
 
     
     //memRequirements[0].flags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
     VkMemoryAllocateInfo memoryInfo{};
     memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memoryInfo.allocationSize = memRequirements[0].requirements.size + memRequirements[1].requirements.size + memRequirements[2].requirements.size + memRequirements[3].requirements.size;
+    memoryInfo.allocationSize = memRequirements[0].requirements.size + memRequirements[1].requirements.size + memRequirements[2].requirements.size;
     memoryInfo.memoryTypeIndex = findMemoryType(memRequirements[0]);
     if (vkAllocateMemory(device, &memoryInfo, nullptr, &stagingMemory) != VK_SUCCESS) { throw std::runtime_error("Failed to allocated memory"); }
 
-    std::array<MemInit, 4> memInitStructs;
+    std::array<MemInit, 3> memInitStructs;
 
     memInitStructs[0].memory = stagingMemory;
     memInitStructs[0].offset = 0;
@@ -1043,9 +1016,6 @@ void VulkanEngine::initSubclassData() {
     memInitStructs[2].offset = memInitStructs[1].offset + memInitStructs[1].range;
     memInitStructs[2].range = static_cast<uint32_t>(memRequirements[2].requirements.size);
 
-    memInitStructs[3].memory = stagingMemory;
-    memInitStructs[3].offset = memInitStructs[2].offset + memInitStructs[2].range;
-    memInitStructs[3].range = static_cast<uint32_t>(memRequirements[3].requirements.size);
 
     VkCommandBufferAllocateInfo commandInfo{};
     commandInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1059,54 +1029,11 @@ void VulkanEngine::initSubclassData() {
     vkAllocateCommandBuffers(device, &commandInfo, &transferCommandBuffer);
 
     particleRasterizer.initBufferData_B(transferCommandBuffer, graphicsQueue, memInitStructs[0]);
-    gravEngine.syncBufferData_B(true, memInitStructs[1]);
-    uiRasterizer.initBufferData_B(transferCommandBuffer, graphicsQueue, memInitStructs[2]);
-    satEngine.initBufferData_B(transferCommandBuffer, graphicsQueue, memInitStructs[3]);
+    uiRasterizer.initBufferData_B(transferCommandBuffer, graphicsQueue, memInitStructs[1]);
+    satEngine.initBufferData_B(transferCommandBuffer, graphicsQueue, memInitStructs[2]);
 
     vkFreeMemory(device, stagingMemory, nullptr);
     vkFreeCommandBuffers(device, graphicsCommandPool, 1, &transferCommandBuffer);
-}
-
-void VulkanEngine::particleDataFetch() {
-
-    VkDeviceMemory stagingMemory;
-
-    MemoryDetails memRequirements;
-    gravEngine.syncBufferData_A(&memRequirements);
-    //memRequirements[0].flags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-
-    VkMemoryAllocateInfo memoryInfo{};
-    memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memoryInfo.allocationSize = memRequirements.requirements.size;
-    memoryInfo.memoryTypeIndex = findMemoryType(memRequirements);
-    if (vkAllocateMemory(device, &memoryInfo, nullptr, &stagingMemory) != VK_SUCCESS) { throw std::runtime_error("Failed to allocated memory"); }
-
-    MemInit memInitStructs;
-
-    memInitStructs.memory = stagingMemory;
-    memInitStructs.offset = 0;
-    memInitStructs.range = static_cast<uint32_t>(memRequirements.requirements.size);
-
-
-
-    VkCommandBufferAllocateInfo commandInfo{};
-    commandInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    commandInfo.commandBufferCount = 1;
-    commandInfo.commandPool = graphicsCommandPool;
-    commandInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-
-
-    VkCommandBuffer transferCommandBuffer;
-
-    vkAllocateCommandBuffers(device, &commandInfo, &transferCommandBuffer);
-
-    gravEngine.syncBufferData_B(false, memInitStructs);
-
-
-    vkFreeMemory(device, stagingMemory, nullptr);
-    vkFreeCommandBuffers(device, graphicsCommandPool, 1, &transferCommandBuffer);
-
-    gravEngine.validateParticles();
 }
 
 
@@ -1662,19 +1589,7 @@ void VulkanEngine::recreateSwapChain() {
 }
 
 
-void VulkanEngine::writeOutSampleData() {
-    std::ofstream dataOut;
-    dataOut.open("data.csv", std::ios::app);
-    if (!dataOut.is_open()) {
-        throw std::runtime_error("Failed to open file for writing");
-    }
-    dataOut << runNumber << ", ";
-    for (size_t i = 1; i < frameTimes.size(); i++) {
-        dataOut << frameTimes[i].count() << ", ";
-    }
-    dataOut << "\n";
-    dataOut.close();
-}
+
 
 //cleanup
 void VulkanEngine::cleanupSwapChain() {
@@ -1696,11 +1611,9 @@ void VulkanEngine::cleanup() {
     vkDeviceWaitIdle(device);
 
     particleRasterizer.cleanup();
-    gravEngine.cleanup();
     satEngine.cleanup();
     uiRasterizer.cleanup();
 
-    writeOutSampleData();
 
     cleanupSwapChain();
 

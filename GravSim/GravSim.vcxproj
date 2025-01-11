@@ -168,7 +168,6 @@ CALL compile.bat</Command>
     <ClCompile Include="engine.cpp" />
     <ClCompile Include="geometry.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="grav.cpp" />
     <ClCompile Include="player.cpp" />
     <ClCompile Include="satelliteEngine.cpp" />
     <ClCompile Include="statusLogger.cpp" />
@@ -180,7 +179,6 @@ CALL compile.bat</Command>
     <ClInclude Include="particleRasterizer.h" />
     <ClInclude Include="engine.h" />
     <ClInclude Include="geometry.h" />
-    <ClInclude Include="grav.h" />
     <ClInclude Include="player.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="satelliteEngine.h" />

@@ -4,31 +4,25 @@
     <ClCompile Include="engine.cpp" />
     <ClCompile Include="geometry.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="grav.cpp" />
     <ClCompile Include="player.cpp" />
     <ClCompile Include="structs.cpp" />
     <ClCompile Include="window.cpp" />
     <ClCompile Include="particleRasterizer.cpp" />
     <ClCompile Include="uiRasterizer.cpp" />
-    <ClCompile Include="cardEngine.cpp" />
-    <ClCompile Include="cardRasterizer.cpp" />
-    <ClCompile Include="networking.cpp" />
     <ClCompile Include="statusLogger.cpp" />
+    <ClCompile Include="satelliteEngine.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="engine.h" />
     <ClInclude Include="geometry.h" />
-    <ClInclude Include="grav.h" />
     <ClInclude Include="player.h" />
     <ClInclude Include="structs.h" />
     <ClInclude Include="window.h" />
     <ClInclude Include="particleRasterizer.h" />
     <ClInclude Include="uiRasterizer.h" />
-    <ClInclude Include="cardEngine.h" />
-    <ClInclude Include="cardRasterizer.h" />
-    <ClInclude Include="networking.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="statusLogger.h" />
+    <ClInclude Include="satelliteEngine.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="textures\8BitDeck.png" />

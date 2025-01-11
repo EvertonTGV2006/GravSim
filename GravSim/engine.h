@@ -23,7 +23,6 @@
 #include "player.h"
 
 #include "particleRasterizer.h"
-#include "grav.h"
 #include "uiRasterizer.h"
 #include "satelliteEngine.h"
 
@@ -106,11 +105,10 @@ private:
 
 	std::vector<Vertex> vertices;
 	std::vector<uint16_t> indices;
-	std::vector<Particle> particles;
-	std::vector<uint32_t> offsets;
-	const uint32_t partCount = 65536 * 4;
 
-	std::vector<std::chrono::duration<double>> frameTimes;
+;
+
+
 
 	VkCommandPool graphicsCommandPool;
 	VkCommandPool transferCommandPool;
@@ -127,7 +125,6 @@ private:
 	VkImageView depthImageView;
 
 	particleRasterizer particleRasterizer;
-	GravEngine gravEngine;
 	UIRasterizer uiRasterizer;
 	SatelliteEngine satEngine;
 	bool swapDealers = false;
@@ -174,12 +171,10 @@ private:
 	void executeCompute();
 	void executeGraphics();
 
-	void particleDataFetch();
 
 	void recreateSwapChain();
 	void cleanupSwapChain();
 
-	void writeOutSampleData();
 
 	void readFiles(std::vector<std::string>, std::vector<std::vector<char>>*);
 

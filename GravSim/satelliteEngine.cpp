@@ -422,7 +422,7 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 	if (lineFrame == WRITE_FRAME) {
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, linePipeline);
 
-		satPC.deltaTime = lineCursor;
+		satPC.deltaTime = float(lineCursor);
 		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(SatPushConstants), &satPC);
 
 		vkCmdDispatch(commandBuffer, 1, 1, 1);
@@ -457,7 +457,7 @@ SatExternalMembers SatelliteEngine::getSatellitePtrs() {
 void SatelliteEngine::createInitialSatellites(void* ptr, uint32_t positions, uint32_t velocities, float baseHeight, float baseVelocity, float velocityStep, float inclination, uint32_t planetIndex) {
 	Planet pl = (*planets)[planetIndex];
 	float orbitRadius = pl.radius + baseHeight;
-	float orbitVel = glm::sqrt(6.67e-11 * pl.mass / orbitRadius);
+	float orbitVel = glm::sqrt(6.67e-11f * pl.mass / orbitRadius);
 	Satellite sat{};
 	sat.mass = 0.0f;
 	float trueAnomaly = 0.0f;

@@ -28,6 +28,7 @@ void UIRasterizer::initUI_A(UIInit details) {
 
 	aspectRatio = details.aspectRatio;
 
+	
 	initFreetype();
 	createBuffers();
 
@@ -169,6 +170,8 @@ void UIRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer, VkQue
 	vkDestroyFence(device, transferFence, nullptr);
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
+
+	texPixels.clear();
 }
 
 void UIRasterizer::createBuffers() {
@@ -477,6 +480,7 @@ void UIRasterizer::getMemoryRequirements(std::vector<MemoryDetails>* details, st
 
 void UIRasterizer::initFreetype() {
 	if (FT_Init_FreeType(&library)) { throw std::runtime_error("Failed to intialize FreeType Library"); }
+	stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Initialized FreeType Library");
 
 	if (FT_New_Face(library, "C:/Windows/Fonts/CascadiaCode.ttf", 0, &face)) { throw std::runtime_error("Failed to load Font"); }
 
@@ -575,19 +579,21 @@ void UIRasterizer::initFreetype() {
 
 	FT_Done_FreeType(library);
 
-	std::ofstream file;
-	file.open("out.csv");
+	stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Initialized FreeType font atlas");
 
-	
+	//std::ofstream file;
+	//file.open("out.csv");
 
-	for (int32_t y = 0; y < texHeight; y++) {
-		for (int32_t x = 0; x < texWidth; x++) {
-			file << uint32_t(texPixels[(y * texWidth) + x]) <<", ";
-		}
-		file << "\n";
-	}
+	//
 
-	file.close();
+	//for (int32_t y = 0; y < texHeight; y++) {
+	//	for (int32_t x = 0; x < texWidth; x++) {
+	//		file << uint32_t(texPixels[(y * texWidth) + x]) <<", ";
+	//	}
+	//	file << "\n";
+	//}
+
+	//file.close();
 }
 
 void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameIndex) {

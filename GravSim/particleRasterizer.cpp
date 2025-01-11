@@ -14,7 +14,7 @@ void particleRasterizer::initRast_A(RastInit details) {
 	memcpy(shaderCode.data(), details.shaderCode.data(), shaderCode.size() * sizeof(shaderCode[0]));
 
 	meshes = details.meshes;
-	particleCount = details.particleCount;
+
 
 	memProperties = details.memProperties;
 
@@ -23,22 +23,22 @@ void particleRasterizer::initRast_A(RastInit details) {
 	createBuffers();
 
 	(*planets)[0].pos_0 = glm::vec3(0.0f, 0.0f, 0.0f);
-	(*planets)[0].radius = 6378e3;
+	(*planets)[0].radius = 6378e3f;
 	(*planets)[0].vel_0 = glm::vec3(0.0f, 0.0f, 0.0f);
-	(*planets)[0].mass = 5.9722e24;
+	(*planets)[0].mass = 5.9722e24f;
 	(*planets)[0].axis = glm::vec3(0.0f, glm::asin(glm::radians(23.5f)), glm::acos(glm::radians(23.5f)));
 	(*planets)[0].theta = 0.0f;
 
 	(*planets)[1].pos_0 = glm::vec3(0.4055e9/*10.0f*/, 0.0f, 0.0f);
-	(*planets)[1].radius = 1738e3/*0.5f*/;
+	(*planets)[1].radius = 1738e3f/*0.5f*/;
 	(*planets)[1].vel_0 = glm::vec3(0.0f, 0.970e3/*0.5f*/, 0.0f);
-	(*planets)[1].mass = 0.07346e24;
+	(*planets)[1].mass = 0.07346e24f;
 	(*planets)[1].axis = glm::vec3(0.0f, 0.0f, 1.0f);
 	(*planets)[1].theta = 0.0f;
 
 	for (uint32_t i = 2; i < planets->size(); i++) {
 		(*planets)[i].pos_0 = glm::vec3(glm::linearRand<float>(0, 10) * 7e7, glm::linearRand<float>(0, 10) * 8e7, glm::linearRand<float>(0, 10) * 1e1);
-		(*planets)[i].radius = glm::linearRand<float>(0.1f, 2.0f)*1e6;
+		(*planets)[i].radius = glm::linearRand<float>(0.1f, 2.0f)*1e6f;
 		//(*planets)[i].vel = glm::vec3(glm::linearRand<float>(0, 1)*1e3, glm::linearRand<float>(0, 1)*1e3, glm::linearRand<float>(0, 1)*1e0 );
 		(*planets)[i].vel_0 = glm::sqrt(float(6.67e-11) * (*planets)[0].mass * glm::linearRand<float>(0.7f, 1.4f) / glm::length((*planets)[i].pos_0)) * glm::cross(glm::normalize((*planets)[i].pos_0), glm::vec3(0.0f, 0.0f, 1.0f));
 		//(*planets)[i].mass = glm::linearRand<float>(0.1f, 2.0f);
@@ -260,8 +260,6 @@ void particleRasterizer::createDescriptorSets() {
 	allocInfo.pSetLayouts = layouts.data();
 
 	if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS) { throw std::runtime_error("Failed to allocate particleRasterizer descriptor sets"); }
-
-	uint32_t storageSize = sizeof(Particle) * particleCount;
 
 	for (size_t i = 0; i < FRAMES_IN_FLIGHT; i++) {
 		VkDescriptorBufferInfo bufferInfo{};
@@ -593,7 +591,7 @@ void particleRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer,
 }
 void particleRasterizer::drawObjects(VkCommandBuffer commandBuffer, uint32_t frameIndex, UniformBufferObject ubo, float dt) {
 	glm::mat4 model(1);
-	dt = dt * 1e3;
+	dt = dt * 1e3f;
 	for (uint32_t i = 0; i < planets->size(); i++) {
 		ubo.models[i] = (*planets)[i].getModelMatrix(1.0f);
 		//(*planets)[i].pos_0 += dt * (*planets)[i].vel_0;
@@ -643,7 +641,7 @@ void particleRasterizer::drawObjects(VkCommandBuffer commandBuffer, uint32_t fra
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffers[i], offsets);
 		vkCmdBindIndexBuffer(commandBuffer, indexBuffers[i], 0, VK_INDEX_TYPE_UINT16);
 		//for single model
-		vkCmdDrawIndexed(commandBuffer, meshes[i].indexCount, planets->size(), 0, 0, 0);
+		vkCmdDrawIndexed(commandBuffer, meshes[i].indexCount, static_cast<uint32_t>(planets->size()), 0, 0, 0);
 		//for instanced model everywhere
 		//vkCmdDrawIndexed(commandBuffer, meshes[i].indexCount, particleCount, 0, 0, 0);
 		//vkCmdDraw(commandBuffer, particleCount, 1, particleCount * frameIndex, 0);
@@ -656,7 +654,7 @@ void particleRasterizer::drawObjects(VkCommandBuffer commandBuffer, uint32_t fra
 	vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &model);
 	for (uint32_t i = 0; i < lineBuffers.size(); i++) {
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &lineBuffers[i], offsets);
-		model[0][0] = frameIndex * lineVertices[i].size();
+		model[0][0] = float(frameIndex) * float(static_cast<uint32_t>(lineVertices[i].size()));
 		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &model);
 		//vkCmdDraw(commandBuffer, lineSegments, 1, (lineVertices[i].size() * (frameIndex + 1)) - lineSegments, 0);
 		////copy data to vertex buffer;
@@ -682,25 +680,25 @@ void particleRasterizer::drawObjects(VkCommandBuffer commandBuffer, uint32_t fra
 
 		model[0][0] = (float(frameIndex) - 1.0f) * lineVertices[i].size() + lineCursor;
 		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &model);
-		vkCmdDraw(commandBuffer, lineCursor, 1, lineVertices[i].size()*frameIndex, 0);
+		vkCmdDraw(commandBuffer, lineCursor, 1, static_cast<uint32_t>(lineVertices[i].size())*frameIndex, 0);
 		
 		if (lineSegments == 1024) {
-			model[0][0] = frameIndex * lineVertices[i].size() + lineCursor;
+			model[0][0] = float(frameIndex) * float(static_cast<uint32_t>(lineVertices[i].size())) + float(lineCursor);
 			vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &model);
-			vkCmdDraw(commandBuffer, lineVertices[i].size() - lineCursor, 1, lineCursor + lineVertices[i].size()*frameIndex, 0);
+			vkCmdDraw(commandBuffer, static_cast<uint32_t>(lineVertices[i].size()) - lineCursor, 1, lineCursor + static_cast<uint32_t>(lineVertices[i].size())*frameIndex, 0);
 		}
 	}
 	//now draw satellite lines
 
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, satLineBuffer, offsets);
 	for (uint32_t i = 0; i < SATELLITE_COUNT; i++) {
-		model[0][0] = (float(i)-1) * LINE_VERTEX_COUNT + *satLineCursor;
-		model[0][1] = i;
+		model[0][0] = (float(i)-1.0f) * LINE_VERTEX_COUNT + *satLineCursor;
+		model[0][1] = float(i);
 		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &model);
 		vkCmdDraw(commandBuffer, *satLineCursor, 1, i* LINE_VERTEX_COUNT, 0);
 
 		if (*satLineSegments == 1024) {
-			model[0][0] = i * LINE_VERTEX_COUNT + *satLineCursor;
+			model[0][0] = float(i) * float(LINE_VERTEX_COUNT) + float(*satLineCursor);
 			vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &model);
 			vkCmdDraw(commandBuffer, LINE_VERTEX_COUNT - *satLineCursor, 1, i* LINE_VERTEX_COUNT + *satLineCursor, 0);
 		}

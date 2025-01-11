@@ -19,7 +19,7 @@ struct RastInit {
 	std::vector<std::vector<char>*> shaderCode;
 	std::vector<Mesh> meshes;
 
-	uint32_t particleCount;
+
 	std::array<Planet, MAX_PLANET_ARRAY_SIZE>* planets;
 };
 
@@ -107,8 +107,6 @@ private:
 	std::array<std::vector<char>*, 4> shaderCode;
 
 	std::vector<Mesh> meshes;
-
-	uint32_t particleCount;
 
 	void createPipeline();
 	void createDescriptorSets();
