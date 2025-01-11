@@ -48,7 +48,8 @@ layout(binding = 4) buffer lineInfoSSBO{
     LineInfo infos[SATELLITE_COUNT];
 };
 layout(push_constant) uniform pc {
-    float dt;             
+    float dt;   
+    uint pOffset;          
 } constants;
 layout(local_size_x = SATELLITE_COUNT) in;
 

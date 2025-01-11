@@ -8,7 +8,7 @@ void StatusLogger::addMessage(uint32_t level, std::string msg) {
 	newMessage.level = level;
 	std::chrono::time_point msgTime = std::chrono::system_clock::now();
 	std::string timeStr = std::format("{:%H:%M:%S}", msgTime);
-	timeStr.resize(8);
+	timeStr.resize(11);
 	newMessage.message = "[" + timeStr + "] " + msg;
 	messages.push_back(newMessage);
 	evaluateMessages();

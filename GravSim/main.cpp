@@ -49,6 +49,7 @@ int main() {
 	//file.close();
 
 	StatusLogger stat{};
+	PlayerObject player;
 
 	try {
 
@@ -65,7 +66,8 @@ int main() {
 			//cards.setupGame();
 			//cards.processTurns();
 
-			PlayerObject player;
+
+
 			player.stat = &stat;
 			VulkanEngine engine;
 			engine.stat = &stat;
@@ -113,7 +115,7 @@ int main() {
 			//cards.setupGame();
 			//cards.processTurns();
 
-			PlayerObject player;
+
 			VulkanEngine engine;
 			int64_t targetFPS = config["targetFPS"].value_or(60);
 			if (targetFPS == 0) {
@@ -133,6 +135,7 @@ int main() {
 	catch (const std::exception& e) {
 		
 		stat.addMessage(MSG_LEVEL_URGENT, e.what());
+		player.windowShouldClose = true;
 		stat.writeOutMessages();
 		std::cerr << e.what() << std::endl;
 		std::cout << "Press ENTER to continue...";

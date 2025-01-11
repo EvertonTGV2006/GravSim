@@ -13,6 +13,8 @@ void SatelliteEngine::initSatEngine_A(SatInit details) {
 	memcpy(shaderCode.data(), details.shaderCode.data(), shaderCode.size() * sizeof(shaderCode[0]));
 
 	createBuffers();
+
+	satUBO = new SatUniformBuffer;
 }
 
 void SatelliteEngine::createBuffers() {
@@ -35,7 +37,7 @@ void SatelliteEngine::createBuffers() {
 	vkGetBufferMemoryRequirements(device, satBuffers[0], &satRequirements.requirements);
 	satRequirements.requirements.size *= satBuffers.size();
 	
-	bufferInfo.size = FRAMES_IN_FLIGHT * planets->size() * sizeof(Planet);
+	bufferInfo.size = FRAMES_IN_FLIGHT * sizeof(SatUniformBuffer);
 	bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 	uniformSize = bufferInfo.size / FRAMES_IN_FLIGHT;
 
@@ -102,7 +104,7 @@ void SatelliteEngine::createDescriptorSets() {
 
 	//now allocate the descriptor sets
 
-	std::array<VkDescriptorSetLayout, FRAMES_IN_FLIGHT> layouts = { descriptorSetLayout, descriptorSetLayout, descriptorSetLayout };
+	std::array<VkDescriptorSetLayout, FRAMES_IN_FLIGHT * 2> layouts = { descriptorSetLayout, descriptorSetLayout, descriptorSetLayout, descriptorSetLayout, descriptorSetLayout, descriptorSetLayout };
 
 	VkDescriptorSetAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -112,19 +114,20 @@ void SatelliteEngine::createDescriptorSets() {
 
 	if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS) { throw std::runtime_error("Failed to allocate particleRasterizer descriptor sets"); }
 
-	for (size_t i = 0; i < FRAMES_IN_FLIGHT; i++) {
+	for (size_t i = 0; i < FRAMES_IN_FLIGHT * 2; i += 2) {
+
 		VkDescriptorBufferInfo bufferInfo{};
 		bufferInfo.buffer = uniformBuffer;
-		bufferInfo.offset = i * uniformSize;
+		bufferInfo.offset = (i / 2) * uniformSize;
 		bufferInfo.range = uniformSize;
 
 		VkDescriptorBufferInfo iInfo{};
-		iInfo.buffer = satBuffers[i];
+		iInfo.buffer = satBuffers[0];
 		iInfo.offset = 0;
 		iInfo.range = satSize;
 
 		VkDescriptorBufferInfo oInfo{};
-		oInfo.buffer = satBuffers[(i + 1) % FRAMES_IN_FLIGHT];
+		oInfo.buffer = satBuffers[1];
 		oInfo.offset = 0;
 		oInfo.range = satSize;
 
@@ -179,6 +182,19 @@ void SatelliteEngine::createDescriptorSets() {
 		descriptorWrites[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 		descriptorWrites[4].descriptorCount = 1;
 		descriptorWrites[4].pBufferInfo = &lIInfo;
+
+		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+
+
+		iInfo.buffer = satBuffers[1];
+		oInfo.buffer = satBuffers[0];
+
+
+		descriptorWrites[0].dstSet = descriptorSets[i+1];
+		descriptorWrites[1].dstSet = descriptorSets[i+1];
+		descriptorWrites[2].dstSet = descriptorSets[i+1];
+		descriptorWrites[3].dstSet = descriptorSets[i+1];
+		descriptorWrites[4].dstSet = descriptorSets[i+1];
 
 		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 	}
@@ -361,27 +377,53 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 
 	dt *= 1e3;
 
-	updatePlanets(0.5f * dt);
-	updatePlanets(0.5f * dt);
-
-
-
-	memcpy(uniformBuffersMapped[frameIndex], planets->data(), planets->size() * sizeof(Planet));
-
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 1, &descriptorSets[frameIndex], 0, nullptr);
+	
+	
+	SatPushConstants satPC{};
+	satPC.deltaTime = dt / COMPUTE_STEPS_PER_FRAME;
 
-	vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float), &dt);
+	VkBufferMemoryBarrier bar1{};
+	bar1.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+	bar1.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+	bar1.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+	bar1.offset = 0;
+	bar1.size = satSize;
+	bar1.buffer = satBuffers[0];
+	
+	VkBufferMemoryBarrier bar2{};
+	bar2.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+	bar2.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+	bar2.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+	bar2.offset = 0;
+	bar2.size = satSize;
+	bar2.buffer = satBuffers[1];
 
+	std::array<VkBufferMemoryBarrier, 2> barriers = { bar1, bar2 };
 
+	for (uint32_t i = 0; i < COMPUTE_STEPS_PER_FRAME; i++) {
+		updatePlanets(0.5f * satPC.deltaTime);
+		updatePlanets(0.5f * satPC.deltaTime);
+		memcpy(satUBO->planetData[i].data(), planets->data(), planets->size() * sizeof(Planet));
 
-	vkCmdDispatch(commandBuffer, 1, 1, 1);
+		satPC.planetIndex = i;
+
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 1, &descriptorSets[2 * frameIndex + i % 2], 0, nullptr);
+
+		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(SatPushConstants), &satPC);
+
+		vkCmdDispatch(commandBuffer, 1, 1, 1);
+
+		vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, static_cast<uint32_t>(barriers.size()), barriers.data(), 0, nullptr);
+	}
+
+	memcpy(uniformBuffersMapped[frameIndex], satUBO, sizeof(SatUniformBuffer));
 
 	if (lineFrame == WRITE_FRAME) {
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, linePipeline);
 
-		dt = lineCursor;
-		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float), &dt);
+		satPC.deltaTime = lineCursor;
+		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(SatPushConstants), &satPC);
 
 		vkCmdDispatch(commandBuffer, 1, 1, 1);
 		VkMemoryBarrier mem{};
@@ -506,6 +548,8 @@ void SatelliteEngine::updateAccelerations(uint32_t inputIndex) {
 
 
 void SatelliteEngine::cleanup() {
+	delete satUBO;
+
 	vkUnmapMemory(device, uniformMemory.memory);
 	vkDestroyBuffer(device, uniformBuffer, nullptr);
 	vkDestroyBuffer(device, lineBuffer, nullptr);

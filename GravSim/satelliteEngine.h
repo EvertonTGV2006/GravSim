@@ -19,6 +19,10 @@ struct SatInit {
 };
 struct SatPushConstants {
 	float deltaTime;
+	uint32_t planetIndex;
+};
+struct SatUniformBuffer {
+	std::array<std::array<Planet, MAX_PLANET_ARRAY_SIZE>, COMPUTE_STEPS_PER_FRAME> planetData;
 };
 
 
@@ -62,7 +66,7 @@ private:
 
 	std::array<std::vector <char>*, 2> shaderCode;
 
-	std::array<VkDescriptorSet, FRAMES_IN_FLIGHT> descriptorSets;
+	std::array<VkDescriptorSet, FRAMES_IN_FLIGHT * 2> descriptorSets;
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkBuffer lineBuffer;
 	VkDeviceSize lineSize;
@@ -74,7 +78,7 @@ private:
 	VkDeviceSize lineInfoSize;
 	MemInit lineInfoMemory;
 
-	std::array<VkBuffer, FRAMES_IN_FLIGHT> satBuffers;
+	std::array<VkBuffer, 2> satBuffers;
 	VkDeviceSize satSize;
 	MemInit satMemory;
 
@@ -86,10 +90,12 @@ private:
 	VkBuffer stagingBuffer;
 
 	uint32_t lineFrame = 0;
-	const uint32_t FRAMES_PER_LINE = 200;
+	const uint32_t FRAMES_PER_LINE = 10;
 	const uint32_t WRITE_FRAME = 0;
 
 	std::array<Satellite, SATELLITE_COUNT> satData;
+
+	SatUniformBuffer* satUBO = nullptr;
 
 	void createPipeline();
 	void createDescriptorSets();

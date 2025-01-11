@@ -78,6 +78,7 @@ void VulkanEngine::initEngine() {
     createFramebuffers();
     createSyncObjects();
     createCommandBuffers();
+    stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Created shared engine resources");
 
     VkPhysicalDeviceProperties properties{};
     vkGetPhysicalDeviceProperties(physicalDevice, &properties);
@@ -103,6 +104,7 @@ void VulkanEngine::initEngine() {
     uint16_t shaderCursor = 0;
 
     partt.join();
+    stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Created particle data");
 
     readFiles(shaderFiles, &shaderCode);
 
@@ -152,6 +154,7 @@ void VulkanEngine::initEngine() {
     //gravEngine.initGrav_A(grav);
 
     spheret.join();
+    stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Initialised shader geometry");
 
     meshes[0].vertexCount = static_cast<uint32_t>(meshes[0].vertices->size());
     meshes[0].indexCount = static_cast<uint32_t>(meshes[0].indices->size());
@@ -178,20 +181,27 @@ void VulkanEngine::initEngine() {
     //particleRasterizer.initRast_A(rast);
     
     rasttA.join();
+    stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Initialized Particle Rasterizer A");
     uitA.join();
+    stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Initialized UI Rasterizer A");
     sattA.join();
+    stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Initialized Satellite Engine A");
 
 
    // particleRasterizer.storeGravStorageBuffer(gravEngine.getInterleavedStorageBuffer());
 
     allocateMemory();
+    stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Allocated Memory");
 
     particleRasterizer.setExternalPtrs(satEngine.getSatellitePtrs());
 
     uiRasterizer.initUI_B();
+    stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Initialized UI Rasterizer B");
     particleRasterizer.initRast_B();
+    stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Initialized Particle Rasterizer B");
     gravEngine.initGrav_B();
     satEngine.initSatEngine_B();
+    stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Initialized Satellite Engine B");
 
     //std::thread uitB(&UIRasterizer::initUI_B, &uiRasterizer);
     //std::thread rastB(&particleRasterizer::initRast_B, &particleRasterizer);
@@ -860,7 +870,7 @@ void VulkanEngine::createDescriptorPool() {
 
     std::array<VkDescriptorPoolSize, 3> poolSizes{};
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    poolSizes[0].descriptorCount = static_cast<uint32_t>(FRAMES_IN_FLIGHT*2);
+    poolSizes[0].descriptorCount = static_cast<uint32_t>(FRAMES_IN_FLIGHT*5);
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     poolSizes[1].descriptorCount = static_cast<uint32_t>(FRAMES_IN_FLIGHT*3);
     poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -871,7 +881,7 @@ void VulkanEngine::createDescriptorPool() {
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
     poolInfo.pPoolSizes = poolSizes.data();
-    poolInfo.maxSets = static_cast<uint32_t>(FRAMES_IN_FLIGHT +3 * COMPUTE_STEPS);
+    poolInfo.maxSets = static_cast<uint32_t>(FRAMES_IN_FLIGHT * (1 + 2 + 1 + 1 + 1));
 
     if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool!");
@@ -968,7 +978,9 @@ void VulkanEngine::allocateMemory() {
         memoryInfo.allocationSize = mergedMemRequirements[i].requirements.size;
         memoryInfo.memoryTypeIndex = findMemoryType(mergedMemRequirements[i]);
         if (vkAllocateMemory(device, &memoryInfo, nullptr, &memory[i]) != VK_SUCCESS) { throw std::runtime_error("Failed to allocated memory"); }
-
+        //if (mergedMemRequirements[i].flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+            //stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Allocated " + std::string(uint32_t(mergedMemRequirements[i].requirements.size)))
+        //}
     }
     //now create vector of MemInit structs in order of memRequirements.
     memoryContainers.resize(memRequirements.size());

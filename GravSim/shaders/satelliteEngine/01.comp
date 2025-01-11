@@ -30,9 +30,10 @@ const float G = 6.67e-11;
 const uint MAX_PLANETS_ARRAY_SIZE = 2;
 const uint SATELLITE_COUNT = 64;
 const uint LINE_VERTEX_COUNT = 1024;
+const uint COMPUTE_STEPS_PER_FRAME = 128;
 
 layout(binding = 0) uniform UniformBufferObject{
-    Planet planets[MAX_PLANETS_ARRAY_SIZE];
+    Planet planets[MAX_PLANETS_ARRAY_SIZE * COMPUTE_STEPS_PER_FRAME];
 } ubo;
 
 layout(binding = 1) buffer inSSBO{
@@ -48,7 +49,8 @@ layout(binding = 4) buffer lineInfoSSBO{
     LineInfo infos[SATELLITE_COUNT];
 };
 layout(push_constant) uniform pc {
-    float dt;             
+    float dt;
+    uint pOffset;             
 } constants;
 layout(local_size_x = SATELLITE_COUNT) in;
 
@@ -60,7 +62,7 @@ layout(local_size_x = SATELLITE_COUNT) in;
 // }
 vec3 evaluateAccelBase(Satellite sat, uint index){
     vec3 a = vec3(0);
-    for(uint j = 0; j < MAX_PLANETS_ARRAY_SIZE; j++){
+    for(uint j = constants.pOffset * MAX_PLANETS_ARRAY_SIZE; j < (constants.pOffset + 1) * MAX_PLANETS_ARRAY_SIZE; j++){
         vec3 sep = sat.pos.xyz - ubo.planets[j].pos[index].xyz;
         float aMult = G * ubo.planets[j].pos[2].w / dot(sep, sep);
         a += aMult * - normalize(sep);
