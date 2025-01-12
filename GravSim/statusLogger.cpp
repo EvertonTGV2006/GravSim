@@ -10,8 +10,10 @@ void StatusLogger::addMessage(uint32_t level, std::string msg) {
 	std::string timeStr = std::format("{:%H:%M:%S}", msgTime);
 	timeStr.resize(11);
 	newMessage.message = "[" + timeStr + "] " + msg;
+
+	std::lock_guard<std::mutex> lock(msgMutex);
 	messages.push_back(newMessage);
-	evaluateMessages();
+	//evaluateMessages();
 	if (printMessages) { std::cout << newMessage.message << "\n"; }
 }
 
@@ -42,8 +44,10 @@ void StatusLogger::evaluateMessages() {
 	currentMsgCount = msgsFound;
 }
 void StatusLogger::writeOutMessages() {
-	std::ofstream file(fName);
+	std::ofstream file("status.log");
 	addMessage(MSG_LEVEL_URGENT, "Writing out log");
+
+	std::lock_guard<std::mutex> lock(msgMutex);
 	for (uint32_t i = 0; i < messages.size(); i++) {
 		file << messages[i].level << "\t" << messages[i].message << "\n";
 	}

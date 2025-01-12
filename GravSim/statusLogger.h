@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
+#include <mutex>
 #include "structs.h"
 
 struct StatusMessage {
@@ -36,10 +37,8 @@ public:
 	std::array<UIText, maxMsgCount> texts;
 private:
 	std::vector<StatusMessage> messages;
-	
-	std::string fName = "status.log";
 
-
+	std::mutex msgMutex;
 
 	std::array<std::string, maxMsgCount> strings;
 
