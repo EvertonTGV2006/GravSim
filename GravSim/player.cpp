@@ -13,23 +13,34 @@
 #include "player.h"
 
 void PlayerObject::updateViewMat() {
-	glm::vec3 up;
-	if (playerOptions & PL_VIEW_LOCK_UP) {
-		up = glm::vec3(0, 0, 1);
+	if (!focusOnPlanet) {
+		glm::vec3 up;
+		if (playerOptions & PL_VIEW_LOCK_UP) {
+			up = glm::vec3(0, 0, 1);
+		}
+		else {
+			up = viewUp;
+		}
+		//if (playerOptions & PL_VIEW_LOCK_FOCUS) {
+		//	pos = viewFocus + viewDirection * viewZoom;
+		//}
+		//else {
+		//	viewFocus = pos + viewDirection * viewZoom;
+		//}
+		up = viewUp;
+
+		//viewMat = glm::lookAt(pos, viewFocus, up);
+		viewMat = glm::lookAt(pos, pos + (viewDirection * viewZoom)/*glm::vec3(0.0f,0.0f,0.0f)*/, up);
 	}
 	else {
-		up = viewUp;
-	}
-	//if (playerOptions & PL_VIEW_LOCK_FOCUS) {
-	//	pos = viewFocus + viewDirection * viewZoom;
-	//}
-	//else {
-	//	viewFocus = pos + viewDirection * viewZoom;
-	//}
-	up = viewUp;
+		glm::vec3 plPos = (*planets)[planetIndex].pos_2;
+		glm::vec3 radiusVec = (*planets)[planetIndex].radius * viewZoom * glm::vec3(1.0f, 1.0f, 1.0f);
+		radiusVec.z *= glm::sin(anglez);
+		radiusVec.y *= glm::sin(anglexy) * glm::sqrt(1.0f - glm::pow(glm::sin(anglez), 2.0f));
+		radiusVec.x *= glm::cos(anglexy) * glm::sqrt(1.0f - glm::pow(glm::sin(anglez), 2.0f));
 
-	//viewMat = glm::lookAt(pos, viewFocus, up);
-	viewMat = glm::lookAt(pos, pos + (viewDirection*viewZoom)/*glm::vec3(0.0f,0.0f,0.0f)*/, up);
+		viewMat = glm::lookAt(plPos + radiusVec, plPos, glm::vec3(0.f, 0.0f, 1.0f));
+	}
 
 }
 
@@ -38,10 +49,11 @@ void PlayerObject::updateGLFWcallbacks() {
 	int x, y;
 	glfwGetFramebufferSize(winmanager->window, &x, &y);
 	xpos = x/2; ypos = y/2;
-	glfwSetInputMode(winmanager->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	glfwSetInputMode(winmanager->window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+	glfwSetInputMode(winmanager->window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	//glfwSetInputMode(winmanager->window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
 	glfwSetFramebufferSizeCallback(winmanager->window, framebufferResizeCallback);
 	glfwSetCursorPosCallback(winmanager->window, mouseMotionCallback);
+	glfwSetMouseButtonCallback(winmanager->window, mouseButtonCallback);
 	glfwSetCursorPos(winmanager->window, xpos, ypos);
 	//std::cout << "Setting Callbacks";
 	stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Setting GLFW callbacks");
@@ -125,7 +137,8 @@ void PlayerObject::framebufferResizeCallback(GLFWwindow* window, int width, int 
 	}
 void PlayerObject::mouseMotionCallback(GLFWwindow* window, double xpos, double ypos) {
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
-	//std::cout << "Mouse callback" << std::endl;
+	std::cout << "Mouse callback: " << app->xpos << " | "<< app->ypos << std::endl;
+	std::lock_guard<std::mutex> lock(app->mouseMutex);
 
 	float dx = float(xpos - app->xpos);
 	float dy = float(ypos - app->ypos);
@@ -134,25 +147,59 @@ void PlayerObject::mouseMotionCallback(GLFWwindow* window, double xpos, double y
 	if (app->playerOptions & PL_VIEW_INVERT_Y_AXIS) {
 		dy *= -1;
 	}
-	app->anglez += dy * app->yscale;
-	app->anglexy += dx * app->xscale;
-	if (app->anglez <= -glm::half_pi<float>()+0.001f) {
-		app->anglez = -glm::half_pi<float>() + 0.001f;
+
+	if (app->middleMouseButtonPressed) {
+		app->anglez += dy * app->yscale;
+		app->anglexy += dx * app->xscale;
+		if (app->anglez <= -glm::half_pi<float>() + 0.001f) {
+			app->anglez = -glm::half_pi<float>() + 0.001f;
+		}
+		if (app->anglez >= glm::half_pi<float>() - 0.001f) {
+			app->anglez = glm::half_pi<float>() - 0.001f;
+		}
+
+		app->viewDirection.z = glm::sin(app->anglez);
+		app->viewDirection.x = glm::sin(app->anglexy) * glm::sqrt(1.0f - glm::pow(app->viewDirection.z, 2.0f));
+		app->viewDirection.y = glm::cos(app->anglexy) * glm::sqrt(1.0f - glm::pow(app->viewDirection.z, 2.0f));
 	}
-	if (app->anglez >= glm::half_pi<float>()-0.001f) {
-		app->anglez=glm::half_pi<float>() - 0.001f;
+
+	////std::cout << "sin + cos" << glm::pow(glm::sin(app->anglexy),2) + glm::cos(app->anglexy) << std::endl;;
+
+	////std::cout << "View Direction: " << app->viewDirection.x << ", " << app->viewDirection.y << ", " << app->viewDirection.z << " | " << app->anglez<< " | "<< glm::length(app->viewDirection)<< std::endl;
+	////std::cout << "Angle XY: " << app->anglexy << " | Angle Z: " << app->anglez << std::endl;
+	//
+}
+void PlayerObject::mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
+	std::lock_guard<std::mutex> lock(app->mouseMutex);
+	if (button == GLFW_MOUSE_BUTTON_MIDDLE) {
+		if (action == GLFW_PRESS) {
+			if (app->stickyMiddleMouseButton) {
+				app->middleMouseButtonPressed = !app->middleMouseButtonPressed;
+				if (app->middleMouseButtonPressed) {
+					glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+					glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+				}
+				else {
+					glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_FALSE);
+					glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+				}
+			}
+			else {
+				app->middleMouseButtonPressed = true;
+				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+				glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+			}
+		}
+		else if (action == GLFW_RELEASE) {
+			if (app->stickyMiddleMouseButton) {}
+			else {
+				app->middleMouseButtonPressed = false;
+				glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_FALSE);
+				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+			}
+		}
 	}
-	app->viewDirection.z = glm::sin(app->anglez);
-	app->viewDirection.x = glm::sin(app->anglexy) * glm::sqrt(1.0f - glm::pow(app->viewDirection.z, 2.0f));
-	app->viewDirection.y = glm::cos(app->anglexy) * glm::sqrt(1.0f - glm::pow(app->viewDirection.z, 2.0f));
-
-	//std::cout << "sin + cos" << glm::pow(glm::sin(app->anglexy),2) + glm::cos(app->anglexy) << std::endl;;
-
-	//std::cout << "View Direction: " << app->viewDirection.x << ", " << app->viewDirection.y << ", " << app->viewDirection.z << " | " << app->anglez<< " | "<< glm::length(app->viewDirection)<< std::endl;
-	//std::cout << "Angle XY: " << app->anglexy << " | Angle Z: " << app->anglez << std::endl;
-	
-
-
 }
 void PlayerObject::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
@@ -215,7 +262,7 @@ void PlayerObject::keyCallback(GLFWwindow* window, int key, int scancode, int ac
 }
 void PlayerObject::scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
-
+	std::lock_guard<std::mutex> lock(app->mouseMutex);
 
 	app->viewZoom += float(yoffset)* app->scrollScale * app->viewZoom;
 	if (app->viewZoom > app->zoomMax) {
@@ -230,6 +277,8 @@ void PlayerObject::charCallback(GLFWwindow* window, uint32_t code) {
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
 	app->inputString.push_back(code);
 }
+
+
 void PlayerObject::updatePlayerMovement() {
 	
 	currentTime = glfwGetTime();
@@ -298,3 +347,4 @@ void PlayerObject::windowCloseCallback(GLFWwindow* window) {
 	app->stat->addMessage(MSG_LEVEL_DEBUG, "Window Closing");
 	app->windowShouldClose = true;
 }
+

@@ -333,7 +333,7 @@ void SatelliteEngine::initBufferData_B(VkCommandBuffer transferCommandBuffer, Vk
 
 	//NEW SATS
 	//4 sets of 16 velocities in LEO
-	createInitialSatellites(&satData[0], 4, 16, 200e3f, 1.0f, 0.1f, 0.0f, 0);
+	createInitialSatellites(&satData[0], 4, 16, 200e3f, 1.0f, 0.017f, 0.0f, 1);
 
 	memcpy(data, satData.data(), satData.size() * sizeof(Satellite));
 
@@ -375,7 +375,7 @@ void SatelliteEngine::initBufferData_B(VkCommandBuffer transferCommandBuffer, Vk
 void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frameIndex, float dt) {
 
 
-	dt *= 1e3;
+	dt *= 1e5;
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
 	
@@ -517,6 +517,10 @@ void SatelliteEngine::updatePlanets(float dt) {
 		dx[i] = (1.0f * dx_1[i] + 2.0f * dx_2[i] + 2.0f * dx_3[i] + 1.0f * dx_4[i]) / 6.0f;
 		dv[i] = (1.0f * dv_1[i] + 2.0f * dv_2[i] + 2.0f * dv_3[i] + 1.0f * dv_4[i]) / 6.0f;
 	}
+
+	//LOCK EARTH IN PLACE
+	dx[0] = glm::vec3(0);
+	dv[0] = glm::vec3(0);
 	
 	//now update final planets;
 	for (uint32_t i = 0; i < MAX_PLANET_ARRAY_SIZE; i++) {

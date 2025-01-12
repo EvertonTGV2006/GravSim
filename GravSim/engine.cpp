@@ -42,6 +42,7 @@ void VulkanEngine::initEngine() {
     std::chrono::time_point startTime = std::chrono::high_resolution_clock::now();
     winmanager.initWindow();
     player->winmanager = &winmanager;
+    player->planets = &planets;
     player->updateGLFWcallbacks();
     player->initUIElements(&frameCounter, &fpsVal);
 
