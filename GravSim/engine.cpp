@@ -242,7 +242,8 @@ void VulkanEngine::executeGraphics() {
     if (player->windowShouldClose == true) {
         glfwSetWindowShouldClose(winmanager.window, GLFW_TRUE);
     }
-
+    //unlimitedFPS = false;
+    //targetFrameTime_uS = 1e6f / 60;
     //now we wait until next frame;
     if (!unlimitedFPS) {
         std::this_thread::sleep_until(nextFrameScheduled);

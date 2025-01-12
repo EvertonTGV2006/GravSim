@@ -137,7 +137,7 @@ void PlayerObject::framebufferResizeCallback(GLFWwindow* window, int width, int 
 	}
 void PlayerObject::mouseMotionCallback(GLFWwindow* window, double xpos, double ypos) {
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
-	std::cout << "Mouse callback: " << app->xpos << " | "<< app->ypos << std::endl;
+	//std::cout << "Mouse callback: " << app->xpos << " | "<< app->ypos << std::endl;
 	std::lock_guard<std::mutex> lock(app->mouseMutex);
 
 	float dx = float(xpos - app->xpos);

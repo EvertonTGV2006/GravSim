@@ -16,6 +16,10 @@ void SatelliteEngine::initSatEngine_A(SatInit details) {
 
 	satUBO = new SatUniformBuffer;
 }
+void SatelliteEngine::initSatEngine_B() {
+	createDescriptorSets();
+	createPipeline();
+}
 
 void SatelliteEngine::createBuffers() {
 	VkBufferCreateInfo bufferInfo{};
@@ -255,10 +259,6 @@ void SatelliteEngine::createPipeline() {
 	}
 }
 
-void SatelliteEngine::initSatEngine_B() {
-	createDescriptorSets();
-	createPipeline();
-}
 
 void SatelliteEngine::getMemoryRequirements(std::vector<MemoryDetails>* mem, std::vector<uint16_t>* count) {
 	mem->push_back(lineRequirements);
@@ -374,8 +374,8 @@ void SatelliteEngine::initBufferData_B(VkCommandBuffer transferCommandBuffer, Vk
 
 void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frameIndex, float dt) {
 
-
-	dt *= 1e5;
+	dt = 1.0f / 400.0f;
+	dt *= 1e3;
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
 	
@@ -519,8 +519,8 @@ void SatelliteEngine::updatePlanets(float dt) {
 	}
 
 	//LOCK EARTH IN PLACE
-	dx[0] = glm::vec3(0);
-	dv[0] = glm::vec3(0);
+	//dx[0] = glm::vec3(0);
+	//dv[0] = glm::vec3(0);
 	
 	//now update final planets;
 	for (uint32_t i = 0; i < MAX_PLANET_ARRAY_SIZE; i++) {
