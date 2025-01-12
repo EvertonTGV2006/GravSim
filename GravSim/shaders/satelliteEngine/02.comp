@@ -3,15 +3,15 @@
 #extension GL_EXT_scalar_block_layout : enable
 
 struct Planet{
-    vec4 pos;
-    vec4 vel;
-    vec4 axis;
-    vec4 unused;
-    mat4 padding;
+    //0-th is position at current time, 1-st is position at T+.5dt, 2-nd is position at T+dt
+    dvec4 pos[3];
+    dvec4 vel[3];
+    dvec4 axis;
+    dvec4 padding;
 };
 struct Satellite{
-    vec4 pos;
-    vec4 vel;
+    dvec4 pos;
+    dvec4 vel;
 };
 struct LineVertex{
     vec4 pos;
@@ -27,14 +27,16 @@ struct LineInfo{
 };
 
 
-const float G = 6.67e-11;
+const double G = 6.67e-11;
 const uint MAX_PLANETS_ARRAY_SIZE = 2;
 const uint SATELLITE_COUNT = 64;
 const uint LINE_VERTEX_COUNT = 1024;
+const uint COMPUTE_STEPS_PER_FRAME = 128;
 
 layout(binding = 0) uniform UniformBufferObject{
-    Planet planets[MAX_PLANETS_ARRAY_SIZE];
+    Planet planets[MAX_PLANETS_ARRAY_SIZE * COMPUTE_STEPS_PER_FRAME];
 } ubo;
+
 layout(binding = 1) buffer inSSBO{
     Satellite inSats[SATELLITE_COUNT];
 };
@@ -48,8 +50,8 @@ layout(binding = 4) buffer lineInfoSSBO{
     LineInfo infos[SATELLITE_COUNT];
 };
 layout(push_constant) uniform pc {
-    float dt;   
-    uint pOffset;          
+    double dt;
+    uint pOffset;             
 } constants;
 layout(local_size_x = SATELLITE_COUNT) in;
 
@@ -57,27 +59,27 @@ void main(){
     uint lineCursor = uint(constants.dt);
     uint i = gl_GlobalInvocationID.x;
     LineVertex sampleVertex;
-    sampleVertex.pos = inSats[i].pos;
+    sampleVertex.pos = vec4(inSats[i].pos);
     sampleVertex.base = vec4(0.0f, 0.0f, 1.0f, 0.0f);
     sampleVertex.inter = vec4(0.0f, 1.0f, 0.0f, 0.0f);
     sampleVertex.fin = vec4(1.0f, 0.0f, 0.0f, 0.0f);
     uint vertIndex = i * LINE_VERTEX_COUNT + lineCursor;
     vertices[vertIndex] = sampleVertex;
 
-    float oldCost = infos[i].cost;
-    float newCost = max(1.0f/length(inSats[i].pos.xyz-ubo.planets[1].pos.xyz), oldCost * 0.999f);
+    // float oldCost = infos[i].cost;
+    // float newCost = max(1.0f/length(inSats[i].pos.xyz-ubo.planets[1].pos.xyz), oldCost * 0.999f);
 
-    vec3 r = inSats[i].pos.xyz - ubo.planets[0].pos.xyz;
-    vec3 v = inSats[i].vel.xyz;
+    // vec3 r = inSats[i].pos.xyz - ubo.planets[0].pos.xyz;
+    // vec3 v = inSats[i].vel.xyz;
 
-    float mu = G * ubo.planets[0].pos.w;
+    // float mu = G * ubo.planets[0].pos.w;
 
-    vec3 eVec = cross(v, cross(r, v))/mu - normalize(r);
+    // vec3 eVec = cross(v, cross(r, v))/mu - normalize(r);
 
-    float eccentricity = length(eVec);
+    // float eccentricity = length(eVec);
 
-    infos[i].cost = newCost;
-    infos[i].eccentricity = eccentricity;
+    // infos[i].cost = newCost;
+    // infos[i].eccentricity = eccentricity;
 
 
 }

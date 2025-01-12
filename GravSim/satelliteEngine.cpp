@@ -372,9 +372,9 @@ void SatelliteEngine::initBufferData_B(VkCommandBuffer transferCommandBuffer, Vk
 
 }
 
-void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frameIndex, float dt) {
+void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frameIndex, double dt) {
 
-	dt = 1.0f / 400.0f;
+	dt = 1.0 / 400.0;
 	dt *= 1e3;
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
@@ -402,8 +402,8 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 	std::array<VkBufferMemoryBarrier, 2> barriers = { bar1, bar2 };
 
 	for (uint32_t i = 0; i < COMPUTE_STEPS_PER_FRAME; i++) {
-		updatePlanets(0.5f * satPC.deltaTime);
-		updatePlanets(0.5f * satPC.deltaTime);
+		updatePlanets(0.5 * satPC.deltaTime);
+		updatePlanets(0.5 * satPC.deltaTime);
 		memcpy(satUBO->planetData[i].data(), planets->data(), planets->size() * sizeof(Planet));
 
 		satPC.planetIndex = i;
@@ -454,31 +454,31 @@ SatExternalMembers SatelliteEngine::getSatellitePtrs() {
 	return data;
 }
 
-void SatelliteEngine::createInitialSatellites(void* ptr, uint32_t positions, uint32_t velocities, float baseHeight, float baseVelocity, float velocityStep, float inclination, uint32_t planetIndex) {
+void SatelliteEngine::createInitialSatellites(void* ptr, uint32_t positions, uint32_t velocities, double baseHeight, double baseVelocity, double velocityStep, double inclination, uint32_t planetIndex) {
 	Planet pl = (*planets)[planetIndex];
-	float orbitRadius = pl.radius + baseHeight;
-	float orbitVel = glm::sqrt(6.67e-11f * pl.mass / orbitRadius);
+	double orbitRadius = pl.radius + baseHeight;
+	double orbitVel = glm::sqrt(6.67e-11 * pl.mass / orbitRadius);
 	Satellite sat{};
-	sat.mass = 0.0f;
-	float trueAnomaly = 0.0f;
-	glm::vec3 radiusVec{};
+	sat.mass = 0.0;
+	double trueAnomaly = 0.0;
+	glm::dvec3 radiusVec{};
 
 	Satellite* satPtr = reinterpret_cast<Satellite*>(ptr);
 	uint32_t satIndex = 0;
 
 	for (uint32_t i = 0; i < positions; i++) {
 		trueAnomaly = glm::two_pi<float>() * i / positions;
-		radiusVec = orbitRadius * glm::vec3(glm::cos(trueAnomaly), glm::sin(trueAnomaly), 0.0f);
+		radiusVec = orbitRadius * glm::dvec3(glm::cos(trueAnomaly), glm::sin(trueAnomaly), 0.0f);
 		sat.pos = pl.pos_0 + radiusVec;
 		for (uint32_t j = 0; j < velocities; j++) {
-			sat.vel = glm::normalize(glm::cross(radiusVec, glm::vec3(0.0f, 0.0f, 1.0f))) * orbitVel * (baseVelocity + glm::sqrt(float(j)) * velocityStep) + pl.vel_0;
+			sat.vel = glm::normalize(glm::cross(radiusVec, glm::dvec3(0.0f, 0.0f, 1.0f))) * orbitVel * (baseVelocity + glm::sqrt(double(j)) * velocityStep) + pl.vel_0;
 			*(satPtr + satIndex) = sat;
 			satIndex++;
 		}
 	}
 }
 
-void SatelliteEngine::updatePlanets(float dt) {
+void SatelliteEngine::updatePlanets(double dt) {
 	//use RK-4 to update planets.
 	//first copy current planet data to tempPlanets
 	for (uint32_t i = 0; i < tempPlanets.size(); i++) {
@@ -490,32 +490,32 @@ void SatelliteEngine::updatePlanets(float dt) {
 	for (uint32_t i = 0; i < MAX_PLANET_ARRAY_SIZE; i++) {
 		dx_1[i] = tempPlanets[0][i].vel_2 * dt;
 		dv_1[i] = tempAccelerations[i] * dt;
-		tempPlanets[1][i].pos_2 += 0.5f * dx_1[i];
-		tempPlanets[1][i].vel_2 += 0.5f * dv_1[i];
+		tempPlanets[1][i].pos_2 += 0.5 * dx_1[i];
+		tempPlanets[1][i].vel_2 += 0.5 * dv_1[i];
 	}
 	updateAccelerations(1);
 
 	for (uint32_t i = 0; i < MAX_PLANET_ARRAY_SIZE; i++) {
 		dx_2[i] = tempPlanets[1][i].vel_2 * dt;
 		dv_2[i] = tempAccelerations[i] * dt;
-		tempPlanets[2][i].pos_2 += 0.5f * dx_2[i];
-		tempPlanets[2][i].vel_2 += 0.5f * dv_2[i];
+		tempPlanets[2][i].pos_2 += 0.5 * dx_2[i];
+		tempPlanets[2][i].vel_2 += 0.5 * dv_2[i];
 	}
 	updateAccelerations(2);
 
 	for (uint32_t i = 0; i < MAX_PLANET_ARRAY_SIZE; i++) {
 		dx_3[i] = tempPlanets[2][i].vel_2 * dt;
 		dv_3[i] = tempAccelerations[i] * dt;
-		tempPlanets[3][i].pos_2 += 1.0f * dx_3[i];
-		tempPlanets[3][i].vel_2 += 1.0f * dv_3[i];
+		tempPlanets[3][i].pos_2 += 1.0 * dx_3[i];
+		tempPlanets[3][i].vel_2 += 1.0 * dv_3[i];
 	}
 
 	updateAccelerations(3);
 	for (uint32_t i = 0; i < MAX_PLANET_ARRAY_SIZE; i++) {
 		dx_4[i] = tempPlanets[3][i].vel_2 * dt;
 		dv_4[i] = tempAccelerations[i] * dt;
-		dx[i] = (1.0f * dx_1[i] + 2.0f * dx_2[i] + 2.0f * dx_3[i] + 1.0f * dx_4[i]) / 6.0f;
-		dv[i] = (1.0f * dv_1[i] + 2.0f * dv_2[i] + 2.0f * dv_3[i] + 1.0f * dv_4[i]) / 6.0f;
+		dx[i] = (1.0 * dx_1[i] + 2.0 * dx_2[i] + 2.0 * dx_3[i] + 1.0 * dx_4[i]) / 6.0;
+		dv[i] = (1.0 * dv_1[i] + 2.0 * dv_2[i] + 2.0 * dv_3[i] + 1.0 * dv_4[i]) / 6.0;
 	}
 
 	//LOCK EARTH IN PLACE
@@ -530,20 +530,20 @@ void SatelliteEngine::updatePlanets(float dt) {
 		(*planets)[i].vel_1 = tempPlanets[0][i].vel_2;
 		(*planets)[i].pos_2 = tempPlanets[0][i].pos_2 + dx[i];
 		(*planets)[i].vel_2 = tempPlanets[0][i].vel_2 + dv[i];
-		(*planets)[i].theta = tempPlanets[0][i].theta + 1e-3f * dt;
+		(*planets)[i].theta = tempPlanets[0][i].theta + 1e-3 * dt;
 	}
 }
 
 void SatelliteEngine::updateAccelerations(uint32_t inputIndex) {
 	for (uint32_t i = 0; i < MAX_PLANET_ARRAY_SIZE; i++) {
-		tempAccelerations[i] = glm::vec3(0);//initialise element to 0;
+		tempAccelerations[i] = glm::dvec3(0);//initialise element to 0;
 		for (uint32_t j = 0; j < MAX_PLANET_ARRAY_SIZE; j++) {
 			if (i == j) {
 				continue;
 			}
 			else {
-				glm::vec3 sep = tempPlanets[inputIndex][j].pos_2 - tempPlanets[inputIndex][i].pos_2;//use pos 2 as they are the most up-to-date positions;
-				float aMult = tempPlanets[inputIndex][j].mass * 6.67e-11f / glm::dot(sep, sep);
+				glm::dvec3 sep = tempPlanets[inputIndex][j].pos_2 - tempPlanets[inputIndex][i].pos_2;//use pos 2 as they are the most up-to-date positions;
+				double aMult = tempPlanets[inputIndex][j].mass * 6.67e-11/ glm::dot(sep, sep);
 				tempAccelerations[i] += aMult * glm::normalize(sep);
 			}
 		}

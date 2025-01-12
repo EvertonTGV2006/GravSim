@@ -33,13 +33,13 @@ void PlayerObject::updateViewMat() {
 		viewMat = glm::lookAt(pos, pos + (viewDirection * viewZoom)/*glm::vec3(0.0f,0.0f,0.0f)*/, up);
 	}
 	else {
-		glm::vec3 plPos = (*planets)[planetIndex].pos_2;
-		glm::vec3 radiusVec = (*planets)[planetIndex].radius * viewZoom * glm::vec3(1.0f, 1.0f, 1.0f);
+		glm::dvec3 plPos = (*planets)[planetIndex].pos_2;
+		glm::dvec3 radiusVec = (*planets)[planetIndex].radius * viewZoom * glm::dvec3(1.0f, 1.0f, 1.0f);
 		radiusVec.z *= glm::sin(anglez);
 		radiusVec.y *= glm::sin(anglexy) * glm::sqrt(1.0f - glm::pow(glm::sin(anglez), 2.0f));
 		radiusVec.x *= glm::cos(anglexy) * glm::sqrt(1.0f - glm::pow(glm::sin(anglez), 2.0f));
 
-		viewMat = glm::lookAt(plPos + radiusVec, plPos, glm::vec3(0.f, 0.0f, 1.0f));
+		viewMat = glm::lookAt(plPos + radiusVec, plPos, glm::dvec3(0.f, 0.0f, 1.0f));
 	}
 
 }

@@ -115,7 +115,7 @@ struct OptionalSettings {
         if (Anisotropy) {
             features->samplerAnisotropy = VK_TRUE;
         }
-        features->shaderFloat64 = VK_FALSE;
+        features->shaderFloat64 = VK_TRUE;
     }
 };
 struct LightingPushConstants {
@@ -164,25 +164,25 @@ struct Particle {
     static VkVertexInputBindingDescription getParticleInputBindings();
 };
 struct Planet {//FIX THIS TO WORK WITH SHADERS --TO DO--
-    alignas(16) glm::vec3 pos_0;
-    alignas(16) glm::vec3 pos_1;
-    alignas(16) glm::vec3 pos_2;
-    float mass;
-    alignas(16) glm::vec3 vel_0;
-    alignas(16) glm::vec3 vel_1;
-    alignas(16) glm::vec3 vel_2;
-    float radius;
-    glm::vec3 axis;
-    float theta;
+    alignas(32) glm::dvec3 pos_0;
+    alignas(32) glm::dvec3 pos_1;
+    alignas(32) glm::dvec3 pos_2;
+    double mass;
+    alignas(32) glm::dvec3 vel_0;
+    alignas(32) glm::dvec3 vel_1;
+    alignas(32) glm::dvec3 vel_2;
+    double radius;
+    glm::dvec3 axis;
+    double theta;
     glm::vec4 unused;
 
     glm::mat4 getModelMatrix(float);
 };
 struct Satellite {
-    glm::vec3 pos;
-    float mass;
-    glm::vec3 vel;
-    float unused;
+    glm::dvec3 pos;
+    double mass;
+    glm::dvec3 vel;
+    double unused;
 };
 
 

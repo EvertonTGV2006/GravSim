@@ -18,7 +18,7 @@ struct SatInit {
 	std::vector<std::vector <char>*> shaderCode;
 };
 struct SatPushConstants {
-	float deltaTime;
+	double deltaTime;
 	uint32_t planetIndex;
 };
 struct SatUniformBuffer {
@@ -43,7 +43,7 @@ public:
 
 	std::vector<std::string> shaderFiles = { "shaders/satelliteEngine/01.spv", "shaders/satelliteEngine/02.spv" };
 
-	void simulateSats(VkCommandBuffer, uint32_t, float);
+	void simulateSats(VkCommandBuffer, uint32_t, double);
 
 	MemoryDetails lineRequirements{};
 	MemoryDetails satRequirements{};
@@ -101,23 +101,23 @@ private:
 	void createDescriptorSets();
 	void createBuffers();
 
-	void createInitialSatellites(void*, uint32_t, uint32_t, float, float,float, float, uint32_t);
-	void updatePlanets(float);
+	void createInitialSatellites(void*, uint32_t, uint32_t, double, double,double, double, uint32_t);
+	void updatePlanets(double);
 
 
 	std::array<std::array<Planet, MAX_PLANET_ARRAY_SIZE>, 4> tempPlanets;
-	std::array<glm::vec3, MAX_PLANET_ARRAY_SIZE> tempAccelerations;
+	std::array<glm::dvec3, MAX_PLANET_ARRAY_SIZE> tempAccelerations;
 
-	std::array<glm::vec3, MAX_PLANET_ARRAY_SIZE> dx_1;
-	std::array<glm::vec3, MAX_PLANET_ARRAY_SIZE> dv_1;
-	std::array<glm::vec3, MAX_PLANET_ARRAY_SIZE> dx_2;
-	std::array<glm::vec3, MAX_PLANET_ARRAY_SIZE> dv_2;
-	std::array<glm::vec3, MAX_PLANET_ARRAY_SIZE> dx_3;
-	std::array<glm::vec3, MAX_PLANET_ARRAY_SIZE> dv_3;
-	std::array<glm::vec3, MAX_PLANET_ARRAY_SIZE> dx_4;
-	std::array<glm::vec3, MAX_PLANET_ARRAY_SIZE> dv_4;
-	std::array<glm::vec3, MAX_PLANET_ARRAY_SIZE> dx;
-	std::array<glm::vec3, MAX_PLANET_ARRAY_SIZE> dv;
+	std::array<glm::dvec3, MAX_PLANET_ARRAY_SIZE> dx_1;
+	std::array<glm::dvec3, MAX_PLANET_ARRAY_SIZE> dv_1;
+	std::array<glm::dvec3, MAX_PLANET_ARRAY_SIZE> dx_2;
+	std::array<glm::dvec3, MAX_PLANET_ARRAY_SIZE> dv_2;
+	std::array<glm::dvec3, MAX_PLANET_ARRAY_SIZE> dx_3;
+	std::array<glm::dvec3, MAX_PLANET_ARRAY_SIZE> dv_3;
+	std::array<glm::dvec3, MAX_PLANET_ARRAY_SIZE> dx_4;
+	std::array<glm::dvec3, MAX_PLANET_ARRAY_SIZE> dv_4;
+	std::array<glm::dvec3, MAX_PLANET_ARRAY_SIZE> dx;
+	std::array<glm::dvec3, MAX_PLANET_ARRAY_SIZE> dv;
 
 	void updateAccelerations(uint32_t);
 };
