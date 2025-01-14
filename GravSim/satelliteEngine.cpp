@@ -325,15 +325,17 @@ void SatelliteEngine::initBufferData_B(VkCommandBuffer transferCommandBuffer, Vk
 
 	////NEW SATS
 	////4 sets of 8 velocities in LEO
-	//createInitialSatellites(&satData[0], 8, 4, 200e3f, 1.0f, 0.2f, 0.0f, 0);
+	//createInitialSatellitesBase(&satData[0], 8, 4, 200e3f, 1.0f, 0.2f, 0.0f, 0);
 	////4 sets of 4 velocities in MEO
-	//createInitialSatellites(&satData[32], 4, 4, 1e7f, 0.8f, 0.2f, 0.0f, 0);
+	//createInitialSatellitesBase(&satData[32], 4, 4, 1e7f, 0.8f, 0.2f, 0.0f, 0);
 	////4 sets of 4 velocities in LLO
-	//createInitialSatellites(&satData[48], 4, 4, 100e3f, 1.0f, 0.2f, 0.0f, 1);
+	//createInitialSatellitesBase(&satData[48], 4, 4, 100e3f, 1.0f, 0.2f, 0.0f, 1);
 
 	//NEW SATS
 	//4 sets of 16 velocities in LEO
-	createInitialSatellites(&satData[0], 4, 16, 200e3f, 1.0f, 0.017f, 0.0f, 1);
+	createInitialSatellitesBase(&satData[0], 4, 16, 200e3f, 1.0f, 0.017f, 0.0f, 1);
+
+	createInitialSatellitesOffset(&satData[64], 6, 32, 400e3, 1.35, 1.5, 0.6, 0);
 
 	memcpy(data, satData.data(), satData.size() * sizeof(Satellite));
 
@@ -454,7 +456,7 @@ SatExternalMembers SatelliteEngine::getSatellitePtrs() {
 	return data;
 }
 
-void SatelliteEngine::createInitialSatellites(void* ptr, uint32_t positions, uint32_t velocities, double baseHeight, double baseVelocity, double velocityStep, double inclination, uint32_t planetIndex) {
+void SatelliteEngine::createInitialSatellitesBase(void* ptr, uint32_t positions, uint32_t velocities, double baseHeight, double baseVelocity, double velocityStep, double inclination, uint32_t planetIndex) {
 	Planet pl = (*planets)[planetIndex];
 	double orbitRadius = pl.radius + baseHeight;
 	double orbitVel = glm::sqrt(6.67e-11 * pl.mass / orbitRadius);
@@ -469,13 +471,42 @@ void SatelliteEngine::createInitialSatellites(void* ptr, uint32_t positions, uin
 	for (uint32_t i = 0; i < positions; i++) {
 		trueAnomaly = glm::two_pi<float>() * i / positions;
 		radiusVec = orbitRadius * glm::dvec3(glm::cos(trueAnomaly), glm::sin(trueAnomaly), 0.0f);
-		sat.pos = pl.pos_0 + radiusVec;
+		sat.pos = pl.pos_2 + radiusVec;
 		for (uint32_t j = 0; j < velocities; j++) {
-			sat.vel = glm::normalize(glm::cross(radiusVec, glm::dvec3(0.0f, 0.0f, 1.0f))) * orbitVel * (baseVelocity + glm::sqrt(double(j)) * velocityStep) + pl.vel_0;
+			sat.vel = glm::normalize(glm::cross(radiusVec, glm::dvec3(0.0f, 0.0f, 1.0f))) * orbitVel * (baseVelocity + glm::sqrt(double(j)) * velocityStep) + pl.vel_2;
 			*(satPtr + satIndex) = sat;
 			satIndex++;
 		}
 	}
+}
+void SatelliteEngine::createInitialSatellitesOffset(void* ptr, uint32_t positions, uint32_t velocities, double baseHeight, double minVelocity, double maxVelocity, double distFactor, uint32_t planetIndex) {
+	Planet pl = (*planets)[planetIndex];
+	double orbitRadius = pl.radius + baseHeight;
+	double orbitVel = glm::sqrt(6.67e-11 * pl.mass / orbitRadius);
+	Satellite sat{};
+	sat.mass = 0.0;
+	double trueAnomaly = 0.0;
+	glm::dvec3 radiusVec{};
+
+	double velBase = minVelocity * orbitVel;
+	double velStep = (maxVelocity - minVelocity) * orbitVel;
+
+	Satellite* satPtr = reinterpret_cast<Satellite*>(ptr);
+	uint32_t satIndex = 0;
+	for (uint32_t i = 0; i < positions; i++) {
+		trueAnomaly = glm::two_pi<float>() * i / positions;
+		radiusVec = orbitRadius * glm::dvec3(glm::cos(trueAnomaly), glm::sin(trueAnomaly), 0.0f);
+		sat.pos = pl.pos_2 + radiusVec;
+		for (uint32_t j = 0; j < velocities; j++) {
+			double velStepBase = (velocities > 1) ? (double(j) / double(velocities - 1)) : 0.0;
+			double velStepFactor = std::pow(velStepBase, distFactor);
+			double velMult = velBase + velStep * velStepFactor;
+			sat.vel = glm::normalize(glm::cross(radiusVec, glm::dvec3(0.0, 0.0, 1.0))) * velMult + pl.vel_2;
+			*(satPtr + satIndex) = sat;
+			satIndex++;
+		}
+	}
+
 }
 
 void SatelliteEngine::updatePlanets(double dt) {

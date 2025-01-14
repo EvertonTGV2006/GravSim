@@ -255,7 +255,10 @@ void VulkanEngine::executeGraphics() {
 
     player->boxes[2].textCount = 0;
 
+    auto waitStart = std::chrono::high_resolution_clock::now();
     vkWaitForFences(device, 1, &flightFences[frameIndex], VK_TRUE, UINT64_MAX);
+    auto waitDuration = std::chrono::high_resolution_clock::now() - waitStart;
+    //std::cout << "Waited FPS " << 1e9 / waitDuration.count() << "\n";
     vkResetFences(device, 1, &flightFences[frameIndex]);
     vkResetCommandBuffer(drawCommandBuffers[frameIndex], 0);
     

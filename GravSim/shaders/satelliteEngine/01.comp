@@ -28,7 +28,7 @@ struct LineInfo{
 
 const double G = 6.67e-11;
 const uint MAX_PLANETS_ARRAY_SIZE = 2;
-const uint SATELLITE_COUNT = 64;
+const uint SATELLITE_COUNT = 256;
 const uint LINE_VERTEX_COUNT = 1024;
 const uint COMPUTE_STEPS_PER_FRAME = 128;
 

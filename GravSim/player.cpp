@@ -259,6 +259,16 @@ void PlayerObject::keyCallback(GLFWwindow* window, int key, int scancode, int ac
 			}
 		}
 	}
+	if (action == GLFW_PRESS) {
+		if (key == GLFW_KEY_TAB) {
+			if (mods == GLFW_FALSE) {
+				app->planetIndex = (app->planetIndex + 1) % MAX_PLANET_ARRAY_SIZE;
+			}
+			else if (mods == GLFW_MOD_SHIFT) {
+				app->planetIndex = (app->planetIndex) ? app->planetIndex - 1 : MAX_PLANET_ARRAY_SIZE - 1;
+			}
+		}
+	}
 }
 void PlayerObject::scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));

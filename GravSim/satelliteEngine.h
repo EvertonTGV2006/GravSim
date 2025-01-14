@@ -101,7 +101,9 @@ private:
 	void createDescriptorSets();
 	void createBuffers();
 
-	void createInitialSatellites(void*, uint32_t, uint32_t, double, double,double, double, uint32_t);
+	void createInitialSatellitesBase(void*, uint32_t, uint32_t, double, double,double, double, uint32_t);
+	void createInitialSatellitesOffset(void*, uint32_t, uint32_t, double, double, double, double, uint32_t);
+	
 	void updatePlanets(double);
 
 

@@ -57,7 +57,7 @@ enum UIOptions {
 };
 
 const uint32_t LINE_VERTEX_COUNT = 1024;
-const uint32_t SATELLITE_COUNT = 64;
+const uint32_t SATELLITE_COUNT = 256;
 const uint32_t MAX_PLANET_ARRAY_SIZE = 2;
 const uint32_t COMPUTE_STEPS_PER_FRAME = 128; // CANNOT BE 1
 
