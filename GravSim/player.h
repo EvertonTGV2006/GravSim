@@ -15,6 +15,7 @@
 #include "structs.h"
 #include <chrono>
 //#include "renderer.h"
+#include "statusLogger.h"
 
 enum playerViewOptions {
 	PL_VIEW_LOCK_FOCUS = 1,
@@ -31,20 +32,20 @@ enum playerMoveOptions {
 
 class PlayerObject {
 public:
-
+	StatusLogger* stat;
 
 	std::atomic_bool windowShouldClose;
 	bool validateParticles = false;
 
-	glm::vec3 pos = { -4,27,0 };
-	glm::vec3 viewDirection = {4, -27, 0 };
+	glm::vec3 pos = { 0,-0.3,-1.8 };
+	glm::vec3 viewDirection = {0, 0.3, 1.8 };
 	glm::vec3 viewFocus = { 0, 0, 0 };
 	glm::vec3 viewUp = { 0,0,1 };
 	float viewZoom = 1.0f;
 	const float zoomMin = 0.01f;
 	const float zoomMax = 100.0f;
 
-	WindowManager winmanager;
+	WindowManager* winmanager;
 
 	uint32_t playerOptions = PL_VIEW_LOCK_FOCUS | PL_VIEW_LOCK_UP;
 
@@ -55,26 +56,26 @@ public:
 	double xpos = 0;
 	double ypos = 0;
 
-	double anglez = glm::asin(-1 / sqrt(3));
-	double anglexy = glm::pi<double>() * 5 / 4;
-	double scrollScale = 0.1;
+	float anglez = glm::atan(viewDirection.z / sqrt(viewDirection.x * viewDirection.x + viewDirection.y * viewDirection.y));
+	float anglexy = glm::atan(viewDirection.y / viewDirection.x) - glm::pi<float>() * 0.5f;
+	float scrollScale = 0.1f;
 
 	float xscale = 0.005f;
 	float yscale = 0.005f;
 
 	double currentTime = glfwGetTime();;
 	double prevTime = glfwGetTime();
-	double deltaTime = 0;
+	float deltaTime = 0;
 
 	uint64_t playerMoveFlags;
 	glm::vec3 playerVelocityDirection = { 0,0,0 };
 	float playerVelocityScale = 2;
 	float forwardVelocityScale = 0;
-	const float forwardVelocityMax = 0.2;
-	float acrossVelocityScale = 0;
-	const float acrossVelocityMax = 0.2;
-	const float accelerationScale = 0.1;
-	const float negAccelerationScale = 0.4;
+	const float forwardVelocityMax = 0.2f;
+	float acrossVelocityScale = 0.0f;
+	const float acrossVelocityMax = 0.2f;
+	const float accelerationScale = 0.1f;
+	const float negAccelerationScale = 0.4f;
 
 	std::atomic_bool timeAccel = false;
 	std::atomic_bool timeStep = true;
@@ -82,16 +83,12 @@ public:
 	std::atomic_bool triggerStep = false;
 
 
-	std::map<int, uint64_t> keyBindings = { {GLFW_KEY_W, PL_MOVE_FORWARD}, {GLFW_KEY_S, PL_MOVE_BACKWARD}, {GLFW_KEY_A, PL_MOVE_LEFT}, {GLFW_KEY_D, PL_MOVE_RIGHT} };
+	std::map<int, uint64_t> keyBindings = { {GLFW_KEY_UP, PL_MOVE_FORWARD}, {GLFW_KEY_DOWN, PL_MOVE_BACKWARD}, {GLFW_KEY_LEFT, PL_MOVE_LEFT}, {GLFW_KEY_RIGHT, PL_MOVE_RIGHT} };
 
 	int windowxpos = 0;
 	int windowypos = 0;
 
-	std::vector<UIElement> elements;
-	uint32_t number = 42;
 	
-
-
 	std::vector<char> str1 = { 'H','e','l','l','o',' ','W','o','r','l','d' };
 	//std::vector<char> str = { 'A', 'n', 'y', 't', 'h', 'i', 'n', 'g' };
 	std::string str2 = "TEST_TEXT";
@@ -110,8 +107,15 @@ public:
 	static void keyCallback(GLFWwindow*, int, int, int, int);
 	static void scrollCallback(GLFWwindow*, double, double);
 	static void windowCloseCallback(GLFWwindow*);
+	static void charCallback(GLFWwindow*, uint32_t);
 
 	std::vector<UIBox> boxes;
 	UIText texts[128];
 	std::string strings[64];
+
+	std::vector<char> inputString;
+	std::atomic_bool commandSubmit;
+	bool shiftModifier;
+
+
 };

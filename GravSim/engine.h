@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include <glm/glm.hpp>
 #include <atomic>
+#include <mutex>
 #include <chrono>
 
 #include "window.h"
@@ -25,11 +26,23 @@
 #include "grav.h"
 #include "uiRasterizer.h"
 
+
 class VulkanEngine {
 public:
 	WindowManager winmanager;
 	PlayerObject* player;
+	StatusLogger* stat;
 
+
+	std::atomic_bool isDealer = false;
+	std::atomic_bool isPlayerTurn = false;
+	std::atomic_bool commandReady = false;
+	std::mutex commandMutex;
+	std::vector<char> commandString;
+	std::string playerTurnString;
+	std::string playerTurnStringEnd = "'s Turn";
+
+	
 	void initEngine();
 
 	void startDraw();
@@ -51,6 +64,10 @@ public:
 	uint32_t fpsIndex;
 
 	bool lowPerformanceSetting;
+	bool onlineGame;
+	bool unlimitedFPS;
+
+	int targetFrameTime_uS;
 
 	float swapChainAspectRatio;
 
@@ -110,6 +127,7 @@ private:
 	particleRasterizer particleRasterizer;
 	GravEngine gravEngine;
 	UIRasterizer uiRasterizer;
+	bool swapDealers = false;
 
 	std::vector<MemInit> memoryContainers;
 	std::vector<VkDeviceMemory> memory;
@@ -123,7 +141,7 @@ private:
 	std::chrono::time_point<std::chrono::high_resolution_clock> pt = std::chrono::high_resolution_clock::now();
 	std::chrono::time_point<std::chrono::high_resolution_clock> ct = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double> dt;
-
+	std::chrono::time_point<std::chrono::high_resolution_clock> nextFrameScheduled = std::chrono::high_resolution_clock::now();
 
 
 	bool firstFrame = true;
@@ -193,8 +211,12 @@ private:
 	VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 	void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
-		std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
-
+		//std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+		StatusLogger* statPtr = reinterpret_cast<StatusLogger*>(pUserData);
+		std::ostringstream os;
+		os << "Validation Layer: " << pCallbackData->messageIdNumber << " | " << pCallbackData->pMessage;
+		statPtr->addMessage(MSG_LEVEL_GRAPHICS, os.str());
+		
 		return VK_FALSE;
 	}
 };

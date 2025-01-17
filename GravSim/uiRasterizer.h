@@ -12,6 +12,7 @@
 
 #include "structs.h"
 #include "player.h"
+#include "statusLogger.h"
 
 struct UIInit {
 	VkDevice device;
@@ -20,12 +21,12 @@ struct UIInit {
 	VkSampleCountFlagBits msaaSamples;
 
 	VkPhysicalDeviceMemoryProperties memProperties;
-	std::array<std::vector<char>*, 2> shaderCode;
+	std::vector<std::vector<char>*> shaderCode;
 
 	float* aspectRatio;
 
 	PlayerObject* player;
-
+	
 };
 
 struct UIPushConstants {
@@ -46,7 +47,7 @@ public:
 	void initUI_A(UIInit);
 	void initUI_B();
 
-	void initMemory(std::array<MemInit, 3>);
+	void initMemory(MemInit*);
 	
 	void getMemoryRequirements(std::vector<MemoryDetails>*, std::vector<uint16_t>*);
 
@@ -62,7 +63,7 @@ public:
 	void initBufferData_B(VkCommandBuffer, VkQueue, MemInit);
 	std::vector<std::string> shaderFiles = { "shaders/uiRasterizer/01.spv", "shaders/uiRasterizer/02.spv" };
 
-
+	StatusLogger* stat;
 private:
 	VkDevice device;
 	VkDescriptorPool descriptorPool;
@@ -102,6 +103,7 @@ private:
 
 	PlayerObject* player;
 
+
 	std::vector<char*> bitmapData;
 	uint32_t bitmapHeight;
 	uint32_t bitmapWidth;
@@ -135,7 +137,6 @@ private:
 	glm::vec2 charDimensions = glm::vec2(0.03f, 0.13f);
 	int16_t charStart = 32;
 	int16_t charCount = 128 - charStart;
-	int16_t stringLength = 256;
 
 	std::vector<glm::vec2> vertices;
 

@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 #include "window.h"
 
+
 void WindowManager::initWindow() {
 
 
@@ -12,6 +13,8 @@ void WindowManager::initWindow() {
 	//glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
 	window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+
+
 
 	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 }

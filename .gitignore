@@ -17,11 +17,6 @@
 mono_crash.*
 
 # Build results
-[Dd]ebug/
-[Dd]ebugPublic/
-[Rr]elease/
-[Rr]eleases/
-x64/
 x86/
 [Ww][Ii][Nn]32/
 [Aa][Rr][Mm]/
@@ -364,3 +359,7 @@ FodyWeavers.xsd
 /GravSim/data_prePointRender.csv
 /GravSim/data.csv
 /GravSim/out.csv
+/GravSim/x64
+/x64
+/GravSim/cmd_dmp.txt
+*.txt

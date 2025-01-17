@@ -15,7 +15,7 @@ struct GravInit {
 
 	VkPhysicalDeviceMemoryProperties memProperties;
 
-	std::array<std::vector<char>*, 6> shaderCode;
+	std::vector<std::vector<char>*> shaderCode;
 	std::vector<Particle>* particles;
 	std::vector<uint32_t>* offsets;
 };
@@ -34,7 +34,7 @@ public:
 
 	void initGrav_A(GravInit);
 	void initGrav_B();
-	void initMemory(std::array<MemInit, 4>);
+	void initMemory(MemInit*);
 
 	std::vector<std::string> shaderFiles = { "shaders/GravEngine/01.spv" , "shaders/GravEngine/SortShaders/01.spv", "shaders/GravEngine/SortShaders/02.spv", "shaders/GravEngine/SortShaders/03.spv", "shaders/GravEngine/SortShaders/04.spv", "shaders/GravEngine/SortShaders/05.spv" };
 	//std::vector<std::string> shaderFiles = { "shaders/GravEngine/01.spv" };

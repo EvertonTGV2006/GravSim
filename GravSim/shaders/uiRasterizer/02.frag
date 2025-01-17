@@ -15,6 +15,9 @@ void main(){
         if(texVal.x != 0.0f){
             alpha = 1.0f;
         }
+        if(texVal.x==0.0f){
+            discard;
+        }
         outColour = vec4(colour.xyz, alpha) * texVal.x;
     }
     else if (mode==1){
