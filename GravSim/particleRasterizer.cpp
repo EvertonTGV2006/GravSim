@@ -1,7 +1,10 @@
 #include "particleRasterizer.h"
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <cmath>
 #include <glm/gtc/random.hpp>
+
+
 #include <glm/gtx/string_cast.hpp>
 
 void particleRasterizer::initRast_A(RastInit details) {

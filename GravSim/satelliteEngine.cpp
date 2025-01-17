@@ -1,6 +1,8 @@
 #include "satelliteEngine.h"
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
+
 
 void SatelliteEngine::initSatEngine_A(SatInit details) {
 	device = details.device;
