@@ -11,6 +11,7 @@
 #include <optional>
 #include <array>
 #include <glm/glm.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/transform.hpp>
 #include <charconv>
 
