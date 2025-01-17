@@ -14,12 +14,12 @@
 #include <GLFW/glfw3.h>
 
 
-
+#include "cardEngine.h"
 #include "engine.h"
 #include "window.h"
 #include "geometry.h"
 
-
+#include "networking.h"
 #include "statusLogger.h"
 
 const std::vector<const char*> validationLayers = { "VK_LAYER_KHRONOS_validation" };
@@ -51,8 +51,14 @@ int main() {
 	StatusLogger stat{};
 
 	try {
+		if (config["mode"] == "server") {
 
-		if (config["mode"] == "host") {
+			NetworkingServer ns;
+			ns.stat = &stat;
+			ns.initWinsock();
+			
+		}
+		else if (config["mode"] == "host") {
 			//uint32_t cID = 63;
 			//glm::uvec3 GRID_DIMENSIONS = { 4, 4, 4 };
 			//glm::uvec3 cellPos;
@@ -91,12 +97,10 @@ int main() {
 			else {
 				engine.targetFrameTime_uS = static_cast<int>(1000000 / targetFPS);
 			}
-
-			engine.unlimitedFPS = true;
-
 			engine.player = &player;
 			engine.runNumber = 0;
 			engine.onlineGame = true;
+			engine.initNetworking();
 			engine.initEngine();
 			engine.startDraw();
 			engine.cleanup();
@@ -110,6 +114,8 @@ int main() {
 	//cellPos.y = ((cID - cellPos.x) / GRID_DIMENSIONS.x) % GRID_DIMENSIONS.y;
 	//cellPos.z = ((((cID - cellPos.x) / GRID_DIMENSIONS.x) - cellPos.y) / GRID_DIMENSIONS.y) % GRID_DIMENSIONS.z;
 	//std::cout << cellPos.x << " " << cellPos.y << " " << cellPos.z << std::endl;
+
+			CardEngine cards;
 			//cards.setupGame();
 			//cards.processTurns();
 

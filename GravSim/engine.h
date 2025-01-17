@@ -25,12 +25,14 @@
 #include "particleRasterizer.h"
 #include "grav.h"
 #include "uiRasterizer.h"
-
+#include "cardRasterizer.h"
+#include "networking.h"
 
 class VulkanEngine {
 public:
 	WindowManager winmanager;
 	PlayerObject* player;
+	NetworkingClient nc;
 	StatusLogger* stat;
 
 
@@ -42,6 +44,8 @@ public:
 	std::string playerTurnString;
 	std::string playerTurnStringEnd = "'s Turn";
 
+
+	void initNetworking();
 	
 	void initEngine();
 
@@ -127,6 +131,8 @@ private:
 	particleRasterizer particleRasterizer;
 	GravEngine gravEngine;
 	UIRasterizer uiRasterizer;
+	CardRasterizer cardRasterizer;
+	CardEngine cardEngine;
 	bool swapDealers = false;
 
 	std::vector<MemInit> memoryContainers;

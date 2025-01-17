@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 #include "window.h"
 
+#include "stb_image.h"
 
 void WindowManager::initWindow() {
 
@@ -14,6 +15,10 @@ void WindowManager::initWindow() {
 
 	window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
 
+	GLFWimage image[1];
+	image[0].pixels = stbi_load("textures/icon.png", &image[0].width, &image[0].height, 0, 4);
+	glfwSetWindowIcon(window, 1, image);
+	stbi_image_free(image[0].pixels);
 
 
 	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);

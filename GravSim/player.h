@@ -88,6 +88,7 @@ public:
 	int windowxpos = 0;
 	int windowypos = 0;
 
+	void* playerTurnStr;
 	
 	std::vector<char> str1 = { 'H','e','l','l','o',' ','W','o','r','l','d' };
 	//std::vector<char> str = { 'A', 'n', 'y', 't', 'h', 'i', 'n', 'g' };
@@ -117,5 +118,10 @@ public:
 	std::atomic_bool commandSubmit;
 	bool shiftModifier;
 
+	void initScoreBoxes(std::vector<std::vector<std::string>*>*, std::vector<uint32_t*>*, std::vector<std::string>);
+	void destroyScoreBoxes();
 
+	std::vector<std::string> playerNames;
+	std::array<char, 8> usrn;
+	std::array<char, 8> oppn;
 };
