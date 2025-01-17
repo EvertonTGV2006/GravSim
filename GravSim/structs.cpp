@@ -83,7 +83,7 @@ std::array<VkVertexInputAttributeDescription, 4> Particle::getParticleAttributeD
 }
 
 glm::mat4 Planet::getModelMatrix(float radiusScale) {
-    glm::mat4 scale = glm::mat4(radius * radiusScale);
+    glm::mat4 scale = glm::mat4(float(radius) * radiusScale);
     scale[3][3] = 1.0f;
     glm::mat4 rot = glm::rotate(theta, axis);
     glm::mat4 posMat = glm::translate(pos_0);

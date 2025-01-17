@@ -47,10 +47,11 @@ void StatusLogger::writeOutMessages() {
 	std::ofstream file("status.log");
 	addMessage(MSG_LEVEL_URGENT, "Writing out log");
 
-	std::lock_guard<std::mutex> lock(msgMutex);
+	msgMutex.lock();
 	for (uint32_t i = 0; i < messages.size(); i++) {
 		file << messages[i].level << "\t" << messages[i].message << "\n";
 	}
+	msgMutex.unlock();
 	file.close();
 
 }
