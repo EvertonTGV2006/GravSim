@@ -120,7 +120,9 @@ int main() {
 			//cards.processTurns();
 
 			PlayerObject player;
+			player.stat = &stat;
 			VulkanEngine engine;
+			engine.stat = &stat;
 			int64_t targetFPS = config["targetFPS"].value_or(60);
 			if (targetFPS == 0) {
 				engine.unlimitedFPS = true;

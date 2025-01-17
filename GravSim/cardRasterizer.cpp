@@ -24,7 +24,7 @@ void CardRasterizer::initCard_A(CardInit details) {
 	msaaSamples = details.msaaSamples;
 
 	memProperties = details.memProperties;
-	shaderCode = details.shaderCode;
+	memcpy(shaderCode.data(), details.shaderCode.data(), shaderCode.size() * sizeof(shaderCode[0]));
 
 	player = details.player;
 
@@ -69,7 +69,11 @@ void CardRasterizer::initCard_B() {
 	createPipeline();
 }
 
-void CardRasterizer::initMemory(std::array<MemInit, 4> details) {
+void CardRasterizer::initMemory(MemInit* detPtr) {
+	std::array<MemInit, 4> details;
+	memcpy(details.data(), detPtr, details.size() * sizeof(MemInit));
+
+
 	vertexMemory = details[0];
 	uniformBufferMemory = details[1];
 	for (uint32_t i = 0; i < texImage.size(); i++) {

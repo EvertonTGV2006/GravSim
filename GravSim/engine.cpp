@@ -132,6 +132,8 @@ void VulkanEngine::initEngine() {
     shaderCounts.push_back(shaderFiles.size());
     shaderFiles.insert(std::end(shaderFiles), std::begin(uiRasterizer.shaderFiles), std::end(uiRasterizer.shaderFiles));
     shaderCounts.push_back(shaderFiles.size());
+    shaderFiles.insert(std::end(shaderFiles), std::begin(cardRasterizer.shaderFiles), std::end(cardRasterizer.shaderFiles));
+    shaderCounts.push_back(shaderFiles.size());
     uint16_t shaderCursor = 0;
 
     partt.join();
@@ -163,6 +165,7 @@ void VulkanEngine::initEngine() {
         ui.shaderCode.push_back(&shaderCode[i]);
     }
 
+    shaderCursor = 3;
     CardInit cardInit{};
     cardInit.descriptorPool = descriptorPool;
     cardInit.device = device;
@@ -170,7 +173,9 @@ void VulkanEngine::initEngine() {
     cardInit.player = player;
     cardInit.renderPass = renderPass;
     cardInit.msaaSamples = msaaSamples;
-    cardInit.shaderCode = { &shaderCode[10], &shaderCode[11] };
+    for (uint16_t i = shaderCounts[shaderCursor]; i < shaderCounts[shaderCursor + 1]; i++) {
+        cardInit.shaderCode.push_back(&shaderCode[i]);
+    }
     cardInit.gameTable = cardEngine.getTable();
 
 
@@ -1205,6 +1210,7 @@ void VulkanEngine::allocateMemory() {
     gravEngine.initMemory(&memoryContainers[0] + memOffsets[0]);
     particleRasterizer.initMemory(&memoryContainers[0] + memOffsets[1]);
     uiRasterizer.initMemory(&memoryContainers[0] + memOffsets[2]);
+    cardRasterizer.initMemory(&memoryContainers[0] + memOffsets[3]);
 
 }
 void VulkanEngine::initSubclassData() {

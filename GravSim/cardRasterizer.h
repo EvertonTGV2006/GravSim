@@ -21,7 +21,7 @@ struct CardInit {
 	VkSampleCountFlagBits msaaSamples;
 
 	VkPhysicalDeviceMemoryProperties memProperties;
-	std::array<std::vector<char>*, 2> shaderCode;
+	std::vector<std::vector<char>*> shaderCode;
 
 	PlayerObject* player;
 
@@ -49,7 +49,7 @@ public:
 	void initCard_B();
 	StatusLogger* stat;
 
-	void initMemory(std::array<MemInit, 4>);
+	void initMemory(MemInit*);
 	
 	void getMemoryRequirements(std::vector<MemoryDetails>*, std::vector<uint16_t>*);
 
