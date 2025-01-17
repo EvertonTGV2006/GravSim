@@ -10,9 +10,6 @@
     <ClCompile Include="window.cpp" />
     <ClCompile Include="particleRasterizer.cpp" />
     <ClCompile Include="uiRasterizer.cpp" />
-    <ClCompile Include="cardEngine.cpp" />
-    <ClCompile Include="cardRasterizer.cpp" />
-    <ClCompile Include="networking.cpp" />
     <ClCompile Include="statusLogger.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -24,9 +21,6 @@
     <ClInclude Include="window.h" />
     <ClInclude Include="particleRasterizer.h" />
     <ClInclude Include="uiRasterizer.h" />
-    <ClInclude Include="cardEngine.h" />
-    <ClInclude Include="cardRasterizer.h" />
-    <ClInclude Include="networking.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="statusLogger.h" />
   </ItemGroup>
