@@ -143,7 +143,7 @@ int main() {
 		return EXIT_FAILURE;
 	}
 	stat.writeOutMessages();
-	std::cout << 1 << std::endl;
+	//std::cout << 1 << std::endl;
 	std::cout << "Press ENTER to continue...";
 	std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 	return EXIT_SUCCESS;

@@ -57,10 +57,19 @@ void SatelliteEngine::createBuffers() {
 	if (vkCreateBuffer(device, &bufferInfo, nullptr, &lineInfoBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create Satellite lineInfo buffer"); }
 	vkGetBufferMemoryRequirements(device, lineInfoBuffer, &lineInfoRequirements.requirements);
 
+	bufferInfo.size = fieldMeshResMajor * fieldMeshResMinor * 2 * fieldMeshResMajor * sizeof(LineVertex);
+	bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	fieldMeshSize = bufferInfo.size;
+
+	if (vkCreateBuffer(device, &bufferInfo, nullptr, &fieldMeshBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create field mesh buffer"); }
+	vkGetBufferMemoryRequirements(device, fieldMeshBuffer, &fieldMeshRequirements.requirements);
+
+
 	lineRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	satRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	uniformRequirements.flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 	lineInfoRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	fieldMeshRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 }
 
 void SatelliteEngine::createDescriptorSets() {
@@ -99,7 +108,14 @@ void SatelliteEngine::createDescriptorSets() {
 	lIBuffer.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 	lIBuffer.pImmutableSamplers = nullptr;
 
-	std::array<VkDescriptorSetLayoutBinding, 5> bindings = { ubo, iBuffer, oBuffer,lBuffer,lIBuffer };
+	VkDescriptorSetLayoutBinding mBuffer{};
+	mBuffer.binding = 5;
+	mBuffer.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	mBuffer.descriptorCount = 1;
+	mBuffer.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+	mBuffer.pImmutableSamplers = nullptr;
+
+	std::array<VkDescriptorSetLayoutBinding, 6> bindings = { ubo, iBuffer, oBuffer,lBuffer,lIBuffer,mBuffer };
 
 	VkDescriptorSetLayoutCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -147,7 +163,12 @@ void SatelliteEngine::createDescriptorSets() {
 		lIInfo.offset = 0;
 		lIInfo.range = lineInfoSize;
 
-		std::array<VkWriteDescriptorSet, 5> descriptorWrites{};
+		VkDescriptorBufferInfo mInfo{};
+		mInfo.buffer = fieldMeshBuffer;
+		mInfo.offset = 0;
+		mInfo.range = fieldMeshSize;
+
+		std::array<VkWriteDescriptorSet, 6> descriptorWrites{};
 
 		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrites[0].dstSet = descriptorSets[i];
@@ -189,6 +210,14 @@ void SatelliteEngine::createDescriptorSets() {
 		descriptorWrites[4].descriptorCount = 1;
 		descriptorWrites[4].pBufferInfo = &lIInfo;
 
+		descriptorWrites[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrites[5].dstSet = descriptorSets[i];
+		descriptorWrites[5].dstBinding = 5;
+		descriptorWrites[5].dstArrayElement = 0;
+		descriptorWrites[5].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		descriptorWrites[5].descriptorCount = 1;
+		descriptorWrites[5].pBufferInfo = &mInfo;
+
 		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 
 
@@ -196,11 +225,12 @@ void SatelliteEngine::createDescriptorSets() {
 		oInfo.buffer = satBuffers[0];
 
 
-		descriptorWrites[0].dstSet = descriptorSets[i+1];
-		descriptorWrites[1].dstSet = descriptorSets[i+1];
-		descriptorWrites[2].dstSet = descriptorSets[i+1];
-		descriptorWrites[3].dstSet = descriptorSets[i+1];
-		descriptorWrites[4].dstSet = descriptorSets[i+1];
+		descriptorWrites[0].dstSet = descriptorSets[i + 1];
+		descriptorWrites[1].dstSet = descriptorSets[i + 1];
+		descriptorWrites[2].dstSet = descriptorSets[i + 1];
+		descriptorWrites[3].dstSet = descriptorSets[i + 1];
+		descriptorWrites[4].dstSet = descriptorSets[i + 1];
+		descriptorWrites[5].dstSet = descriptorSets[i + 1];
 
 		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 	}
@@ -256,6 +286,10 @@ void SatelliteEngine::createPipeline() {
 	createInfo.stage = shaderStages[1];
 	if (vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &createInfo, nullptr, &linePipeline) != VK_SUCCESS) { throw std::runtime_error("Failed to create satellite pipeline"); }
 
+	createInfo.stage = shaderStages[2];
+	if (vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &createInfo, nullptr, &meshPipeline) != VK_SUCCESS) { throw std::runtime_error("Failed to create satellite pipeline"); }
+
+
 	for (uint32_t i = 0; i < shaderModules.size(); i++) {
 		vkDestroyShaderModule(device, shaderModules[i], nullptr);
 	}
@@ -267,16 +301,18 @@ void SatelliteEngine::getMemoryRequirements(std::vector<MemoryDetails>* mem, std
 	mem->push_back(satRequirements);
 	mem->push_back(uniformRequirements);
 	mem->push_back(lineInfoRequirements);
-	count->push_back(4);
+	mem->push_back(fieldMeshRequirements);
+	count->push_back(5);
 }
 void SatelliteEngine::initMemory(MemInit* detPtr) {
-	std::array<MemInit, 4> details;
+	std::array<MemInit, 5> details;
 	memcpy(details.data(), detPtr, details.size() * sizeof(MemInit));
 
 	lineMemory = details[0];
 	satMemory = details[1];
 	uniformMemory = details[2];
 	lineInfoMemory = details[3];
+	fieldMeshMemory = details[4];
 
 	vkBindBufferMemory(device, lineBuffer, lineMemory.memory, lineMemory.offset);
 
@@ -293,6 +329,8 @@ void SatelliteEngine::initMemory(MemInit* detPtr) {
 	}
 
 	vkBindBufferMemory(device, lineInfoBuffer, lineInfoMemory.memory, lineInfoMemory.offset);
+
+	vkBindBufferMemory(device, fieldMeshBuffer, fieldMeshMemory.memory, fieldMeshMemory.offset);
 
 }
 void SatelliteEngine::initBufferData_A(MemoryDetails* stagingRequiements) {
@@ -435,6 +473,9 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 		mem.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
 		mem.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
 
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, meshPipeline);
+		vkCmdDispatch(commandBuffer, fieldMeshResMajor * 2, 1, 1);
+
 		VkMemoryBarrier mem2{};
 		mem2.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
 		mem2.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
@@ -455,6 +496,7 @@ SatExternalMembers SatelliteEngine::getSatellitePtrs() {
 	data.lineCursor = &lineCursor;
 	data.lineSegments = &lineSegments;
 	data.lineInfoBuffer = &lineInfoBuffer;
+	data.meshBuffer = &fieldMeshBuffer;
 	return data;
 }
 
@@ -592,10 +634,12 @@ void SatelliteEngine::cleanup() {
 	vkDestroyBuffer(device, lineBuffer, nullptr);
 	for (uint32_t i = 0; i < satBuffers.size(); i++) { vkDestroyBuffer(device, satBuffers[i], nullptr); }
 	vkDestroyBuffer(device, lineInfoBuffer, nullptr);
+	vkDestroyBuffer(device, fieldMeshBuffer, nullptr);
 
 
 	vkDestroyPipeline(device, pipeline, nullptr);
 	vkDestroyPipeline(device, linePipeline, nullptr);
+	vkDestroyPipeline(device, meshPipeline, nullptr);
 
 	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 	vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);

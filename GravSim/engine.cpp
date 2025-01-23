@@ -842,7 +842,7 @@ void VulkanEngine::createDescriptorPool() {
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     poolSizes[1].descriptorCount = static_cast<uint32_t>(FRAMES_IN_FLIGHT*3);
     poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    poolSizes[2].descriptorCount = static_cast<uint32_t>(FRAMES_IN_FLIGHT + 6*COMPUTE_STEPS);
+    poolSizes[2].descriptorCount = static_cast<uint32_t>(FRAMES_IN_FLIGHT + 7*COMPUTE_STEPS);
 
 
     VkDescriptorPoolCreateInfo poolInfo{};

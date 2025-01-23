@@ -17,16 +17,7 @@
 #include FT_FREETYPE_H
 #include FT_BITMAP_H
 
-enum UIConfiguration {
-    UI_RENDER_MODE_FLEXIBLE = 1,
-    UI_RENDER_MODE_STATIC = 2,
-    UI_REFERENCE_MODE_UINT32_T = 4,
-    UI_REFERENCE_MODE_STRING = 8,
-    UI_REFERENCE_MODE_CHAR = 16,
-    UI_REFERENCE_MODE_LABEL_STR_VALUE = 32,
-    UI_REFERENCE_MODE_LABEL_CHAR_VALUE = 64,
-    UI_REFERENCE_MODE_LABEL_TIME = 128
-};
+
 enum UIOptions {
     //32Bits
     //xxxxxxxxxxxxxxxxxxxxxxnnddddvvhh
@@ -60,6 +51,8 @@ const uint32_t LINE_VERTEX_COUNT = 1024;
 const uint32_t SATELLITE_COUNT = 256;
 const uint32_t MAX_PLANET_ARRAY_SIZE = 2;
 const uint32_t COMPUTE_STEPS_PER_FRAME = 128; // CANNOT BE 1
+const uint32_t fieldMeshResMajor = 64;
+const uint32_t fieldMeshResMinor = 16;
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
@@ -240,4 +233,5 @@ struct SatExternalMembers {
     uint32_t* lineCursor;
     uint32_t* lineSegments;
     VkBuffer* lineInfoBuffer;
+    VkBuffer* meshBuffer;
 };

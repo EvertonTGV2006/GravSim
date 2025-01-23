@@ -707,6 +707,11 @@ void particleRasterizer::drawObjects(VkCommandBuffer commandBuffer, uint32_t fra
 		}
 	}
 
+	//now draw field lines
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, meshBuffer, offsets);
+	for (uint32_t i = 0; i < fieldMeshResMajor * 2; i++) {
+		vkCmdDraw(commandBuffer, fieldMeshResMajor* fieldMeshResMinor, 1, fieldMeshResMajor* fieldMeshResMinor* i, 0);
+	}
 
 
 
@@ -732,6 +737,7 @@ void particleRasterizer::setExternalPtrs(SatExternalMembers details) {
 	satLineCursor = details.lineCursor;
 	satLineSegments = details.lineSegments;
 	satLineInfoBuffer = details.lineInfoBuffer;
+	meshBuffer = details.meshBuffer;
 }
 
 void particleRasterizer::cleanup() {

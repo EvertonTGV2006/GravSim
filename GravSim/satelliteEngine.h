@@ -41,7 +41,7 @@ public:
 	void initBufferData_A(MemoryDetails*);
 	void initBufferData_B(VkCommandBuffer, VkQueue, MemInit);
 
-	std::vector<std::string> shaderFiles = { "shaders/satelliteEngine/01.spv", "shaders/satelliteEngine/02.spv" };
+	std::vector<std::string> shaderFiles = { "shaders/satelliteEngine/01.spv", "shaders/satelliteEngine/02.spv", "shaders/satelliteEngine/03.spv"};
 
 	void simulateSats(VkCommandBuffer, uint32_t, double);
 
@@ -49,6 +49,7 @@ public:
 	MemoryDetails satRequirements{};
 	MemoryDetails uniformRequirements{};
 	MemoryDetails lineInfoRequirements{};
+	MemoryDetails fieldMeshRequirements{};
 
 	SatExternalMembers getSatellitePtrs();
 
@@ -62,9 +63,10 @@ private:
 
 	VkPipeline pipeline;
 	VkPipeline linePipeline;
+	VkPipeline meshPipeline;
 	VkPipelineLayout pipelineLayout;
 
-	std::array<std::vector <char>*, 2> shaderCode;
+	std::array<std::vector <char>*, 3> shaderCode;
 
 	std::array<VkDescriptorSet, FRAMES_IN_FLIGHT * 2> descriptorSets;
 	VkDescriptorSetLayout descriptorSetLayout;
@@ -87,6 +89,13 @@ private:
 	VkDeviceSize uniformSize;
 	std::array<char*, FRAMES_IN_FLIGHT> uniformBuffersMapped;
 
+	VkBuffer fieldMeshBuffer;
+	MemInit fieldMeshMemory;
+	VkDeviceSize fieldMeshSize;
+
+	glm::vec2 fieldMeshCorner1 = glm::vec2(-1e9f, -1e9f);
+	glm::vec2 fieldMeshCorner2 = glm::vec2(1e9f, 1e9f);
+
 	VkBuffer stagingBuffer;
 
 	uint32_t lineFrame = 0;
@@ -94,6 +103,12 @@ private:
 	const uint32_t WRITE_FRAME = 0;
 
 	std::array<Satellite, SATELLITE_COUNT> satData;
+
+	
+
+
+
+
 
 	SatUniformBuffer* satUBO = nullptr;
 

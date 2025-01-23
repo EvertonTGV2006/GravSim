@@ -31,6 +31,8 @@ const uint MAX_PLANETS_ARRAY_SIZE = 2;
 const uint SATELLITE_COUNT = 256;
 const uint LINE_VERTEX_COUNT = 1024;
 const uint COMPUTE_STEPS_PER_FRAME = 128;
+const uint MESH_STEPS_MAJOR = 16;
+const uint MESH_STEPS_MINOR = 8;
 
 layout(binding = 0) uniform UniformBufferObject{
     Planet planets[MAX_PLANETS_ARRAY_SIZE * COMPUTE_STEPS_PER_FRAME];
@@ -47,6 +49,9 @@ layout(binding = 3) buffer lineSSBO{
 };
 layout(binding = 4) buffer lineInfoSSBO{
     LineInfo infos[SATELLITE_COUNT];
+};
+layout(binding = 5) buffer meshSSBO{
+    LineVertex mesh[MESH_STEPS_MINOR * MESH_STEPS_MAJOR * 2];
 };
 layout(push_constant) uniform pc {
     double dt;

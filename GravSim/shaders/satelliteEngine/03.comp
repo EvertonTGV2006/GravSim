@@ -1,0 +1,111 @@
+#version 460
+
+#extension GL_EXT_scalar_block_layout : enable
+
+struct Planet{
+    //0-th is position at current time, 1-st is position at T+.5dt, 2-nd is position at T+dt
+    dvec4 pos[3];
+    dvec4 vel[3];
+    dvec4 axis;
+    dvec4 padding;
+};
+struct Satellite{
+    dvec4 pos;
+    dvec4 vel;
+};
+struct LineVertex{
+    vec4 pos;
+    vec4 base;
+    vec4 inter;
+    vec4 fin;
+};
+struct LineInfo{
+    float eccentricity;
+    float apoapsis;
+    float periapsis;
+    float cost;
+};
+
+
+const double G = 6.67e-11;
+const uint MAX_PLANETS_ARRAY_SIZE = 2;
+const uint SATELLITE_COUNT = 256;
+const uint LINE_VERTEX_COUNT = 1024;
+const uint COMPUTE_STEPS_PER_FRAME = 128;
+const uint MESH_STEPS_MAJOR = 64;
+const uint MESH_STEPS_MINOR = 16;
+const vec2 MESH_CORNER_1 = {-1e9, -1e9};
+const vec2 MESH_CORNER_2 = {1e9, 1e9};
+
+layout(binding = 0) uniform UniformBufferObject{
+    Planet planets[MAX_PLANETS_ARRAY_SIZE * COMPUTE_STEPS_PER_FRAME];
+} ubo;
+
+layout(binding = 1) buffer inSSBO{
+    Satellite inSats[SATELLITE_COUNT];
+};
+layout(binding = 2) buffer outSSBO{
+    Satellite outSats[SATELLITE_COUNT];
+};
+layout(binding = 3) buffer lineSSBO{
+    LineVertex vertices[SATELLITE_COUNT * LINE_VERTEX_COUNT];
+};
+layout(binding = 4) buffer lineInfoSSBO{
+    LineInfo infos[SATELLITE_COUNT];
+};
+layout(binding = 5) buffer meshSSBO{
+    LineVertex mesh[MESH_STEPS_MINOR * MESH_STEPS_MAJOR * 2];
+};
+layout(push_constant) uniform pc {
+    double dt;
+    uint pOffset;             
+} constants;
+layout(local_size_x = MESH_STEPS_MAJOR * MESH_STEPS_MINOR) in;
+
+void main(){
+    uint lineCursor = uint(constants.dt);
+    uint i = gl_LocalInvocationID.x;
+    uint j = gl_WorkGroupID.x;
+    LineVertex sampleVertex;
+
+    float dx;
+    float dy;
+    float x;
+    float y;
+
+    float scale = 1e3f;
+
+    if(j < MESH_STEPS_MAJOR){
+        //we are doing horizontal lines
+        //along x direction
+        dx = (MESH_CORNER_2.x - MESH_CORNER_1.x) / (MESH_STEPS_MAJOR-1);
+        dy = (MESH_CORNER_2.y - MESH_CORNER_1.y) / (MESH_STEPS_MAJOR * MESH_STEPS_MINOR);
+
+        x = MESH_CORNER_1.x + dx * j;
+        y = MESH_CORNER_1.y + dy * i;
+    }
+    else{
+        dx = (MESH_CORNER_2.x - MESH_CORNER_1.x) / (MESH_STEPS_MAJOR * MESH_STEPS_MINOR);
+        dy = (MESH_CORNER_2.y - MESH_CORNER_1.y) / (MESH_STEPS_MAJOR-1);
+
+        x = MESH_CORNER_1.x + dx * i;
+        y = MESH_CORNER_1.y + dy * (j-MESH_STEPS_MAJOR);
+    }
+    float z = 3e5f;
+    
+    dvec4 vertPos = dvec4(x, y, 0.0, 0.0);
+    for(uint i = 0; i < MAX_PLANETS_ARRAY_SIZE; i++){
+        dvec3 sep = (ubo.planets[i].pos[2] - vertPos).xyz;
+        double pot = -G * ubo.planets[i].pos[2].w / length(sep);
+        z += float(pot);
+    }
+    sampleVertex.pos = vec4(x, y, z * scale, 0.0);
+    sampleVertex.base = vec4(1,1,1,1);
+    sampleVertex.inter = vec4(1,1,1,1);
+    sampleVertex.fin = vec4(1,1,1,1);
+    uint outIndex = j * MESH_STEPS_MAJOR * MESH_STEPS_MINOR + i;
+
+    mesh[outIndex] = sampleVertex;
+
+
+}
