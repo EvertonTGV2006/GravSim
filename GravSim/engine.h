@@ -95,13 +95,16 @@ private:
 	VkRenderPass renderPass;
 	VkDescriptorPool descriptorPool;
 
-	std::array<VkCommandBuffer, FRAMES_IN_FLIGHT> drawCommandBuffers;
-	std::array<VkFence, FRAMES_IN_FLIGHT> flightFences;
-	std::array<VkSemaphore, FRAMES_IN_FLIGHT> imageSemaphores;
-	std::array<VkSemaphore, FRAMES_IN_FLIGHT> renderSemaphores;
-	std::array<VkSemaphore, FRAMES_IN_FLIGHT> renderGravSemaphores; //render wait for grav
-	std::array<VkSemaphore, FRAMES_IN_FLIGHT> gravRenderSemaphores;
+	std::array<VkCommandBuffer, FRAMES_IN_FLIGHT> gCommandBuffers;
+	std::array<VkCommandBuffer, FRAMES_IN_FLIGHT> cCommandBuffers;
 
+	std::array<VkSemaphore, FRAMES_IN_FLIGHT> ccSemaphores; //Compute -> Compute
+	std::array<VkSemaphore, FRAMES_IN_FLIGHT> cgSemaphores;	//Compute -> Graphics
+	std::array<VkSemaphore, FRAMES_IN_FLIGHT> igSemaphores;	//Image Available -> Graphics
+	std::array<VkSemaphore, FRAMES_IN_FLIGHT> gpSemaphores; //Graphics -> Present
+	std::array<VkSemaphore, FRAMES_IN_FLIGHT> gcSemaphores; //Graphics -> Compute
+	std::array<VkFence, FRAMES_IN_FLIGHT> cfFences;
+	std::array<VkFence, FRAMES_IN_FLIGHT> gfFences;
 
 	std::vector<Vertex> vertices;
 	std::vector<uint16_t> indices;
