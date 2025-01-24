@@ -12,6 +12,8 @@ void SatelliteEngine::initSatEngine_A(SatInit details) {
 
 	planets = details.planets;
 
+	settings = details.settings;
+
 	memcpy(shaderCode.data(), details.shaderCode.data(), shaderCode.size() * sizeof(shaderCode[0]));
 
 	createBuffers();
@@ -243,6 +245,44 @@ void SatelliteEngine::createPipeline() {
 	shaderModules.resize(shaderFiles.size());
 	shaderStages.resize(shaderFiles.size());
 
+	SatSpecConstants specConstantsData{};
+	specConstantsData.G = CONSTANT_G;
+	specConstantsData.MAX_PLANET_ARRAY_SIZE = MAX_PLANET_ARRAY_SIZE;
+	specConstantsData.SATELLITE_COUNT = SATELLITE_COUNT;
+	specConstantsData.LINE_VERTEX_COUNT = LINE_VERTEX_COUNT;
+	specConstantsData.COMPUTE_STEPS_PER_FRAME = COMPUTE_STEPS_PER_FRAME;
+	specConstantsData.MESH_STEPS_MAJOR = fieldMeshResMajor;
+	specConstantsData.MESH_STEPS_MINOR = fieldMeshResMinor;
+
+	std::array<VkSpecializationMapEntry, 7> specEntries;
+	specEntries[0].constantID = 0;
+	specEntries[0].offset = offsetof(SatSpecConstants, G);
+	specEntries[0].size = sizeof(specConstantsData.G);
+	specEntries[1].constantID = 1;
+	specEntries[1].offset = offsetof(SatSpecConstants, MAX_PLANET_ARRAY_SIZE);
+	specEntries[1].size = sizeof(specConstantsData.MAX_PLANET_ARRAY_SIZE);
+	specEntries[2].constantID = 2;
+	specEntries[2].offset = offsetof(SatSpecConstants, SATELLITE_COUNT);
+	specEntries[2].size = sizeof(specConstantsData.SATELLITE_COUNT);
+	specEntries[3].constantID = 3;
+	specEntries[3].offset = offsetof(SatSpecConstants, LINE_VERTEX_COUNT);
+	specEntries[3].size = sizeof(specConstantsData.LINE_VERTEX_COUNT);
+	specEntries[4].constantID = 4;
+	specEntries[4].offset = offsetof(SatSpecConstants, COMPUTE_STEPS_PER_FRAME);
+	specEntries[4].size = sizeof(specConstantsData.COMPUTE_STEPS_PER_FRAME);
+	specEntries[5].constantID = 5;
+	specEntries[5].offset = offsetof(SatSpecConstants, MESH_STEPS_MAJOR);
+	specEntries[5].size = sizeof(specConstantsData.MESH_STEPS_MAJOR);
+	specEntries[6].constantID = 6;
+	specEntries[6].offset = offsetof(SatSpecConstants, MESH_STEPS_MINOR);
+	specEntries[6].size = sizeof(specConstantsData.MESH_STEPS_MINOR);
+
+	VkSpecializationInfo specInfo{};
+	specInfo.mapEntryCount = specEntries.size();
+	specInfo.pMapEntries = specEntries.data();
+	specInfo.dataSize = sizeof(SatSpecConstants);
+	specInfo.pData = &specConstantsData;
+
 	for (uint32_t i = 0; i < shaderFiles.size(); i++) {
 		VkShaderModuleCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -253,7 +293,7 @@ void SatelliteEngine::createPipeline() {
 		VkPipelineShaderStageCreateInfo stageInfo{};
 		stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		stageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-		stageInfo.pSpecializationInfo = nullptr;
+		stageInfo.pSpecializationInfo = &specInfo;
 		stageInfo.pName = "main";
 		stageInfo.module = shaderModules[i];
 		shaderStages[i] = stageInfo;
@@ -357,7 +397,7 @@ void SatelliteEngine::initBufferData_B(VkCommandBuffer transferCommandBuffer, Vk
 	//		Satellite newSat{};
 	//		newSat.pos = glm::vec3(0.0f, 4.6e8, i*2e7);
 	//		newSat.mass = 1.0f;
-	//		newSat.vel = ((float(j) / 256.0f) + 0.4f) * glm::sqrt(float(6.67e-11) * (*planets)[0].mass / glm::length(newSat.pos)) * glm::cross(glm::normalize(-newSat.pos), glm::vec3(0.0f, 0.0f, 1.0f));
+	//		newSat.vel = ((float(j) / 256.0f) + 0.4f) * glm::sqrt(float(CONSTANT_G) * (*planets)[0].mass / glm::length(newSat.pos)) * glm::cross(glm::normalize(-newSat.pos), glm::vec3(0.0f, 0.0f, 1.0f));
 	//		satData[index] = newSat;
 	//		index++;
 	//	}
@@ -376,6 +416,8 @@ void SatelliteEngine::initBufferData_B(VkCommandBuffer transferCommandBuffer, Vk
 	createInitialSatellitesBase(&satData[0], 4, 16, 200e3f, 1.0f, 0.017f, 0.0f, 1);
 
 	createInitialSatellitesOffset(&satData[64], 6, 32, 400e3, 1.35, 1.5, 0.6, 0);
+
+	createInitialSatellitesOffset(&satData[256], 60, 64, 1e4, 1.35, 1.6, 0.7, 0);
 
 	memcpy(data, satData.data(), satData.size() * sizeof(Satellite));
 
@@ -443,6 +485,8 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 
 	std::array<VkBufferMemoryBarrier, 2> barriers = { bar1, bar2 };
 
+	uint32_t shaderDispatches = uint32_t(ceil(float(SATELLITE_COUNT) / 1024.0));
+
 	for (uint32_t i = 0; i < COMPUTE_STEPS_PER_FRAME; i++) {
 		updatePlanets(0.5 * satPC.deltaTime);
 		updatePlanets(0.5 * satPC.deltaTime);
@@ -454,7 +498,7 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 
 		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(SatPushConstants), &satPC);
 
-		vkCmdDispatch(commandBuffer, 1, 1, 1);
+		vkCmdDispatch(commandBuffer, shaderDispatches, 1, 1);
 
 		vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, static_cast<uint32_t>(barriers.size()), barriers.data(), 0, nullptr);
 	}
@@ -467,14 +511,17 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 		satPC.deltaTime = float(lineCursor);
 		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(SatPushConstants), &satPC);
 
-		vkCmdDispatch(commandBuffer, 1, 1, 1);
+		vkCmdDispatch(commandBuffer, shaderDispatches, 1, 1);
+
+		if (settings->renderFieldMesh) {
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, meshPipeline);
+			vkCmdDispatch(commandBuffer, fieldMeshResMajor * 2, 1, 1);
+		}
+
 		VkMemoryBarrier mem{};
 		mem.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
 		mem.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
 		mem.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, meshPipeline);
-		vkCmdDispatch(commandBuffer, fieldMeshResMajor * 2, 1, 1);
 
 		VkMemoryBarrier mem2{};
 		mem2.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
@@ -503,7 +550,7 @@ SatExternalMembers SatelliteEngine::getSatellitePtrs() {
 void SatelliteEngine::createInitialSatellitesBase(void* ptr, uint32_t positions, uint32_t velocities, double baseHeight, double baseVelocity, double velocityStep, double inclination, uint32_t planetIndex) {
 	Planet pl = (*planets)[planetIndex];
 	double orbitRadius = pl.radius + baseHeight;
-	double orbitVel = glm::sqrt(6.67e-11 * pl.mass / orbitRadius);
+	double orbitVel = glm::sqrt(CONSTANT_G * pl.mass / orbitRadius);
 	Satellite sat{};
 	sat.mass = 0.0;
 	double trueAnomaly = 0.0;
@@ -526,7 +573,7 @@ void SatelliteEngine::createInitialSatellitesBase(void* ptr, uint32_t positions,
 void SatelliteEngine::createInitialSatellitesOffset(void* ptr, uint32_t positions, uint32_t velocities, double baseHeight, double minVelocity, double maxVelocity, double distFactor, uint32_t planetIndex) {
 	Planet pl = (*planets)[planetIndex];
 	double orbitRadius = pl.radius + baseHeight;
-	double orbitVel = glm::sqrt(6.67e-11 * pl.mass / orbitRadius);
+	double orbitVel = glm::sqrt(CONSTANT_G * pl.mass / orbitRadius);
 	Satellite sat{};
 	sat.mass = 0.0;
 	double trueAnomaly = 0.0;
@@ -618,7 +665,7 @@ void SatelliteEngine::updateAccelerations(uint32_t inputIndex) {
 			}
 			else {
 				glm::dvec3 sep = tempPlanets[inputIndex][j].pos_2 - tempPlanets[inputIndex][i].pos_2;//use pos 2 as they are the most up-to-date positions;
-				double aMult = tempPlanets[inputIndex][j].mass * 6.67e-11/ glm::dot(sep, sep);
+				double aMult = tempPlanets[inputIndex][j].mass * CONSTANT_G/ glm::dot(sep, sep);
 				tempAccelerations[i] += aMult * glm::normalize(sep);
 			}
 		}

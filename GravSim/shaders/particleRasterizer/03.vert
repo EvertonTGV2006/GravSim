@@ -1,6 +1,5 @@
 #version 460
 
-#define MAX_PLANETS_ARRAY_SIZE 2
 
 struct LineInfo{
     float eccentricity;
@@ -9,8 +8,9 @@ struct LineInfo{
     float cost;
 };
 
-const uint SATELLITE_COUNT = 64;
-const uint LINE_VERTEX_COUNT = 1024;
+layout(constant_id = 0) const uint MAX_PLANETS_ARRAY_SIZE = 2;
+layout(constant_id = 1) const uint SATELLITE_COUNT = 256;
+layout(constant_id = 2) const uint LINE_VERTEX_COUNT = 1024;
 
 layout(binding = 0) uniform UniformBufferObject {
     mat4 view;
@@ -84,7 +84,11 @@ void main() {
 
     fragColor = baseColour * baseColourWeight + intColour * intColourWeight + finColour * finColourWeight;
     //fragColor = vec3(1);
+
     fragColor = HSVtoRGB(vertIndex * 360.0f, 1.0f, vertIndex * vertIndex);
+    if(constants.model[0][0] > float(LINE_VERTEX_COUNT * SATELLITE_COUNT)){
+        fragColor = constants.model[0].yzw;
+    }
 
     
     //vec3 Color = {1.0f, 1.0f, 1.0f};

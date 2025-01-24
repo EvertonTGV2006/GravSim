@@ -23,6 +23,8 @@ void particleRasterizer::initRast_A(RastInit details) {
 
 	planets = details.planets;
 
+	settings = details.settings;
+
 	createBuffers();
 
 	(*planets)[0].pos_0 = glm::dvec3(0.0f, 0.0f, 0.0f);
@@ -43,7 +45,7 @@ void particleRasterizer::initRast_A(RastInit details) {
 		(*planets)[i].pos_0 = glm::vec3(glm::linearRand<float>(0, 10) * 7e7, glm::linearRand<float>(0, 10) * 8e7, glm::linearRand<float>(0, 10) * 1e1);
 		(*planets)[i].radius = glm::linearRand<float>(0.1f, 2.0f)*1e6f;
 		//(*planets)[i].vel = glm::vec3(glm::linearRand<float>(0, 1)*1e3, glm::linearRand<float>(0, 1)*1e3, glm::linearRand<float>(0, 1)*1e0 );
-		(*planets)[i].vel_0 = glm::sqrt(float(6.67e-11) * (*planets)[0].mass * glm::linearRand<float>(0.7f, 1.4f) / glm::length((*planets)[i].pos_0)) * glm::cross(glm::normalize((*planets)[i].pos_0), glm::dvec3(0.0f, 0.0f, 1.0f));
+		(*planets)[i].vel_0 = glm::sqrt(float(CONSTANT_G) * (*planets)[0].mass * glm::linearRand<float>(0.7f, 1.4f) / glm::length((*planets)[i].pos_0)) * glm::cross(glm::normalize((*planets)[i].pos_0), glm::dvec3(0.0f, 0.0f, 1.0f));
 		//(*planets)[i].mass = glm::linearRand<float>(0.1f, 2.0f);
 		(*planets)[i].mass = (*planets)[0].mass * glm::pow((*planets)[i].radius / (*planets)[0].radius, 3.0f);
 		(*planets)[i].axis = glm::vec3(glm::linearRand<float>(0, 1), glm::linearRand<float>(0, 1), glm::linearRand<float>(0, 1));
@@ -69,7 +71,27 @@ void particleRasterizer::createPipeline() {
 	std::array<VkShaderModule, 4> shaderModules;
 	std::array<VkPipelineShaderStageCreateInfo, 4> shaderStages;
 	std::array<VkShaderStageFlagBits, 4> flagBits{ VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT,VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
+	std::array<VkSpecializationInfo*, 4> specInfos{};
 
+	std::array<uint32_t, 3> specData = { MAX_PLANET_ARRAY_SIZE, SATELLITE_COUNT, LINE_VERTEX_COUNT };
+	std::array<VkSpecializationMapEntry, 3> specEntries{};
+	specEntries[0].constantID = 0;
+	specEntries[0].size = sizeof(uint32_t);
+	specEntries[0].offset = 0;
+	specEntries[1].constantID = 1;
+	specEntries[1].size = sizeof(uint32_t);
+	specEntries[1].offset = sizeof(uint32_t);
+	specEntries[2].constantID = 2;
+	specEntries[2].size = sizeof(uint32_t);
+	specEntries[2].offset = 2 * sizeof(uint32_t);
+
+	VkSpecializationInfo specInfo{};
+	specInfo.mapEntryCount = static_cast<uint32_t>(specEntries.size());
+	specInfo.pMapEntries = specEntries.data();
+	specInfo.dataSize = static_cast<uint32_t>(specData.size() * sizeof(specData[0]));
+	specInfo.pData = specData.data();
+
+	specInfos = { &specInfo, nullptr, &specInfo, nullptr };
 
 	for (uint32_t i = 0; i < shaderCode.size(); i++) {
 		VkShaderModuleCreateInfo createInfo{};
@@ -85,7 +107,7 @@ void particleRasterizer::createPipeline() {
 		shaderStages[i].module = shaderModules[i];
 		shaderStages[i].pName = "main";
 		shaderStages[i].pNext = nullptr;
-		shaderStages[i].pSpecializationInfo = nullptr;
+		shaderStages[i].pSpecializationInfo = specInfos[i];
 		shaderStages[i].flags = 0;
 	}
 	
@@ -604,7 +626,7 @@ void particleRasterizer::drawObjects(VkCommandBuffer commandBuffer, uint32_t fra
 		//	}
 		//	else {
 		//		glm::vec3 sep = (*planets)[j].pos_0 - (*planets)[i].pos_0;
-		//		float FMult = 6.67e-11 * pow(glm::length(sep), -3.0f) * (*planets)[j].mass;
+		//		float FMult = CONSTANT_G * pow(glm::length(sep), -3.0f) * (*planets)[j].mass;
 		//		if (i == 0) {
 		//			FMult = 0.0f;
 		//		}
@@ -708,11 +730,17 @@ void particleRasterizer::drawObjects(VkCommandBuffer commandBuffer, uint32_t fra
 	}
 
 	//now draw field lines
-	vkCmdBindVertexBuffers(commandBuffer, 0, 1, meshBuffer, offsets);
-	for (uint32_t i = 0; i < fieldMeshResMajor * 2; i++) {
-		vkCmdDraw(commandBuffer, fieldMeshResMajor* fieldMeshResMinor, 1, fieldMeshResMajor* fieldMeshResMinor* i, 0);
+	if (settings->renderFieldMesh) {
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, meshBuffer, offsets);
+		model[0][0] = float(LINE_VERTEX_COUNT * SATELLITE_COUNT + 1);
+		model[0][1] = 1.0f;
+		model[0][2] = 0.8f;
+		model[0][3] = 0.5f;
+		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &model);
+		for (uint32_t i = 0; i < fieldMeshResMajor * 2; i++) {
+			vkCmdDraw(commandBuffer, fieldMeshResMajor * fieldMeshResMinor, 1, fieldMeshResMajor * fieldMeshResMinor * i, 0);
+		}
 	}
-
 
 
 

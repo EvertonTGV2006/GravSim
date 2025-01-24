@@ -120,6 +120,7 @@ void VulkanEngine::initEngine() {
     sat.device = device;
     sat.memProperties = memProperties;
     sat.planets = &planets;
+    sat.settings = &player->settings;
     for (uint16_t i = shaderCounts[shaderCursor]; i < shaderCounts[shaderCursor + 1]; i++) {
         sat.shaderCode.push_back(&shaderCode[i]);
     }
@@ -148,6 +149,7 @@ void VulkanEngine::initEngine() {
     rast.memProperties = memProperties;
     rast.meshes = meshes;
     rast.planets = &planets;
+    rast.settings = &player->settings;
     for (uint16_t i = shaderCounts[shaderCursor]; i < shaderCounts[shaderCursor + 1]; i++) {
         rast.shaderCode.push_back(&shaderCode[i]);
     }

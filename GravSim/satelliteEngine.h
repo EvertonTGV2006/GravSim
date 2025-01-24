@@ -13,6 +13,8 @@ struct SatInit {
 
 	VkPhysicalDeviceMemoryProperties memProperties;
 
+	DrawSettings* settings;
+
 	std::array<Planet, MAX_PLANET_ARRAY_SIZE>* planets;
 
 	std::vector<std::vector <char>*> shaderCode;
@@ -24,7 +26,15 @@ struct SatPushConstants {
 struct SatUniformBuffer {
 	std::array<std::array<Planet, MAX_PLANET_ARRAY_SIZE>, COMPUTE_STEPS_PER_FRAME> planetData;
 };
-
+struct SatSpecConstants {
+	double G;
+	uint32_t MAX_PLANET_ARRAY_SIZE;
+	uint32_t SATELLITE_COUNT;
+	uint32_t LINE_VERTEX_COUNT;
+	uint32_t COMPUTE_STEPS_PER_FRAME;
+	uint32_t MESH_STEPS_MAJOR;
+	uint32_t MESH_STEPS_MINOR;
+};
 
 class SatelliteEngine
 {
@@ -66,6 +76,7 @@ private:
 	VkPipeline meshPipeline;
 	VkPipelineLayout pipelineLayout;
 
+	DrawSettings* settings;
 	std::array<std::vector <char>*, 3> shaderCode;
 
 	std::array<VkDescriptorSet, FRAMES_IN_FLIGHT * 2> descriptorSets;

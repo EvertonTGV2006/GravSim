@@ -268,7 +268,11 @@ void PlayerObject::keyCallback(GLFWwindow* window, int key, int scancode, int ac
 				app->planetIndex = (app->planetIndex) ? app->planetIndex - 1 : MAX_PLANET_ARRAY_SIZE - 1;
 			}
 		}
+		if (key == GLFW_KEY_M) {
+			app->settings.renderFieldMesh = !app->settings.renderFieldMesh;
+		}
 	}
+	
 }
 void PlayerObject::scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
@@ -285,7 +289,9 @@ void PlayerObject::scrollCallback(GLFWwindow* window, double xoffset, double yof
 }
 void PlayerObject::charCallback(GLFWwindow* window, uint32_t code) {
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
-	app->inputString.push_back(code);
+	if (code != 'M' && code != 'm') {
+		app->inputString.push_back(code);
+	}
 }
 
 

@@ -75,7 +75,7 @@ public:
 	float xscale = 0.005f;
 	float yscale = 0.005f;
 
-
+	DrawSettings settings{ true };
 
 	std::atomic_bool timeAccel = false;
 	std::atomic_bool timeStep = true;

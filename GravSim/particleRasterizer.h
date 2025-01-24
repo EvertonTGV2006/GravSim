@@ -18,7 +18,7 @@ struct RastInit {
 
 	std::vector<std::vector<char>*> shaderCode;
 	std::vector<Mesh> meshes;
-
+	DrawSettings* settings;
 
 	std::array<Planet, MAX_PLANET_ARRAY_SIZE>* planets;
 };
@@ -104,6 +104,8 @@ private:
 	MemInit uniformBufferMemory;
 	char* uniformBufferMapped;
 	uint32_t uniformBufferSize;
+
+	DrawSettings* settings;
 
 	std::array<std::vector<char>*, 4> shaderCode;
 

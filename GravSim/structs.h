@@ -47,12 +47,13 @@ enum UIOptions {
     UI_NEWLINE_FALSE = 2 << 8
 };
 
+const double CONSTANT_G = 6.67e-11;
 const uint32_t LINE_VERTEX_COUNT = 1024;
-const uint32_t SATELLITE_COUNT = 256;
+const uint32_t SATELLITE_COUNT = 4096;
 const uint32_t MAX_PLANET_ARRAY_SIZE = 2;
 const uint32_t COMPUTE_STEPS_PER_FRAME = 128; // CANNOT BE 1
-const uint32_t fieldMeshResMajor = 64;
-const uint32_t fieldMeshResMinor = 16;
+const uint32_t fieldMeshResMajor = 128;
+const uint32_t fieldMeshResMinor = 8;
 
 struct QueueFamilyIndices {
     std::optional<uint32_t> graphicsFamily;
@@ -90,10 +91,6 @@ struct LineVertex {
 };
 struct LineInfo {
     float eccentricity;
-    float apoapsis;
-    float periapsis;
-    float semimajoraxis;
-    float cost;
 };
 
 struct UniformBufferObject {
@@ -234,4 +231,7 @@ struct SatExternalMembers {
     uint32_t* lineSegments;
     VkBuffer* lineInfoBuffer;
     VkBuffer* meshBuffer;
+};
+struct DrawSettings {
+    bool renderFieldMesh;
 };
