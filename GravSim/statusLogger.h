@@ -34,7 +34,7 @@ public:
 	//bool displayMessages = false;
 	void writeOutMessages();
 	uint32_t currentMsgCount = 0;
-	std::array<UIText, maxMsgCount> texts;
+	std::array<UIText, maxMsgCount> texts{};
 private:
 	std::vector<StatusMessage> messages;
 

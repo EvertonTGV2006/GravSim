@@ -253,8 +253,9 @@ void SatelliteEngine::createPipeline() {
 	specConstantsData.COMPUTE_STEPS_PER_FRAME = COMPUTE_STEPS_PER_FRAME;
 	specConstantsData.MESH_STEPS_MAJOR = fieldMeshResMajor;
 	specConstantsData.MESH_STEPS_MINOR = fieldMeshResMinor;
+	specConstantsData.SATELLITES_PER_SHADER = SATELLITES_PER_SHADER;
 
-	std::array<VkSpecializationMapEntry, 7> specEntries;
+	std::array<VkSpecializationMapEntry, 8> specEntries{};
 	specEntries[0].constantID = 0;
 	specEntries[0].offset = offsetof(SatSpecConstants, G);
 	specEntries[0].size = sizeof(specConstantsData.G);
@@ -276,9 +277,12 @@ void SatelliteEngine::createPipeline() {
 	specEntries[6].constantID = 6;
 	specEntries[6].offset = offsetof(SatSpecConstants, MESH_STEPS_MINOR);
 	specEntries[6].size = sizeof(specConstantsData.MESH_STEPS_MINOR);
+	specEntries[7].constantID = 7;
+	specEntries[7].offset = offsetof(SatSpecConstants, SATELLITES_PER_SHADER);
+	specEntries[7].size = sizeof(specConstantsData.SATELLITES_PER_SHADER);
 
 	VkSpecializationInfo specInfo{};
-	specInfo.mapEntryCount = specEntries.size();
+	specInfo.mapEntryCount = static_cast<uint32_t>(specEntries.size());
 	specInfo.pMapEntries = specEntries.data();
 	specInfo.dataSize = sizeof(SatSpecConstants);
 	specInfo.pData = &specConstantsData;
@@ -485,7 +489,7 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 
 	std::array<VkBufferMemoryBarrier, 2> barriers = { bar1, bar2 };
 
-	uint32_t shaderDispatches = uint32_t(ceil(float(SATELLITE_COUNT) / 1024.0));
+	uint32_t shaderDispatches = uint32_t(ceil((float(SATELLITE_COUNT)/float(SATELLITES_PER_SHADER)) / 1024.0));
 
 	for (uint32_t i = 0; i < COMPUTE_STEPS_PER_FRAME; i++) {
 		updatePlanets(0.5 * satPC.deltaTime);

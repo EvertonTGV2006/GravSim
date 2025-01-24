@@ -32,6 +32,7 @@ layout(constant_id = 3) const uint LINE_VERTEX_COUNT = 1024;
 layout(constant_id = 4) const uint COMPUTE_STEPS_PER_FRAME = 128;
 layout(constant_id = 5) const uint MESH_STEPS_MAJOR = 16;
 layout(constant_id = 6) const uint MESH_STEPS_MINOR = 8;
+layout(constant_id = 7) const uint SATELLITES_PER_SHADER = 1;
 
 layout(binding = 0) uniform UniformBufferObject{
     Planet planets[MAX_PLANETS_ARRAY_SIZE * COMPUTE_STEPS_PER_FRAME];
@@ -168,14 +169,20 @@ void main(){
 //     outSats[i] = inSats[i];
 //     outSats[i].pos.xyz = inSats[i].pos.xyz + inSats[i].vel.xyz * constants.dt;
 //     outSats[i].vel.xyz = inSats[i].vel.xyz + a * constants.dt;
-    if(i < SATELLITE_COUNT){
-        //EULER:
-        //outSats[i] = updateSatellite_Euler(inSats[i]);
+    
+    for(uint s = 0; s < SATELLITES_PER_SHADER; s++){
+        uint satIndex = SATELLITES_PER_SHADER * i + s;
+        if(satIndex < SATELLITE_COUNT){
+            //EULER:
+            //outSats[satIndex] = updateSatellite_Euler(inSats[satIndex]);
 
-        //EULER IMPROVED
-        //outSats[i] = updateSatellite_EulerImproved(inSats[i]);
+            //EULER IMPROVED
+            //outSats[satIndex] = updateSatellite_EulerImproved(inSats[satIndex]);
 
-        //RK-4
-        outSats[i] = updateSatellite_RK4(inSats[i]);
+            //RK-4
+            outSats[satIndex] = updateSatellite_RK4(inSats[satIndex]);
+        }
     }
+
+
 }

@@ -34,6 +34,7 @@ struct SatSpecConstants {
 	uint32_t COMPUTE_STEPS_PER_FRAME;
 	uint32_t MESH_STEPS_MAJOR;
 	uint32_t MESH_STEPS_MINOR;
+	uint32_t SATELLITES_PER_SHADER;
 };
 
 class SatelliteEngine
