@@ -50,6 +50,7 @@ int main() {
 
 	StatusLogger stat{};
 	PlayerObject player;
+	VulkanEngine engine;
 
 	try {
 
@@ -69,7 +70,6 @@ int main() {
 
 
 			player.stat = &stat;
-			VulkanEngine engine;
 			engine.stat = &stat;
 			//NetworkingClient nc;
 			//std::optional<std::string> usrStr = config["usrn"].value<std::string>();
@@ -116,7 +116,7 @@ int main() {
 			//cards.processTurns();
 
 
-			VulkanEngine engine;
+
 			int64_t targetFPS = config["targetFPS"].value_or(60);
 			if (targetFPS == 0) {
 				engine.unlimitedFPS = true;

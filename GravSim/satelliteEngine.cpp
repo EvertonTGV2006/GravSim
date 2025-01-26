@@ -532,9 +532,10 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 		mem2.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 		mem2.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
 
-		vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 1, &mem, 0, nullptr, 0, nullptr);
-		vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, 0, 1, &mem2, 0, nullptr, 0, nullptr);
-		
+		//vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 1, &mem, 0, nullptr, 0, nullptr);
+		//vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, 0, 1, &mem2, 0, nullptr, 0, nullptr);
+		//for combined compute and graphics queue, synchronization now implied by semaphores
+
 		lineCursor = (lineCursor + 1) % LINE_VERTEX_COUNT;
 		lineSegments = (lineSegments < 1024) ? lineSegments + 1 : 1024;
 	}

@@ -138,6 +138,8 @@ private:
 	VkPhysicalDeviceMemoryProperties memProperties{};
 
 	uint32_t frameIndex = 0;
+	uint32_t computeIndex = 0;
+	std::array<std::atomic_int, FRAMES_IN_FLIGHT> computeSubmitted = { 0, 0, 0 };
 	
 	VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_8_BIT;
 
@@ -146,7 +148,8 @@ private:
 	std::chrono::duration<double> dt;
 	std::chrono::time_point<std::chrono::high_resolution_clock> nextFrameScheduled = std::chrono::high_resolution_clock::now();
 
-
+	bool firstCompute = true;
+	bool firstComputeCycle = true;
 	bool firstFrame = true;
 
 	void createInstance();

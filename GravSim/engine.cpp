@@ -226,16 +226,17 @@ void VulkanEngine::readFiles(std::vector<std::string> files, std::vector<std::ve
 
 //runtime functions
 void VulkanEngine::startDraw() {
-    //std::thread compute(&VulkanEngine::runCompute, this);
+    std::thread compute(&VulkanEngine::runCompute, this);
     std::thread graphics(&VulkanEngine::runGraphics, this);
     while (!glfwWindowShouldClose(winmanager.window)) {
         glfwPollEvents();
     }
-    //compute.join();
+    compute.join();
     graphics.join();
 }
 void VulkanEngine::runGraphics() {
     while (!glfwWindowShouldClose(winmanager.window)) {
+        //executeCompute();
         executeGraphics();
     }
 }
@@ -281,7 +282,7 @@ void VulkanEngine::executeGraphics() {
     if (vkBeginCommandBuffer(gCommandBuffers[frameIndex], &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to start draw recording"); }
 
 
-    satEngine.simulateSats(gCommandBuffers[frameIndex], frameIndex, (firstFrame) ? 0.00001f : (float)dt.count());
+    //satEngine.simulateSats(gCommandBuffers[frameIndex], frameIndex, (firstFrame) ? 0.00001f : (float)dt.count());
 
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -356,23 +357,23 @@ void VulkanEngine::executeGraphics() {
     waitInfo1.semaphore = igSemaphores[frameIndex];
     waitInfo1.stageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
-    //VkSemaphoreSubmitInfo waitInfo2{};
-    //waitInfo2.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-    //waitInfo2.semaphore = gravRenderSemaphores[frameIndex];
-    //waitInfo2.stageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+    VkSemaphoreSubmitInfo waitInfo2{};
+    waitInfo2.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+    waitInfo2.semaphore = cgSemaphores[frameIndex];
+    waitInfo2.stageMask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
 
     VkSemaphoreSubmitInfo signalInfo1{};
     signalInfo1.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
     signalInfo1.semaphore = gpSemaphores[frameIndex];
     signalInfo1.stageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 
-    //VkSemaphoreSubmitInfo signalInfo2{};
-    //signalInfo2.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-    //signalInfo2.semaphore = renderGravSemaphores[(frameIndex+1)%FRAMES_IN_FLIGHT];
-    //signalInfo2.stageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    VkSemaphoreSubmitInfo signalInfo2{};
+    signalInfo2.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+    signalInfo2.semaphore = gcSemaphores[frameIndex];
+    signalInfo2.stageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 
-    std::array<VkSemaphoreSubmitInfo, 1> waitInfos = { waitInfo1}; //cg, ia
-    std::array<VkSemaphoreSubmitInfo, 1> signalInfos = { signalInfo1 }; //rf, gc
+    std::array<VkSemaphoreSubmitInfo, 2> waitInfos = { waitInfo1, waitInfo2}; //cg, ia
+    std::array<VkSemaphoreSubmitInfo, 2> signalInfos = { signalInfo1, signalInfo2 }; //rf, gc
 
     //for compute
     //wait: cc[-1], gc //cc ensures no compute overlap //gc ensures no compute runaway /desync with graphics.
@@ -388,14 +389,15 @@ void VulkanEngine::executeGraphics() {
     submitInfo2.pSignalSemaphoreInfos = signalInfos.data();
     //vkQueueSubmit2(graphicsQueue, 1, &submitInfo, nullptr);
 
-    if (firstFrame) {
-        submitInfo2.waitSemaphoreInfoCount = 1;
-        submitInfo2.pWaitSemaphoreInfos = &waitInfo1;
-        firstFrame = false;
-    }
+    //if (firstFrame) {
+    //    submitInfo2.waitSemaphoreInfoCount = 1;
+    //    submitInfo2.pWaitSemaphoreInfos = &waitInfo1;
+    //    firstFrame = false;
+    //}
+
 
     if (vkQueueSubmit2(graphicsQueue, 1, &submitInfo2, gfFences[frameIndex]) != VK_SUCCESS) { throw std::runtime_error("Failed to submit draw command buffer"); }
-    
+
 
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -456,7 +458,80 @@ void VulkanEngine::runCompute() {
     }
 }
 void VulkanEngine::executeCompute() {
-    std::cout << "Compute" << std::endl;
+    vkWaitForFences(device, 1, &cfFences[computeIndex], VK_TRUE, UINT64_MAX);
+    vkResetFences(device, 1, &cfFences[computeIndex]);
+    vkResetCommandBuffer(cCommandBuffers[computeIndex], 0);
+
+
+
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = 0;
+    if (vkBeginCommandBuffer(cCommandBuffers[computeIndex], &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to start draw recording"); }
+
+    satEngine.simulateSats(cCommandBuffers[computeIndex], computeIndex, 0.01);
+
+    if (vkEndCommandBuffer(cCommandBuffers[computeIndex]) != VK_SUCCESS) { throw std::runtime_error("Failed to record draw"); }
+
+    VkCommandBufferSubmitInfo commandBufferInfo{};
+    commandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+    commandBufferInfo.commandBuffer = cCommandBuffers[computeIndex];
+
+
+    uint32_t prevIndex = (computeIndex + (FRAMES_IN_FLIGHT - 1)) % FRAMES_IN_FLIGHT;
+    VkSemaphoreSubmitInfo waitInfo1{};
+    waitInfo1.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+    waitInfo1.semaphore = ccSemaphores[prevIndex];//no wait on first frame
+    waitInfo1.stageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+
+    VkSemaphoreSubmitInfo waitInfo2{};
+    waitInfo2.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+    waitInfo2.semaphore = gcSemaphores[computeIndex]; //no wait on first frame
+    waitInfo2.stageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+
+    VkSemaphoreSubmitInfo signalInfo1{};
+    signalInfo1.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+    signalInfo1.semaphore = ccSemaphores[computeIndex];
+    signalInfo1.stageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+
+    VkSemaphoreSubmitInfo signalInfo2{};
+    signalInfo2.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+    signalInfo2.semaphore = cgSemaphores[computeIndex];
+    signalInfo2.stageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+
+    std::vector<VkSemaphoreSubmitInfo> waitInfos{}; //cg, ia
+    std::vector<VkSemaphoreSubmitInfo> signalInfos = {signalInfo1, signalInfo2}; //rf, gc
+    if (!firstCompute) {
+        waitInfos = { waitInfo1, waitInfo2 };
+    }
+    firstCompute = false;
+    if (firstComputeCycle) {
+        waitInfos = { waitInfo1 };
+    }
+
+    //for compute
+    //wait: cc[-1], gc //cc ensures no compute overlap //gc ensures no compute runaway /desync with graphics.
+    //signal cc[0], cg  
+
+    VkSubmitInfo2 submitInfo2{};
+    submitInfo2.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+    submitInfo2.commandBufferInfoCount = 1;
+    submitInfo2.pCommandBufferInfos = &commandBufferInfo;
+    submitInfo2.waitSemaphoreInfoCount = static_cast<uint32_t>(waitInfos.size());
+    submitInfo2.pWaitSemaphoreInfos = waitInfos.data();
+    submitInfo2.signalSemaphoreInfoCount = static_cast<uint32_t>(signalInfos.size());
+    submitInfo2.pSignalSemaphoreInfos = signalInfos.data();
+    //vkQueueSubmit2(graphicsQueue, 1, &submitInfo, nullptr);
+
+    //spin until compute submit set to false by graphics
+
+    if (vkQueueSubmit2(computeQueue, 1, &submitInfo2, cfFences[computeIndex]) != VK_SUCCESS) { throw std::runtime_error("Failed to submit draw command buffer"); }
+
+
+    computeIndex = (computeIndex + 1) % FRAMES_IN_FLIGHT;
+    if (computeIndex == FRAMES_IN_FLIGHT - 1) {
+        firstComputeCycle = false;
+    }
 }
 
 
@@ -538,8 +613,12 @@ void VulkanEngine::createLogicalDevice() {
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
     std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
-
-    float queuePriority = 1.0f;
+    bool seperateCompute = true;
+    if (lowPerformanceSetting) {
+        seperateCompute = false;
+    }
+    float queuePriority = 0.5f;
+    float computePriority = 1.0f;
     VkDeviceQueueCreateInfo queueCreateInfo{};
     if (lowPerformanceSetting) {
   
@@ -547,6 +626,18 @@ void VulkanEngine::createLogicalDevice() {
         queueCreateInfo.queueFamilyIndex = 0;
         queueCreateInfo.queueCount = 1;
         queueCreateInfo.pQueuePriorities = &queuePriority;
+        queueCreateInfos.push_back(queueCreateInfo);
+    }
+    else if (seperateCompute) {
+        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfo.queueFamilyIndex = 0;
+        queueCreateInfo.queueCount = 1;
+        queueCreateInfo.pQueuePriorities = &queuePriority;
+        queueCreateInfos.push_back(queueCreateInfo);
+        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfo.queueFamilyIndex = findComputeQueueFamily(physicalDevice);
+        queueCreateInfo.queueCount = 1;
+        queueCreateInfo.pQueuePriorities = &computePriority;
         queueCreateInfos.push_back(queueCreateInfo);
     }
     else {
@@ -600,7 +691,6 @@ void VulkanEngine::createLogicalDevice() {
     createInfo.pNext = &extras;
 
 
-
     if (enableValidationLayers) {
         createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
         createInfo.ppEnabledLayerNames = validationLayers.data();
@@ -616,6 +706,12 @@ void VulkanEngine::createLogicalDevice() {
         vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
         presentQueue = graphicsQueue;
         computeQueue = graphicsQueue;
+        transferQueue = graphicsQueue;
+    }
+    if (seperateCompute) {
+        vkGetDeviceQueue(device, 0, 0, &graphicsQueue);
+        vkGetDeviceQueue(device, findComputeQueueFamily(physicalDevice), 0, &computeQueue);
+        presentQueue = graphicsQueue;
         transferQueue = graphicsQueue;
     }
     else {
@@ -783,25 +879,24 @@ void VulkanEngine::createCommandPools() {
     if (vkCreateCommandPool(device, &poolInfo, nullptr, &graphicsCommandPool) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create command pool");
     }
-    /*
+    
     VkCommandPoolCreateInfo computeInfo{};
     computeInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     computeInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     computeInfo.queueFamilyIndex = findComputeQueueFamily(physicalDevice);
-    VkCommandPoolCreateInfo transferInfo{};
-    transferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    transferInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    transferInfo.queueFamilyIndex = findTransferQueueFamily(physicalDevice);
+    //VkCommandPoolCreateInfo transferInfo{};
+    //transferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    //transferInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    //transferInfo.queueFamilyIndex = findTransferQueueFamily(physicalDevice);
 
     if (vkCreateCommandPool(device, &computeInfo, nullptr, &computeCommandPool) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create command pool");
     }
-    if (vkCreateCommandPool(device, &transferInfo, nullptr, &transferCommandPool) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create command pool");
-    }
-    */
+    //if (vkCreateCommandPool(device, &transferInfo, nullptr, &transferCommandPool) != VK_SUCCESS) {
+    //    throw std::runtime_error("Failed to create command pool");
+    //}
+    
     transferCommandPool = graphicsCommandPool;
-    computeCommandPool = graphicsCommandPool;
 }
 void VulkanEngine::createColourResources() {
     VkFormat colourFormat = swapChainImageFormat;
@@ -891,6 +986,11 @@ void VulkanEngine::createCommandBuffers() {
     createInfo.commandBufferCount = FRAMES_IN_FLIGHT;
     createInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     if (vkAllocateCommandBuffers(device, &createInfo, gCommandBuffers.data()) != VK_SUCCESS) { throw std::runtime_error("Failed to allocate command buffers"); }
+    
+    createInfo.commandPool = computeCommandPool;
+    if (vkAllocateCommandBuffers(device, &createInfo, cCommandBuffers.data()) != VK_SUCCESS) { throw std::runtime_error("Failed to allocate command buffers"); }
+
+
 }
 
 void VulkanEngine::allocateMemory() {
@@ -1656,6 +1756,7 @@ void VulkanEngine::cleanup() {
 
 
     vkDestroyCommandPool(device, graphicsCommandPool, nullptr);
+    vkDestroyCommandPool(device, computeCommandPool, nullptr);
     //vkDestroyCommandPool(device, computeCommandPool, nullptr);
     //vkDestroyCommandPool(device, transferCommandPool, nullptr);
 
