@@ -55,6 +55,7 @@ public:
 	std::vector<std::string> shaderFiles = { "shaders/satelliteEngine/01.spv", "shaders/satelliteEngine/02.spv", "shaders/satelliteEngine/03.spv"};
 
 	void simulateSats(VkCommandBuffer, uint32_t, double);
+	void simulateSatsRaw(uint32_t, double);
 
 	MemoryDetails lineRequirements{};
 	MemoryDetails satRequirements{};

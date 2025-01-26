@@ -226,17 +226,17 @@ void VulkanEngine::readFiles(std::vector<std::string> files, std::vector<std::ve
 
 //runtime functions
 void VulkanEngine::startDraw() {
-    std::thread compute(&VulkanEngine::runCompute, this);
+    //std::thread compute(&VulkanEngine::runCompute, this);
     std::thread graphics(&VulkanEngine::runGraphics, this);
     while (!glfwWindowShouldClose(winmanager.window)) {
         glfwPollEvents();
     }
-    compute.join();
+    //compute.join();
     graphics.join();
 }
 void VulkanEngine::runGraphics() {
     while (!glfwWindowShouldClose(winmanager.window)) {
-        //executeCompute();
+        executeCompute();
         executeGraphics();
     }
 }
@@ -460,9 +460,28 @@ void VulkanEngine::runCompute() {
 void VulkanEngine::executeCompute() {
     vkWaitForFences(device, 1, &cfFences[computeIndex], VK_TRUE, UINT64_MAX);
     vkResetFences(device, 1, &cfFences[computeIndex]);
+    //bool oneTimeRecord = true;
+    //if (oneTimeRecord){
+    //    if (firstComputeCycle) {
+    //        vkResetCommandBuffer(cCommandBuffers[computeIndex], 0);
+    //    }
+
+    //if (!firstComputeCycle) {
+    //    satEngine.simulateSatsRaw(computeIndex, 0.01);
+    //}
+    //else {
+    //    VkCommandBufferBeginInfo beginInfo{};
+    //    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    //    beginInfo.flags = 0;
+    //    if (vkBeginCommandBuffer(cCommandBuffers[computeIndex], &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to start draw recording"); }
+
+    //    satEngine.simulateSats(cCommandBuffers[computeIndex], computeIndex, 0.01);
+
+    //    if (vkEndCommandBuffer(cCommandBuffers[computeIndex]) != VK_SUCCESS) { throw std::runtime_error("Failed to record draw"); }
+    //}
+    //}
+    //    else {
     vkResetCommandBuffer(cCommandBuffers[computeIndex], 0);
-
-
 
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -472,6 +491,7 @@ void VulkanEngine::executeCompute() {
     satEngine.simulateSats(cCommandBuffers[computeIndex], computeIndex, 0.01);
 
     if (vkEndCommandBuffer(cCommandBuffers[computeIndex]) != VK_SUCCESS) { throw std::runtime_error("Failed to record draw"); }
+    //}
 
     VkCommandBufferSubmitInfo commandBufferInfo{};
     commandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
