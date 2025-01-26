@@ -463,13 +463,13 @@ void SatelliteEngine::initBufferData_B(VkCommandBuffer transferCommandBuffer, Vk
 void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frameIndex, double dt) {
 
 	dt = 1.0 / 400.0;
-	dt *= 1e3;
+	dt *= 1e1;
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
 	
 	
 	SatPushConstants satPC{};
-	satPC.deltaTime = dt / COMPUTE_STEPS_PER_FRAME;
+	satPC.deltaTime = dt;
 
 	VkBufferMemoryBarrier bar1{};
 	bar1.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -539,6 +539,36 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 		lineCursor = (lineCursor + 1) % LINE_VERTEX_COUNT;
 		lineSegments = (lineSegments < 1024) ? lineSegments + 1 : 1024;
 	}
+	lineFrame = (lineFrame + 1) % FRAMES_PER_LINE;
+
+}
+void SatelliteEngine::simulateSatsRaw(uint32_t frameIndex, double dt) {
+
+	dt = 1.0 / 400.0;
+	dt *= 1e1;
+
+
+
+
+	SatPushConstants satPC{};
+	satPC.deltaTime = dt;
+
+
+	uint32_t shaderDispatches = uint32_t(ceil((float(SATELLITE_COUNT) / float(SATELLITES_PER_SHADER)) / 1024.0));
+
+	for (uint32_t i = 0; i < COMPUTE_STEPS_PER_FRAME; i++) {
+		updatePlanets(0.5 * satPC.deltaTime);
+		updatePlanets(0.5 * satPC.deltaTime);
+		memcpy(satUBO->planetData[i].data(), planets->data(), planets->size() * sizeof(Planet));
+
+		satPC.planetIndex = i;
+
+
+	}
+
+	memcpy(uniformBuffersMapped[frameIndex], satUBO, sizeof(SatUniformBuffer));
+
+
 	lineFrame = (lineFrame + 1) % FRAMES_PER_LINE;
 
 }
