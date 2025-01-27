@@ -18,7 +18,7 @@ void SatelliteEngine::initSatEngine_A(SatInit details) {
 
 	createBuffers();
 
-	satUBO = new SatUniformBuffer;
+	satUBO = new SatPlanetBuffer;
 }
 void SatelliteEngine::initSatEngine_B() {
 	createDescriptorSets();
@@ -45,7 +45,7 @@ void SatelliteEngine::createBuffers() {
 	vkGetBufferMemoryRequirements(device, satBuffers[0], &satRequirements.requirements);
 	satRequirements.requirements.size *= satBuffers.size();
 	
-	bufferInfo.size = FRAMES_IN_FLIGHT * sizeof(SatUniformBuffer);
+	bufferInfo.size = FRAMES_IN_FLIGHT * sizeof(SatPlanetBuffer);
 	bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	planetSize = bufferInfo.size / FRAMES_IN_FLIGHT;
 
@@ -66,7 +66,7 @@ void SatelliteEngine::createBuffers() {
 	if (vkCreateBuffer(device, &bufferInfo, nullptr, &fieldMeshBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create field mesh buffer"); }
 	vkGetBufferMemoryRequirements(device, fieldMeshBuffer, &fieldMeshRequirements.requirements);
 
-	bufferInfo.size = sizeof(SatUniformBuffer);
+	bufferInfo.size = sizeof(SatPlanetBuffer);
 	bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 	if (vkCreateBuffer(device, &bufferInfo, nullptr, &planetBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create field mesh buffer"); }
 	vkGetBufferMemoryRequirements(device, fieldMeshBuffer, &planetRequirements.requirements);
@@ -259,8 +259,9 @@ void SatelliteEngine::createPipeline() {
 	specConstantsData.MESH_STEPS_MAJOR = fieldMeshResMajor;
 	specConstantsData.MESH_STEPS_MINOR = fieldMeshResMinor;
 	specConstantsData.SATELLITES_PER_SHADER = SATELLITES_PER_SHADER;
+	specConstantsData.STEPS_PER_SHADER = STEPS_PER_SHADER;
 
-	std::array<VkSpecializationMapEntry, 8> specEntries{};
+	std::array<VkSpecializationMapEntry, 9> specEntries{};
 	specEntries[0].constantID = 0;
 	specEntries[0].offset = offsetof(SatSpecConstants, G);
 	specEntries[0].size = sizeof(specConstantsData.G);
@@ -285,6 +286,9 @@ void SatelliteEngine::createPipeline() {
 	specEntries[7].constantID = 7;
 	specEntries[7].offset = offsetof(SatSpecConstants, SATELLITES_PER_SHADER);
 	specEntries[7].size = sizeof(specConstantsData.SATELLITES_PER_SHADER);
+	specEntries[8].constantID = 8;
+	specEntries[8].offset = offsetof(SatSpecConstants, STEPS_PER_SHADER);
+	specEntries[8].size = sizeof(specConstantsData.STEPS_PER_SHADER);
 
 	VkSpecializationInfo specInfo{};
 	specInfo.mapEntryCount = static_cast<uint32_t>(specEntries.size());
@@ -522,7 +526,7 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 		vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, static_cast<uint32_t>(barriers.size()), barriers.data(), 0, nullptr);
 	}
 
-	memcpy(planetBuffersMapped[frameIndex], satUBO, sizeof(SatUniformBuffer));
+	memcpy(planetBuffersMapped[frameIndex], satUBO, sizeof(SatPlanetBuffer));
 
 	if (lineFrame == WRITE_FRAME) {
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, linePipeline);
@@ -581,7 +585,7 @@ void SatelliteEngine::simulateSatsRaw(uint32_t frameIndex, double dt) {
 
 	}
 
-	memcpy(planetBuffersMapped[frameIndex], satUBO, sizeof(SatUniformBuffer));
+	memcpy(planetBuffersMapped[frameIndex], satUBO, sizeof(SatPlanetBuffer));
 
 
 	lineFrame = (lineFrame + 1) % FRAMES_PER_LINE;

@@ -23,8 +23,8 @@ struct SatPushConstants {
 	double deltaTime;
 	uint32_t planetIndex;
 };
-struct SatUniformBuffer {
-	std::array<std::array<Planet, MAX_PLANET_ARRAY_SIZE>, COMPUTE_STEPS_PER_FRAME> planetData;
+struct SatPlanetBuffer {
+	std::array<std::array<Planet, MAX_PLANET_ARRAY_SIZE>, COMPUTE_STEPS_PER_FRAME * STEPS_PER_SHADER> planetData;
 };
 struct SatSpecConstants {
 	double G;
@@ -35,6 +35,7 @@ struct SatSpecConstants {
 	uint32_t MESH_STEPS_MAJOR;
 	uint32_t MESH_STEPS_MINOR;
 	uint32_t SATELLITES_PER_SHADER;
+	uint32_t STEPS_PER_SHADER;
 };
 
 class SatelliteEngine
@@ -127,7 +128,7 @@ private:
 
 
 
-	SatUniformBuffer* satUBO = nullptr;
+	SatPlanetBuffer* satUBO = nullptr;
 
 	void createPipeline();
 	void createDescriptorSets();
