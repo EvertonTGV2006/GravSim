@@ -460,38 +460,38 @@ void VulkanEngine::runCompute() {
 void VulkanEngine::executeCompute() {
     vkWaitForFences(device, 1, &cfFences[computeIndex], VK_TRUE, UINT64_MAX);
     vkResetFences(device, 1, &cfFences[computeIndex]);
-    //bool oneTimeRecord = true;
-    //if (oneTimeRecord){
-    //    if (firstComputeCycle) {
-    //        vkResetCommandBuffer(cCommandBuffers[computeIndex], 0);
-    //    }
+    bool oneTimeRecord = true;
+    if (oneTimeRecord){
+        if (firstComputeCycle) {
+            vkResetCommandBuffer(cCommandBuffers[computeIndex], 0);
+        }
 
-    //if (!firstComputeCycle) {
-    //    satEngine.simulateSatsRaw(computeIndex, 0.01);
-    //}
-    //else {
-    //    VkCommandBufferBeginInfo beginInfo{};
-    //    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    //    beginInfo.flags = 0;
-    //    if (vkBeginCommandBuffer(cCommandBuffers[computeIndex], &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to start draw recording"); }
+        if (!firstComputeCycle) {
+            satEngine.simulateSatsRaw(computeIndex, 0.01);
+        }
+        else {
+            VkCommandBufferBeginInfo beginInfo{};
+            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            beginInfo.flags = 0;
+            if (vkBeginCommandBuffer(cCommandBuffers[computeIndex], &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to start draw recording"); }
 
-    //    satEngine.simulateSats(cCommandBuffers[computeIndex], computeIndex, 0.01);
+            satEngine.simulateSats(cCommandBuffers[computeIndex], computeIndex, 0.01);
 
-    //    if (vkEndCommandBuffer(cCommandBuffers[computeIndex]) != VK_SUCCESS) { throw std::runtime_error("Failed to record draw"); }
-    //}
-    //}
-    //    else {
-    vkResetCommandBuffer(cCommandBuffers[computeIndex], 0);
+            if (vkEndCommandBuffer(cCommandBuffers[computeIndex]) != VK_SUCCESS) { throw std::runtime_error("Failed to record draw"); }
+        }
+    }
+    ////    else {
+    //vkResetCommandBuffer(cCommandBuffers[computeIndex], 0);
 
-    VkCommandBufferBeginInfo beginInfo{};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.flags = 0;
-    if (vkBeginCommandBuffer(cCommandBuffers[computeIndex], &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to start draw recording"); }
+    //VkCommandBufferBeginInfo beginInfo{};
+    //beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    //beginInfo.flags = 0;
+    //if (vkBeginCommandBuffer(cCommandBuffers[computeIndex], &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to start draw recording"); }
 
-    satEngine.simulateSats(cCommandBuffers[computeIndex], computeIndex, 0.01);
+    //satEngine.simulateSats(cCommandBuffers[computeIndex], computeIndex, 0.01);
 
-    if (vkEndCommandBuffer(cCommandBuffers[computeIndex]) != VK_SUCCESS) { throw std::runtime_error("Failed to record draw"); }
-    //}
+    //if (vkEndCommandBuffer(cCommandBuffers[computeIndex]) != VK_SUCCESS) { throw std::runtime_error("Failed to record draw"); }
+    ////}
 
     VkCommandBufferSubmitInfo commandBufferInfo{};
     commandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;

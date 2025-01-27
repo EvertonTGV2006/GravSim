@@ -46,11 +46,11 @@ void SatelliteEngine::createBuffers() {
 	satRequirements.requirements.size *= satBuffers.size();
 	
 	bufferInfo.size = FRAMES_IN_FLIGHT * sizeof(SatUniformBuffer);
-	bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-	uniformSize = bufferInfo.size / FRAMES_IN_FLIGHT;
+	bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	planetSize = bufferInfo.size / FRAMES_IN_FLIGHT;
 
-	if (vkCreateBuffer(device, &bufferInfo, nullptr, &uniformBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create Satellite uniform buffer"); }
-	vkGetBufferMemoryRequirements(device, uniformBuffer, &uniformRequirements.requirements);
+	if (vkCreateBuffer(device, &bufferInfo, nullptr, &planetHostBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create Satellite uniform buffer"); }
+	vkGetBufferMemoryRequirements(device, planetHostBuffer, &planetHostRequirements.requirements);
 
 	bufferInfo.size = SATELLITE_COUNT * sizeof(LineInfo);
 	bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
@@ -66,18 +66,23 @@ void SatelliteEngine::createBuffers() {
 	if (vkCreateBuffer(device, &bufferInfo, nullptr, &fieldMeshBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create field mesh buffer"); }
 	vkGetBufferMemoryRequirements(device, fieldMeshBuffer, &fieldMeshRequirements.requirements);
 
+	bufferInfo.size = sizeof(SatUniformBuffer);
+	bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	if (vkCreateBuffer(device, &bufferInfo, nullptr, &planetBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create field mesh buffer"); }
+	vkGetBufferMemoryRequirements(device, fieldMeshBuffer, &planetRequirements.requirements);
 
 	lineRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	satRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	uniformRequirements.flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	planetHostRequirements.flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 	lineInfoRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	fieldMeshRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	planetRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 }
 
 void SatelliteEngine::createDescriptorSets() {
 	VkDescriptorSetLayoutBinding ubo{};
 	ubo.binding = 0;
-	ubo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	ubo.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	ubo.descriptorCount = 1;
 	ubo.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 	ubo.pImmutableSamplers = nullptr;
@@ -141,9 +146,9 @@ void SatelliteEngine::createDescriptorSets() {
 	for (size_t i = 0; i < FRAMES_IN_FLIGHT * 2; i += 2) {
 
 		VkDescriptorBufferInfo bufferInfo{};
-		bufferInfo.buffer = uniformBuffer;
-		bufferInfo.offset = (i / 2) * uniformSize;
-		bufferInfo.range = uniformSize;
+		bufferInfo.buffer = planetBuffer;
+		bufferInfo.offset = 0;
+		bufferInfo.range = planetSize;
 
 		VkDescriptorBufferInfo iInfo{};
 		iInfo.buffer = satBuffers[0];
@@ -176,7 +181,7 @@ void SatelliteEngine::createDescriptorSets() {
 		descriptorWrites[0].dstSet = descriptorSets[i];
 		descriptorWrites[0].dstBinding = 0;
 		descriptorWrites[0].dstArrayElement = 0;
-		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 		descriptorWrites[0].descriptorCount = 1;
 		descriptorWrites[0].pBufferInfo = &bufferInfo;
 
@@ -343,38 +348,42 @@ void SatelliteEngine::createPipeline() {
 void SatelliteEngine::getMemoryRequirements(std::vector<MemoryDetails>* mem, std::vector<uint16_t>* count) {
 	mem->push_back(lineRequirements);
 	mem->push_back(satRequirements);
-	mem->push_back(uniformRequirements);
+	mem->push_back(planetHostRequirements);
 	mem->push_back(lineInfoRequirements);
 	mem->push_back(fieldMeshRequirements);
-	count->push_back(5);
+	mem->push_back(planetRequirements);
+	count->push_back(6);
 }
 void SatelliteEngine::initMemory(MemInit* detPtr) {
-	std::array<MemInit, 5> details;
+	std::array<MemInit, 6> details;
 	memcpy(details.data(), detPtr, details.size() * sizeof(MemInit));
 
 	lineMemory = details[0];
 	satMemory = details[1];
-	uniformMemory = details[2];
+	planetHostMemory = details[2];
 	lineInfoMemory = details[3];
 	fieldMeshMemory = details[4];
+	planetMemory = details[5];
 
 	vkBindBufferMemory(device, lineBuffer, lineMemory.memory, lineMemory.offset);
 
 	for (uint32_t i = 0; i < satBuffers.size(); i++) { vkBindBufferMemory(device, satBuffers[i], satMemory.memory, satMemory.offset + i * satSize); }
 
-	vkBindBufferMemory(device, uniformBuffer, uniformMemory.memory, uniformMemory.offset);
+	vkBindBufferMemory(device, planetHostBuffer, planetHostMemory.memory, planetHostMemory.offset);
 	
 	void* data;
 
-	vkMapMemory(device, uniformMemory.memory, uniformMemory.offset, uniformMemory.range, 0, &data);
+	vkMapMemory(device, planetHostMemory.memory, planetHostMemory.offset, planetHostMemory.range, 0, &data);
 
 	for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++) {
-		uniformBuffersMapped[i] = reinterpret_cast<char*>(data) + i * uniformSize;
+		planetBuffersMapped[i] = reinterpret_cast<char*>(data) + i * planetSize;
 	}
 
 	vkBindBufferMemory(device, lineInfoBuffer, lineInfoMemory.memory, lineInfoMemory.offset);
 
 	vkBindBufferMemory(device, fieldMeshBuffer, fieldMeshMemory.memory, fieldMeshMemory.offset);
+
+	vkBindBufferMemory(device, planetBuffer, planetMemory.memory, planetMemory.offset);
 
 }
 void SatelliteEngine::initBufferData_A(MemoryDetails* stagingRequiements) {
@@ -491,6 +500,12 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 
 	uint32_t shaderDispatches = uint32_t(ceil((float(SATELLITE_COUNT)/float(SATELLITES_PER_SHADER)) / 1024.0));
 
+	VkBufferCopy cpy{};
+	cpy.dstOffset = 0;
+	cpy.size = planetSize;
+	cpy.srcOffset = frameIndex * planetSize;
+	vkCmdCopyBuffer(commandBuffer, planetHostBuffer, planetBuffer, 1, &cpy);
+
 	for (uint32_t i = 0; i < COMPUTE_STEPS_PER_FRAME; i++) {
 		updatePlanets(0.5 * satPC.deltaTime);
 		updatePlanets(0.5 * satPC.deltaTime);
@@ -507,7 +522,7 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 		vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, static_cast<uint32_t>(barriers.size()), barriers.data(), 0, nullptr);
 	}
 
-	memcpy(uniformBuffersMapped[frameIndex], satUBO, sizeof(SatUniformBuffer));
+	memcpy(planetBuffersMapped[frameIndex], satUBO, sizeof(SatUniformBuffer));
 
 	if (lineFrame == WRITE_FRAME) {
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, linePipeline);
@@ -566,7 +581,7 @@ void SatelliteEngine::simulateSatsRaw(uint32_t frameIndex, double dt) {
 
 	}
 
-	memcpy(uniformBuffersMapped[frameIndex], satUBO, sizeof(SatUniformBuffer));
+	memcpy(planetBuffersMapped[frameIndex], satUBO, sizeof(SatUniformBuffer));
 
 
 	lineFrame = (lineFrame + 1) % FRAMES_PER_LINE;
@@ -711,8 +726,8 @@ void SatelliteEngine::updateAccelerations(uint32_t inputIndex) {
 void SatelliteEngine::cleanup() {
 	delete satUBO;
 
-	vkUnmapMemory(device, uniformMemory.memory);
-	vkDestroyBuffer(device, uniformBuffer, nullptr);
+	vkUnmapMemory(device, planetHostMemory.memory);
+	vkDestroyBuffer(device, planetHostBuffer, nullptr);
 	vkDestroyBuffer(device, lineBuffer, nullptr);
 	for (uint32_t i = 0; i < satBuffers.size(); i++) { vkDestroyBuffer(device, satBuffers[i], nullptr); }
 	vkDestroyBuffer(device, lineInfoBuffer, nullptr);

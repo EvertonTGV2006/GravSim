@@ -38,11 +38,11 @@ layout(constant_id = 7) const uint SATELLITES_PER_SHADER = 1;
 const vec2 MESH_CORNER_1 = {-1e9, -1e9};
 const vec2 MESH_CORNER_2 = {1e9, 1e9};
 
-layout(binding = 0) uniform UniformBufferObject{
+layout(binding = 0) readonly buffer UniformBufferObject{
     Planet planets[MAX_PLANETS_ARRAY_SIZE * COMPUTE_STEPS_PER_FRAME];
 } ubo;
 
-layout(binding = 1) buffer inSSBO{
+layout(binding = 1) readonly buffer inSSBO{
     Satellite inSats[SATELLITE_COUNT];
 };
 layout(binding = 2) buffer outSSBO{

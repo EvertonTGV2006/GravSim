@@ -59,9 +59,10 @@ public:
 
 	MemoryDetails lineRequirements{};
 	MemoryDetails satRequirements{};
-	MemoryDetails uniformRequirements{};
+	MemoryDetails planetHostRequirements{};
 	MemoryDetails lineInfoRequirements{};
 	MemoryDetails fieldMeshRequirements{};
+	MemoryDetails planetRequirements{};
 
 	SatExternalMembers getSatellitePtrs();
 
@@ -97,10 +98,13 @@ private:
 	VkDeviceSize satSize;
 	MemInit satMemory;
 
-	VkBuffer uniformBuffer;
-	MemInit uniformMemory;
-	VkDeviceSize uniformSize;
-	std::array<char*, FRAMES_IN_FLIGHT> uniformBuffersMapped;
+	VkBuffer planetHostBuffer;
+	MemInit planetHostMemory;
+	VkDeviceSize planetSize;
+	std::array<char*, FRAMES_IN_FLIGHT> planetBuffersMapped;
+
+	VkBuffer planetBuffer;
+	MemInit planetMemory;
 
 	VkBuffer fieldMeshBuffer;
 	MemInit fieldMeshMemory;

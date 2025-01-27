@@ -429,7 +429,7 @@ void particleRasterizer::initMemory(MemInit* detPtr) {
 	
 	//std::cout << vertexMemory.range << " | " << vertexRequirements.requirements.size << std::endl;
 	//std::cout << indexMemory.range << " | " << indexRequirements.requirements.size << std::endl;
-	//std::cout << uniformBufferMemory.range << " | " << uniformRequirements.requirements.size << std::endl;
+	//std::cout << uniformBufferMemory.range << " | " << planetHostRequirements.requirements.size << std::endl;
 
 	for (size_t i = 0; i < meshes.size(); i++) {
 		vkBindBufferMemory(device, vertexBuffers[i], vertexMemory.memory, vertexMemory.offset + vertexOffsets[i]);
