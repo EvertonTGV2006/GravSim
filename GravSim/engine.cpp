@@ -460,7 +460,7 @@ void VulkanEngine::runCompute() {
 void VulkanEngine::executeCompute() {
     vkWaitForFences(device, 1, &cfFences[computeIndex], VK_TRUE, UINT64_MAX);
     vkResetFences(device, 1, &cfFences[computeIndex]);
-    bool oneTimeRecord = true;
+    bool oneTimeRecord = false;
     if (oneTimeRecord){
         if (firstComputeCycle) {
             vkResetCommandBuffer(cCommandBuffers[computeIndex], 0);

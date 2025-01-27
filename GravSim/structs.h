@@ -21,7 +21,7 @@ const double CONSTANT_G = 6.67e-11;
 const uint32_t LINE_VERTEX_COUNT = 1024;
 const uint32_t SATELLITE_COUNT = 4096;
 const uint32_t MAX_PLANET_ARRAY_SIZE = 2;
-const uint32_t COMPUTE_STEPS_PER_FRAME = 1024; // CANNOT BE 1
+const uint32_t COMPUTE_STEPS_PER_FRAME = 128; // CANNOT BE 1
 const uint32_t SATELLITES_PER_SHADER = 4; 
 const uint32_t STEPS_PER_SHADER = 1;
 const uint32_t fieldMeshResMajor = 128;
@@ -175,6 +175,16 @@ struct Satellite {
     double mass;
     glm::dvec3 vel;
     double unused;
+};
+struct Orbit {
+    uint32_t planetIndex;
+    double eccentricity;
+    double semiMajorAxis;
+    double inclination;
+    double ascNodeLong;
+    double argPeriapsis;
+    double trueAnomaly;
+
 };
 
 

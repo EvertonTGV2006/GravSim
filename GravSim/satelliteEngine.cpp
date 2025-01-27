@@ -436,6 +436,9 @@ void SatelliteEngine::initBufferData_B(VkCommandBuffer transferCommandBuffer, Vk
 
 	createInitialSatellitesOffset(&satData[256], 60, 64, 1e4, 1.35, 1.6, 0.7, 0);
 
+	Orbit orb{};
+	getOrbitalParams(&satData[1], 0, &orb);
+
 	memcpy(data, satData.data(), satData.size() * sizeof(Satellite));
 
 	VkFence transferFence;
@@ -475,7 +478,7 @@ void SatelliteEngine::initBufferData_B(VkCommandBuffer transferCommandBuffer, Vk
 
 void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frameIndex, double dt) {
 
-	dt = 1.0 / 400.0;
+	dt = 1.0/400;
 	dt *= 1e1;
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
@@ -726,6 +729,31 @@ void SatelliteEngine::updateAccelerations(uint32_t inputIndex) {
 	}
 }
 
+void SatelliteEngine::getOrbitalParams(Satellite* sat, uint32_t planetIndex, Orbit* result) {
+	(*result) = {};
+	Planet targetPlanet = (*planets)[planetIndex];
+	double mu = CONSTANT_G * targetPlanet.mass;
+	glm::dvec3 r = sat->pos - targetPlanet.pos_2;
+	glm::dvec3 v = sat->vel - targetPlanet.vel_2;
+	glm::dvec3 h = glm::cross(r, v); //angular momentum, perpendicular to orbital plane
+	glm::dvec3 e = (glm::cross(v, h) / mu) - glm::normalize(r); //ecentricity vector, points towards perapsis
+	glm::dvec3 n = glm::cross(h, glm::dvec3(0, 0, 1)); //points to ascending node, (0, 0, 1) is normal to refernce plance
+	double a = (glm::dot(h, h) / mu) / (1 - glm::dot(e, e)); //semiMajorAxis. p = h^2/mu; p = a(1-e^2) so a = (h^2/mu)/(1-e^2)
+	double inclination = glm::acos(glm::dot(glm::normalize(h), glm::dvec3(0, 0, 1))); //compute inclination
+	double argAscend = glm::acos(glm::dot(glm::normalize(n), glm::dvec3(1, 0, 0)));
+	double argPeri = glm::acos(glm::dot(glm::normalize(n), glm::normalize(e)));
+	double trueAnom = glm::acos(glm::dot(glm::normalize(r), glm::normalize(e)));
+	result->argPeriapsis = argPeri;
+	result->planetIndex = planetIndex;
+	result->semiMajorAxis = a;
+	result->eccentricity = glm::length(e);
+	result->ascNodeLong = argAscend;
+	result->inclination = inclination;
+	result->trueAnomaly = trueAnom;
+	
+	//determine orbital paramaters following the procedure on the following page https://en.wikipedia.org/wiki/Orbit_determination#Orbit_Determination_from_a_State_Vector
+
+}
 
 void SatelliteEngine::cleanup() {
 	delete satUBO;

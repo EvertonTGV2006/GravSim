@@ -155,5 +155,7 @@ private:
 	std::array<glm::dvec3, MAX_PLANET_ARRAY_SIZE> dv;
 
 	void updateAccelerations(uint32_t);
+
+	void getOrbitalParams(Satellite*, uint32_t, Orbit*);
 };
 
