@@ -55,6 +55,7 @@ public:
 	void initMemory(MemInit*);
 	void initBufferData_A(MemoryDetails*);
 	void initBufferData_B(VkCommandBuffer, VkQueue, MemInit);
+	void satelliteTransfer(VkCommandBuffer, VkQueue, bool);
 
 	std::vector<std::string> shaderFiles = { "shaders/satelliteEngine/01.spv", "shaders/satelliteEngine/02.spv", "shaders/satelliteEngine/03.spv"};
 
@@ -68,6 +69,7 @@ public:
 	MemoryDetails fieldMeshRequirements{};
 	MemoryDetails planetRequirements{};
 	MemoryDetails satInfoRequirements{};
+	MemoryDetails satTransferRequirements{};
 
 	SatExternalMembers getSatellitePtrs();
 
@@ -130,7 +132,12 @@ private:
 
 	std::array<Satellite, SATELLITE_COUNT> satData;
 
-	
+
+
+	VkBuffer satTransferBuffer;
+	MemInit satTransferMemory;
+	VkDeviceSize satTransferSize;
+	char* satTransferMapped;
 
 
 	double elapsedTime;
@@ -165,5 +172,7 @@ private:
 	void updateAccelerations(uint32_t);
 
 	void getOrbitalParams(Satellite*, uint32_t, Orbit*);
+
+
 };
 

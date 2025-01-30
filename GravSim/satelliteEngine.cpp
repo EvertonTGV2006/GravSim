@@ -78,6 +78,13 @@ void SatelliteEngine::createBuffers() {
 	vkGetBufferMemoryRequirements(device, satInfoBuffer, &satInfoRequirements.requirements);
 	satInfoSize = bufferInfo.size;
 
+
+	bufferInfo.size = SATELLITE_COUNT * sizeof(Satellite);
+	bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	if (vkCreateBuffer(device, &bufferInfo, nullptr, &satTransferBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create field mesh buffer"); }
+	vkGetBufferMemoryRequirements(device, satTransferBuffer, &satTransferRequirements.requirements);
+	satTransferSize = bufferInfo.size;
+
 	lineRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	satRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	planetHostRequirements.flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
@@ -85,6 +92,7 @@ void SatelliteEngine::createBuffers() {
 	fieldMeshRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	planetRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	satInfoRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	satTransferRequirements.flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 }
 
 void SatelliteEngine::createDescriptorSets() {
@@ -386,10 +394,11 @@ void SatelliteEngine::getMemoryRequirements(std::vector<MemoryDetails>* mem, std
 	mem->push_back(fieldMeshRequirements);
 	mem->push_back(planetRequirements);
 	mem->push_back(satInfoRequirements);
-	count->push_back(7);
+	mem->push_back(satTransferRequirements);
+	count->push_back(8);
 }
 void SatelliteEngine::initMemory(MemInit* detPtr) {
-	std::array<MemInit, 7> details{};
+	std::array<MemInit, 8> details{};
 	memcpy(details.data(), detPtr, details.size() * sizeof(MemInit));
 
 	lineMemory = details[0];
@@ -399,6 +408,7 @@ void SatelliteEngine::initMemory(MemInit* detPtr) {
 	fieldMeshMemory = details[4];
 	planetMemory = details[5];
 	satInfoMemory = details[6];
+	satTransferMemory = details[7];
 
 	vkBindBufferMemory(device, lineBuffer, lineMemory.memory, lineMemory.offset);
 
@@ -421,6 +431,12 @@ void SatelliteEngine::initMemory(MemInit* detPtr) {
 	vkBindBufferMemory(device, planetBuffer, planetMemory.memory, planetMemory.offset);
 
 	vkBindBufferMemory(device, satInfoBuffer, satInfoMemory.memory, satInfoMemory.offset);
+
+	vkBindBufferMemory(device, satTransferBuffer, satTransferMemory.memory, satTransferMemory.offset);
+	
+	vkMapMemory(device, satTransferMemory.memory, satTransferMemory.offset, satTransferMemory.range, 0, &data);
+
+	satTransferMapped = reinterpret_cast<char*>(data);
 
 }
 void SatelliteEngine::initBufferData_A(MemoryDetails* stagingRequiements) {
@@ -837,10 +853,62 @@ void SatelliteEngine::getOrbitalParams(Satellite* sat, uint32_t planetIndex, Orb
 
 }
 
+void SatelliteEngine::satelliteTransfer(VkCommandBuffer transferCommandBuffer, VkQueue transferQueue, bool direction) {
+	//direction true := CPU -> GPU;
+	VkFence transferFence;
+	VkFenceCreateInfo fenceInfo{};
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceInfo.flags = 0;
+
+	if (vkCreateFence(device, &fenceInfo, nullptr, &transferFence) != VK_SUCCESS) { throw std::runtime_error("Failed to create transfer fence for GravDataSync"); }
+
+	//record copy operation
+	VkCommandBufferBeginInfo beginInfo{};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &transferCommandBuffer;
+
+	VkBufferCopy cpy{};
+	cpy.srcOffset = 0;
+	cpy.dstOffset = 0;
+	cpy.size = satData.size() * sizeof(Satellite);
+	if (vkBeginCommandBuffer(transferCommandBuffer, &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to begin transfer command buffer"); }
+
+	if (direction) {
+		memcpy(satTransferMapped, satData.data(), satData.size() * sizeof(Satellite));
+		for (uint32_t i = 0; i < satBuffers.size(); i++) {
+			vkCmdCopyBuffer(transferCommandBuffer, satTransferBuffer, satBuffers[i], 1, &cpy);
+		}
+	}
+	else {
+		vkCmdCopyBuffer(transferCommandBuffer, satBuffers[0], satTransferBuffer, 1, &cpy);
+	}
+
+
+	if (vkEndCommandBuffer(transferCommandBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to end transfer command buffer"); }
+	if (vkQueueSubmit(transferQueue, 1, &submitInfo, transferFence) != VK_SUCCESS) { throw std::runtime_error("Failed to submit transfer command buffer"); }
+	vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
+	if (!direction) {
+		memcpy(satData.data(), satTransferMapped, satData.size() * sizeof(Satellite));
+	}
+
+
+	vkResetFences(device, 1, &transferFence);
+	vkResetCommandBuffer(transferCommandBuffer, 0);
+	vkDestroyFence(device, transferFence, nullptr);
+
+
+}
+
 void SatelliteEngine::cleanup() {
 	delete satUBO;
 
 	vkUnmapMemory(device, planetHostMemory.memory);
+	vkUnmapMemory(device, satTransferMemory.memory);
 	vkDestroyBuffer(device, planetHostBuffer, nullptr);
 	vkDestroyBuffer(device, lineBuffer, nullptr);
 	for (uint32_t i = 0; i < satBuffers.size(); i++) { vkDestroyBuffer(device, satBuffers[i], nullptr); }
@@ -848,6 +916,7 @@ void SatelliteEngine::cleanup() {
 	vkDestroyBuffer(device, fieldMeshBuffer, nullptr);
 	vkDestroyBuffer(device, planetBuffer, nullptr);
 	vkDestroyBuffer(device, satInfoBuffer, nullptr);
+	vkDestroyBuffer(device, satTransferBuffer, nullptr);
 
 
 	vkDestroyPipeline(device, pipeline, nullptr);
