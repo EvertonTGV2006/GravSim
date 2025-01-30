@@ -90,7 +90,11 @@ void main() {
         fragColor = constants.model[0].yzw;
     }
 
-    
+    fragColor = normalize(baseColour.xyz);
+    vec3 testVec = normalize(baseColour.xyz);
+    if(testVec.z > 0.999999f){
+        fragColor = vec3(1,1,1);
+    }
     //vec3 Color = {1.0f, 1.0f, 1.0f};
     //float mass = inVelocity.w;
     gl_Position = ubo.proj*ubo.view*vec4(inPosition, 1.0);

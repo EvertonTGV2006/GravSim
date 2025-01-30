@@ -24,8 +24,8 @@ const uint32_t MAX_PLANET_ARRAY_SIZE = 2;
 const uint32_t COMPUTE_STEPS_PER_FRAME = 128; // CANNOT BE 1
 const uint32_t SATELLITES_PER_SHADER = 4; 
 const uint32_t STEPS_PER_SHADER = 1;
-const uint32_t fieldMeshResMajor = 128;
-const uint32_t fieldMeshResMinor = 8;
+const uint32_t fieldMeshResMajor = 1024;
+const uint32_t fieldMeshResMinor = 1;
 
 
 enum UIOptions {
