@@ -21,7 +21,10 @@ struct SatInit {
 };
 struct SatPushConstants {
 	double deltaTime;
+	double elapsedTime;
+	uint32_t targetPlanet;
 	uint32_t planetIndex;
+	
 };
 struct SatPlanetBuffer {
 	std::array<std::array<Planet, MAX_PLANET_ARRAY_SIZE>, COMPUTE_STEPS_PER_FRAME * STEPS_PER_SHADER> planetData;
@@ -64,6 +67,7 @@ public:
 	MemoryDetails lineInfoRequirements{};
 	MemoryDetails fieldMeshRequirements{};
 	MemoryDetails planetRequirements{};
+	MemoryDetails satInfoRequirements{};
 
 	SatExternalMembers getSatellitePtrs();
 
@@ -104,6 +108,10 @@ private:
 	VkDeviceSize planetSize;
 	std::array<char*, FRAMES_IN_FLIGHT> planetBuffersMapped;
 
+	VkBuffer satInfoBuffer;
+	MemInit satInfoMemory;
+	VkDeviceSize satInfoSize;
+
 	VkBuffer planetBuffer;
 	MemInit planetMemory;
 
@@ -125,7 +133,7 @@ private:
 	
 
 
-
+	double elapsedTime;
 
 
 	SatPlanetBuffer* satUBO = nullptr;

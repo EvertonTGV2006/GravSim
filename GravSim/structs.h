@@ -176,6 +176,16 @@ struct Satellite {
     glm::dvec3 vel;
     double unused;
 };
+struct SatInfo {
+    glm::dvec3 pos;
+    double mass;
+    glm::dvec3 vel;
+    double unused;
+    double relDistance;
+    double relVel;
+    double tApproach;
+    double padding;
+};
 struct Orbit {
     uint32_t planetIndex;
     double eccentricity;

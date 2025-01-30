@@ -69,7 +69,14 @@ void SatelliteEngine::createBuffers() {
 	bufferInfo.size = sizeof(SatPlanetBuffer);
 	bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 	if (vkCreateBuffer(device, &bufferInfo, nullptr, &planetBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create field mesh buffer"); }
-	vkGetBufferMemoryRequirements(device, fieldMeshBuffer, &planetRequirements.requirements);
+	vkGetBufferMemoryRequirements(device, planetBuffer, &planetRequirements.requirements);
+	
+
+	bufferInfo.size = SATELLITE_COUNT * sizeof(SatInfo);
+	bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	if (vkCreateBuffer(device, &bufferInfo, nullptr, &satInfoBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create field mesh buffer"); }
+	vkGetBufferMemoryRequirements(device, satInfoBuffer, &satInfoRequirements.requirements);
+	satInfoSize = bufferInfo.size;
 
 	lineRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	satRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -77,6 +84,7 @@ void SatelliteEngine::createBuffers() {
 	lineInfoRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	fieldMeshRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	planetRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	satInfoRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 }
 
 void SatelliteEngine::createDescriptorSets() {
@@ -122,7 +130,14 @@ void SatelliteEngine::createDescriptorSets() {
 	mBuffer.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 	mBuffer.pImmutableSamplers = nullptr;
 
-	std::array<VkDescriptorSetLayoutBinding, 6> bindings = { ubo, iBuffer, oBuffer,lBuffer,lIBuffer,mBuffer };
+	VkDescriptorSetLayoutBinding sIBuffer{};
+	sIBuffer.binding = 6;
+	sIBuffer.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	sIBuffer.descriptorCount = 1;
+	sIBuffer.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+	sIBuffer.pImmutableSamplers = nullptr;
+
+	std::array<VkDescriptorSetLayoutBinding, 7> bindings = { ubo, iBuffer, oBuffer,lBuffer,lIBuffer,mBuffer ,sIBuffer};
 
 	VkDescriptorSetLayoutCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -175,7 +190,12 @@ void SatelliteEngine::createDescriptorSets() {
 		mInfo.offset = 0;
 		mInfo.range = fieldMeshSize;
 
-		std::array<VkWriteDescriptorSet, 6> descriptorWrites{};
+		VkDescriptorBufferInfo sIInfo{};
+		sIInfo.buffer = satInfoBuffer;
+		sIInfo.offset = 0;
+		sIInfo.range = satInfoSize;
+
+		std::array<VkWriteDescriptorSet, 7> descriptorWrites{};
 
 		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrites[0].dstSet = descriptorSets[i];
@@ -225,6 +245,14 @@ void SatelliteEngine::createDescriptorSets() {
 		descriptorWrites[5].descriptorCount = 1;
 		descriptorWrites[5].pBufferInfo = &mInfo;
 
+		descriptorWrites[6].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrites[6].dstSet = descriptorSets[i];
+		descriptorWrites[6].dstBinding = 6;
+		descriptorWrites[6].dstArrayElement = 0;
+		descriptorWrites[6].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		descriptorWrites[6].descriptorCount = 1;
+		descriptorWrites[6].pBufferInfo = &sIInfo;
+
 		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 
 
@@ -238,6 +266,7 @@ void SatelliteEngine::createDescriptorSets() {
 		descriptorWrites[3].dstSet = descriptorSets[i + 1];
 		descriptorWrites[4].dstSet = descriptorSets[i + 1];
 		descriptorWrites[5].dstSet = descriptorSets[i + 1];
+		descriptorWrites[6].dstSet = descriptorSets[i + 1];
 
 		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 	}
@@ -356,10 +385,11 @@ void SatelliteEngine::getMemoryRequirements(std::vector<MemoryDetails>* mem, std
 	mem->push_back(lineInfoRequirements);
 	mem->push_back(fieldMeshRequirements);
 	mem->push_back(planetRequirements);
-	count->push_back(6);
+	mem->push_back(satInfoRequirements);
+	count->push_back(7);
 }
 void SatelliteEngine::initMemory(MemInit* detPtr) {
-	std::array<MemInit, 6> details;
+	std::array<MemInit, 7> details{};
 	memcpy(details.data(), detPtr, details.size() * sizeof(MemInit));
 
 	lineMemory = details[0];
@@ -368,6 +398,7 @@ void SatelliteEngine::initMemory(MemInit* detPtr) {
 	lineInfoMemory = details[3];
 	fieldMeshMemory = details[4];
 	planetMemory = details[5];
+	satInfoMemory = details[6];
 
 	vkBindBufferMemory(device, lineBuffer, lineMemory.memory, lineMemory.offset);
 
@@ -389,12 +420,14 @@ void SatelliteEngine::initMemory(MemInit* detPtr) {
 
 	vkBindBufferMemory(device, planetBuffer, planetMemory.memory, planetMemory.offset);
 
+	vkBindBufferMemory(device, satInfoBuffer, satInfoMemory.memory, satInfoMemory.offset);
+
 }
 void SatelliteEngine::initBufferData_A(MemoryDetails* stagingRequiements) {
 	VkBufferCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	createInfo.size = satRequirements.requirements.size;
+	createInfo.size = std::max(satRequirements.requirements.size, satInfoRequirements.requirements.size);
 	createInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 
 	if (vkCreateBuffer(device, &createInfo, nullptr, &stagingBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create satellite staging buffer"); }
@@ -453,6 +486,8 @@ void SatelliteEngine::initBufferData_B(VkCommandBuffer transferCommandBuffer, Vk
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
+	
+
 	VkSubmitInfo submitInfo{};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.commandBufferCount = 1;
@@ -468,6 +503,25 @@ void SatelliteEngine::initBufferData_B(VkCommandBuffer transferCommandBuffer, Vk
 	if (vkEndCommandBuffer(transferCommandBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to end transfer command buffer"); }
 	if (vkQueueSubmit(transferQueue, 1, &submitInfo, transferFence) != VK_SUCCESS) { throw std::runtime_error("Failed to submit transfer command buffer"); }
 	vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
+	vkResetFences(device, 1, &transferFence);
+	vkResetCommandBuffer(transferCommandBuffer, 0);
+
+	SatInfo nullInfo{};
+	nullInfo.relDistance = 1e15; //big number 
+
+	for (uint32_t i = 0; i < SATELLITE_COUNT; i++) {
+		char* cpyPtr = reinterpret_cast<char*>(data) + (i * sizeof(SatInfo));
+		memcpy(cpyPtr, &nullInfo, sizeof(SatInfo));
+	}
+
+	cpy.size = satInfoSize;
+
+	if (vkBeginCommandBuffer(transferCommandBuffer, &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to begin transfer command buffer"); }
+	vkCmdCopyBuffer(transferCommandBuffer, stagingBuffer, satInfoBuffer, 1, &cpy);
+	if (vkEndCommandBuffer(transferCommandBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to end transfer command buffer"); }
+	if (vkQueueSubmit(transferQueue, 1, &submitInfo, transferFence) != VK_SUCCESS) { throw std::runtime_error("Failed to submit transfer command buffer"); }
+	vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
+
 	vkUnmapMemory(device, memory.memory);
 
 
@@ -486,6 +540,8 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 	
 	SatPushConstants satPC{};
 	satPC.deltaTime = dt;
+	satPC.targetPlanet = 1;
+	
 
 	VkBufferMemoryBarrier bar1{};
 	bar1.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -519,6 +575,8 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 		memcpy(satUBO->planetData[i].data(), planets->data(), planets->size() * sizeof(Planet));
 
 		satPC.planetIndex = i;
+		satPC.elapsedTime = elapsedTime;
+		elapsedTime += dt;
 
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 1, &descriptorSets[2 * frameIndex + i % 2], 0, nullptr);
 
@@ -574,6 +632,7 @@ void SatelliteEngine::simulateSatsRaw(uint32_t frameIndex, double dt) {
 
 	SatPushConstants satPC{};
 	satPC.deltaTime = dt;
+	satPC.targetPlanet = 1;
 
 
 	uint32_t shaderDispatches = uint32_t(ceil((float(SATELLITE_COUNT) / float(SATELLITES_PER_SHADER)) / 1024.0));
@@ -584,6 +643,8 @@ void SatelliteEngine::simulateSatsRaw(uint32_t frameIndex, double dt) {
 		memcpy(satUBO->planetData[i].data(), planets->data(), planets->size() * sizeof(Planet));
 
 		satPC.planetIndex = i;
+		satPC.elapsedTime = elapsedTime;
+		elapsedTime += dt;
 
 
 	}
@@ -738,19 +799,40 @@ void SatelliteEngine::getOrbitalParams(Satellite* sat, uint32_t planetIndex, Orb
 	glm::dvec3 h = glm::cross(r, v); //angular momentum, perpendicular to orbital plane
 	glm::dvec3 e = (glm::cross(v, h) / mu) - glm::normalize(r); //ecentricity vector, points towards perapsis
 	glm::dvec3 n = glm::cross(h, glm::dvec3(0, 0, 1)); //points to ascending node, (0, 0, 1) is normal to refernce plance
-	double a = (glm::dot(h, h) / mu) / (1 - glm::dot(e, e)); //semiMajorAxis. p = h^2/mu; p = a(1-e^2) so a = (h^2/mu)/(1-e^2)
-	double inclination = glm::acos(glm::dot(glm::normalize(h), glm::dvec3(0, 0, 1))); //compute inclination
-	double argAscend = glm::acos(glm::dot(glm::normalize(n), glm::dvec3(1, 0, 0)));
-	double argPeri = glm::acos(glm::dot(glm::normalize(n), glm::normalize(e)));
-	double trueAnom = glm::acos(glm::dot(glm::normalize(r), glm::normalize(e)));
-	result->argPeriapsis = argPeri;
-	result->planetIndex = planetIndex;
-	result->semiMajorAxis = a;
-	result->eccentricity = glm::length(e);
-	result->ascNodeLong = argAscend;
-	result->inclination = inclination;
-	result->trueAnomaly = trueAnom;
+	if (glm::length(n) != 0) {
+		double a = (glm::dot(h, h) / mu) / (1 - glm::dot(e, e)); //semiMajorAxis. p = h^2/mu; p = a(1-e^2) so a = (h^2/mu)/(1-e^2)
+		double inclination = glm::acos(glm::dot(glm::normalize(h), glm::dvec3(0, 0, 1))); //compute inclination
+		double argAscend = glm::acos(glm::dot(glm::normalize(n), glm::dvec3(1, 0, 0)));
+		double argPeri = glm::acos(glm::dot(glm::normalize(n), glm::normalize(e)));
+		double trueAnom = glm::acos(glm::dot(glm::normalize(r), glm::normalize(e)));
+		result->argPeriapsis = argPeri;
+		result->planetIndex = planetIndex;
+		result->semiMajorAxis = a;
+		result->eccentricity = glm::length(e);
+		result->ascNodeLong = argAscend;
+		result->inclination = inclination;
+		result->trueAnomaly = trueAnom;
+	}
+	else {
+		double a = (glm::dot(h, h) / mu) / (1 - glm::dot(e, e)); //semiMajorAxis. p = h^2/mu; p = a(1-e^2) so a = (h^2/mu)/(1-e^2)
+		double inclination = glm::acos(glm::dot(glm::normalize(h), glm::dvec3(0, 0, 1))); //compute inclination
+		double argAscend = 0;
+		double argPeri = glm::acos(glm::dot(glm::normalize(e), glm::dvec3(1, 0, 0)));
+		double trueAnom = glm::acos(glm::dot(glm::normalize(r), glm::normalize(e)));
+		result->argPeriapsis = argPeri;
+		result->planetIndex = planetIndex;
+		result->semiMajorAxis = a;
+		result->eccentricity = glm::length(e);
+		result->ascNodeLong = argAscend;
+		result->inclination = inclination;
+		result->trueAnomaly = trueAnom;
+	}
+
+
+
 	
+
+
 	//determine orbital paramaters following the procedure on the following page https://en.wikipedia.org/wiki/Orbit_determination#Orbit_Determination_from_a_State_Vector
 
 }
@@ -764,6 +846,8 @@ void SatelliteEngine::cleanup() {
 	for (uint32_t i = 0; i < satBuffers.size(); i++) { vkDestroyBuffer(device, satBuffers[i], nullptr); }
 	vkDestroyBuffer(device, lineInfoBuffer, nullptr);
 	vkDestroyBuffer(device, fieldMeshBuffer, nullptr);
+	vkDestroyBuffer(device, planetBuffer, nullptr);
+	vkDestroyBuffer(device, satInfoBuffer, nullptr);
 
 
 	vkDestroyPipeline(device, pipeline, nullptr);

@@ -52,6 +52,25 @@ void particleRasterizer::initRast_A(RastInit details) {
 		(*planets)[i].theta = 0.0f;
 	}
 
+
+	//now we realign system such that static frame has COM stationary at the origin;
+	glm::dvec3 mv{};
+	glm::dvec3 mr{};
+	double m = 0.0;
+	for (uint32_t i = 0; i < planets->size(); i++) {
+		m += (*planets)[i].mass;
+		mv = (*planets)[i].mass * (*planets)[i].vel_0;
+		mr = (*planets)[i].mass * (*planets)[i].pos_0;
+	};
+
+	glm::dvec3 vCOM = mv / m;
+	glm::dvec3 rCOM = mr / m;
+
+	for (uint32_t i = 0; i < planets->size(); i++) {
+		(*planets)[i].vel_0 += -vCOM;
+		(*planets)[i].pos_0 += -rCOM;
+	}
+
 	for (uint32_t i = 0; i < planets->size(); i++) {
 		(*planets)[i].pos_1 = (*planets)[i].pos_0;
 		(*planets)[i].vel_1 = (*planets)[i].vel_0;

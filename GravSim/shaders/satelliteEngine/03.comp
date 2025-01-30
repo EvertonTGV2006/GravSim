@@ -76,7 +76,7 @@ void main(){
         float x;
         float y;
 
-        float scale = 1e3f;
+        float scale = 1e2f;
 
         if(j < MESH_STEPS_MAJOR){
             //we are doing horizontal lines
@@ -94,14 +94,37 @@ void main(){
             x = MESH_CORNER_1.x + dx * i;
             y = MESH_CORNER_1.y + dy * (j-MESH_STEPS_MAJOR);
         }
-        float z = 3e5f;
+        float z = 0.0f;
         
         dvec4 vertPos = dvec4(x, y, 0.0, 0.0);
         for(uint i = 0; i < MAX_PLANETS_ARRAY_SIZE; i++){
+            //for gravitational potenential
             dvec3 sep = (ubo.planets[i].pos[2] - vertPos).xyz;
             double pot = -G * ubo.planets[i].pos[2].w / length(sep);
             z += float(pot);
         }
+        // dvec3 sep = (ubo.planets[0].pos[2] - vertPos).xyz;
+        // dvec3 planetSep = (ubo.planets[0].pos[2] - ubo.planets[1].pos[2]).xyz;
+        // double pot = -G * (ubo.planets[0].pos[2].z + ubo.planets[1].pos[2].w) * dot(sep, sep) / (length(planetSep) * length(planetSep) * length(planetSep));
+        // z+=float(pot);
+
+        uint indA = 0;
+        uint indB = 1;
+
+        dvec3 R = (ubo.planets[indA].pos[2] - ubo.planets[indB].pos[2]).xyz;
+        double MT = ubo.planets[indA].pos[2].w + ubo.planets[indB].pos[2].w;
+        dvec3 rCOM = (ubo.planets[indA].pos[2].xyz * ubo.planets[indA].pos[2].w + ubo.planets[indB].pos[2].xyz * ubo.planets[indB].pos[2].w) / MT;
+        dvec3 vCOM = (ubo.planets[indA].vel[2].xyz * ubo.planets[indA].pos[2].w + ubo.planets[indB].vel[2].xyz * ubo.planets[indB].pos[2].w) / MT;
+        dvec3 r = vertPos.xyz - rCOM;
+        dvec3 rA = ubo.planets[indA].pos[2].xyz - rCOM;
+        dvec3 rB = ubo.planets[indB].pos[2].xyz - rCOM;
+        double OMEGA = sqrt(G * MT / (length(R) * length(R) * length(R)));
+        dvec3 OMVEC = OMEGA * dvec3(0, 0, 1);
+        dvec3 OMCRR = cross(OMVEC, r);
+        z+= -0.5f * float(dot(OMCRR, OMCRR));
+
+
+
         sampleVertex.pos = vec4(x, y, z * scale, 0.0);
         sampleVertex.base = vec4(1,1,1,1);
         sampleVertex.inter = vec4(1,1,1,1);
