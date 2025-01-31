@@ -261,8 +261,6 @@ void VulkanEngine::executeGraphics() {
     dt = std::chrono::duration<double>(ct - pt);
     pt = ct;
 
-    player->boxes[2].textCount = 0;
-
     auto waitStart = std::chrono::high_resolution_clock::now();
     vkWaitForFences(device, 1, &gfFences[frameIndex], VK_TRUE, UINT64_MAX);
     auto waitDuration = std::chrono::high_resolution_clock::now() - waitStart;
@@ -428,7 +426,7 @@ void VulkanEngine::executeGraphics() {
     //gravEngine.simGrav(dt.count());
 
 
-    //if (frameTimes.size() % 200 == 0) {
+    //if (frameTimes.scale() % 200 == 0) {
     //    std::cout << "Player Pos: ";
     //    glm::vec3 v = player->pos;
     //    std::cout << v.x << ", " << v.y << ", " << v.z;
@@ -579,7 +577,7 @@ void VulkanEngine::createInstance() {
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
     extensions = getRequiredExtensions();
-    createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+    createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.scale());
     createInfo.ppEnabledExtensionNames = extensions.data();
     createInfo.enabledLayerCount = 0;
 
@@ -588,7 +586,7 @@ void VulkanEngine::createInstance() {
 
 
     if (enableValidationLayers) {
-        createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+        createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.scale());
         createInfo.ppEnabledLayerNames = validationLayers.data();
 
         populateDebugMessengerCreateInfo(debugCreateInfo);
@@ -1082,15 +1080,15 @@ void VulkanEngine::allocateMemory() {
     uint32_t deviceCounter = 0;
 
     for (size_t i = 0; i < mergedMemRequirements.size(); i++) {
-        //std::cout << "Size: " << mergedMemRequirements[i].requirements.size << " Flags: " << mergedMemRequirements[i].flags << std::endl;
+        //std::cout << "Size: " << mergedMemRequirements[i].requirements.scale << " Flags: " << mergedMemRequirements[i].flags << std::endl;
         memoryInfo.allocationSize = mergedMemRequirements[i].requirements.size;
         memoryInfo.memoryTypeIndex = findMemoryType(mergedMemRequirements[i]);
         if (vkAllocateMemory(device, &memoryInfo, nullptr, &memory[i]) != VK_SUCCESS) { throw std::runtime_error("Failed to allocated memory"); }
         //if (mergedMemRequirements[i].flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
-        //    stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Allocated " + std::to_string(uint32_t(mergedMemRequirements[i].requirements.size)) + "\t bytes of host visible memory with alignment " + std::to_string(uint32_t(mergedMemRequirements[i].requirements.alignment)));
+        //    stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Allocated " + std::to_string(uint32_t(mergedMemRequirements[i].requirements.scale)) + "\t bytes of host visible memory with alignment " + std::to_string(uint32_t(mergedMemRequirements[i].requirements.alignment)));
         //}
         //else {
-        //    stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Allocated " + std::to_string(uint32_t(mergedMemRequirements[i].requirements.size)) + "\t bytes of device memory with alignment " + std::to_string(uint32_t(mergedMemRequirements[i].requirements.alignment)));
+        //    stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Allocated " + std::to_string(uint32_t(mergedMemRequirements[i].requirements.scale)) + "\t bytes of device memory with alignment " + std::to_string(uint32_t(mergedMemRequirements[i].requirements.alignment)));
         //}
         if (mergedMemRequirements[i].flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) { hostCounter += static_cast<uint32_t>(mergedMemRequirements[i].requirements.size); }
         else { deviceCounter += static_cast<uint32_t>(mergedMemRequirements[i].requirements.size); }

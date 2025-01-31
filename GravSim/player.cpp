@@ -100,14 +100,14 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 
 	UIBox commandBox{};
 	commandBox.pos = glm::vec2(0.02f, 0.02f);
-	commandBox.size = glm::vec2(0.9f, 0.9f);
+	commandBox.scale = glm::vec2(0.9f, 0.9f);
 	commandBox.colour = glm::vec3(1.0f, 1.0f, 1.0f);;
 	commandBox.dataP = &(texts[4]);
 	commandBox.textCount = 1;
 
 	UIBox frameCounterBox{};
 	frameCounterBox.pos = glm::vec2(0.02f, 0.02f);
-	frameCounterBox.size = glm::vec2(0.9f, 0.9f);
+	frameCounterBox.scale = glm::vec2(0.9f, 0.9f);
 	frameCounterBox.colour = glm::vec3(1.0f, 1.0f, 1.0f);
 	frameCounterBox.dataP = &(texts[0]);
 	frameCounterBox.textCount = 4;
@@ -118,7 +118,7 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 
 	UIBox statBox{};
 	statBox.pos = glm::vec2(0.5f, 0.02f);
-	statBox.size = glm::vec2(0.5f, 0.8f);
+	statBox.scale = glm::vec2(0.5f, 0.8f);
 	statBox.colour = glm::vec3(1);
 	statBox.dataP = &(stat->texts[0]);
 	statBox.textCount = stat->currentMsgCount;
@@ -131,8 +131,8 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 	//inputString.push_back('w');
 
 	UIBox paramBox{};
-	paramBox.pos = glm::vec2(0.02f, 0.02f);
-	paramBox.size = glm::vec2(0.9f, 0.9f);
+	paramBox.pos = glm::vec2(0.6f, 0.8f);
+	paramBox.scale = glm::vec2(0.35f, 1.0f);
 	paramBox.colour = glm::vec3(1.0f, 1.0f, 1.0f);
 	paramBox.dataP = &(texts[8]);
 	paramBox.textCount = 6;
@@ -145,21 +145,21 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 	paramText.dataP = &strings[2];
 	strings[2] = "Timestep:";
 	texts[8] = paramText;
-	paramText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_DOUBLE;
+	paramText.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_DOUBLE;
 	paramText.dataP = &params.dt;
 	texts[9] = paramText;
 	paramText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_TRUE | UI_DATA_STRING;
 	paramText.dataP = &strings[3];
 	strings[3] = "Mesh:";
 	texts[10] = paramText;
-	paramText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_BOOL;
+	paramText.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_BOOL;
 	paramText.dataP = &params.mesh;
 	texts[11] = paramText;
 	paramText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_TRUE | UI_DATA_STRING;
 	paramText.dataP = &strings[4];
 	strings[4] = "Pause:";
 	texts[12] = paramText;
-	paramText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_BOOL;
+	paramText.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_BOOL;
 	paramText.dataP = &params.pause;
 	texts[13] = paramText;
 
@@ -335,8 +335,21 @@ void PlayerObject::processCommand() {
 
 	bool success = true;
 
-	if (str.substr(0, 5) == "/mesh") {
-		params.mesh = !params.mesh;
+	if (str.substr(0, 7) == "/toggle") {
+		if (str.length() > 8) {
+			if (str.substr(8, 2) == "-m") {
+				params.mesh = !params.mesh;
+			}
+			else if (str.substr(8, 2) == "-l") {
+				params.satLines = !params.satLines;
+			}
+			else {
+				success = false;
+			}
+		}
+		else {
+			success = false;
+		}
 	}
 	else if (str.substr(0, 6) == "/pause") {
 		params.pause = !params.pause;
@@ -360,12 +373,27 @@ void PlayerObject::processCommand() {
 		iss >> params.dt;
 		stat->addMessage(MSG_LEVEL_USER, "Set Timestep to " + iss.str());
 	}
+	else if (str.substr(0, 6) == "/clear") {
+		if (str.length() > 7) {
+			if (str.substr(7, 2) == "-l") {
+				params.clearSatLines = true;
+			}
+			else {
+				success = false;
+			}
+		}
+		else {
+			success = false;
+		}
+	}
 	else {
 		success = false;
-		stat->addMessage(MSG_LEVEL_USER, "Invalid Command");
 	}
 	if (success) {
 		inputString.clear();
+	}
+	else {
+		stat->addMessage(MSG_LEVEL_USER, "Invalid Command");
 	}
 }
 

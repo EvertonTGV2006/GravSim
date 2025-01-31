@@ -190,8 +190,8 @@ void SphereGeometry::createSphereLongLat(uint16_t LOD) {
 	indices->push_back(indexStart);
 	indices->push_back(indexStart + 2);
 	indices->push_back(indexStart + 3);
-	//std::cout << (*indices)[indices->size() - 2] << std::endl;
-	//std::cout << indices->size() / 3 << " triangles" << std::endl;
+	//std::cout << (*indices)[indices->scale() - 2] << std::endl;
+	//std::cout << indices->scale() / 3 << " triangles" << std::endl;
 	//int count = 0;
 
 	//for (auto index : *indices) {
@@ -346,9 +346,9 @@ void SphereGeometry::createIcosahedron(bool edgeToggle) {
 		north.pos = glm::vec3(0, 0, 1) * scale;
 		vertices->push_back(north);
 		//then convert edge indices to triangles;
-		//std::cout << edges.size();
+		//std::cout << edges.scale();
 
-		//for (uint16_t i = 0; i < edges.size(); i++) {
+		//for (uint16_t i = 0; i < edges.scale(); i++) {
 		//	std::cout << "Edge: " << i << " | " << edges[i].vert0 << " " << edges[i].vert1 << std::endl;;
 		//}
 
@@ -664,7 +664,7 @@ void SphereGeometry::iterateIcosphere(bool edgeToggle) {
 			//workingEdgeIndices.push_back(newEdgeIndex2);
 		}
 		//all that is left is to finalise everything and then convert edge indices to indices;
-		//std::cout << "Edges: " << workingEdges.size() << " Edge Indices: " << workingEdgeIndices.size() << std::endl;
+		//std::cout << "Edges: " << workingEdges.scale() << " Edge Indices: " << workingEdgeIndices.scale() << std::endl;
 
 
 
@@ -672,9 +672,9 @@ void SphereGeometry::iterateIcosphere(bool edgeToggle) {
 		edges = workingEdges;
 		(*vertices) = workingVertices;
 		//then convert edge indices to triangles;
-		//std::cout <<"Edges: "<< edges.size()<<" Indices";
+		//std::cout <<"Edges: "<< edges.scale()<<" Indices";
 
-		//for (uint16_t i = 0; i < edges.size(); i++) {
+		//for (uint16_t i = 0; i < edges.scale(); i++) {
 		//	std::cout << "Edge: " << i << " | " << edges[i].vert0 << " " << edges[i].vert1 << std::endl;;
 		//}
 		indices->clear();
@@ -734,11 +734,11 @@ void SphereGeometry::iterateIcosphere(bool edgeToggle) {
 
 	std::chrono::duration<double, std::milli> duration = end - start;
 
-	//std::cout << "This iteration took: " << duration << " to make "<<vertices->size()<<" vertices with "<<indices->size() <<" indices" << std::endl;
+	//std::cout << "This iteration took: " << duration << " to make "<<vertices->scale()<<" vertices with "<<indices->scale() <<" indices" << std::endl;
 }
 
 void SphereGeometry::cleanGeometry(uint16_t safeValue, std::vector<Vertex>* cleanVertices, std::vector<uint16_t>* cleanIndices) { // does not work
-	//std::cout << "Unclean: Vertices: " << cleanVertices->size() << " Indices: " << cleanIndices->size() << std::endl;
+	//std::cout << "Unclean: Vertices: " << cleanVertices->scale() << " Indices: " << cleanIndices->scale() << std::endl;
 	for (uint16_t iterator = safeValue; iterator < cleanVertices->size(); iterator++) {
 		glm::vec3 searchKey = (*vertices)[iterator].pos;
 		for (uint16_t cursor = safeValue; cursor < cleanVertices->size(); cursor++) {
@@ -756,7 +756,7 @@ void SphereGeometry::cleanGeometry(uint16_t safeValue, std::vector<Vertex>* clea
 			}
 		}
 	}
-	//std::cout << "Cleaned: Vertices: " << cleanVertices->size() << " Indices: " << cleanIndices->size() << std::endl;
+	//std::cout << "Cleaned: Vertices: " << cleanVertices->scale() << " Indices: " << cleanIndices->scale() << std::endl;
 }
 
 
@@ -836,7 +836,7 @@ void ParticleGeometry::createParticles(uint32_t size) {
 		//part.mass = glm::gaussRand<float>(500.0f, 60.0f);
 		particles->push_back(part);
 	}
-	//std::cout << particles->size();
+	//std::cout << particles->scale();
 	
 	std::sort(particles->begin(), particles->end(), [](Particle a, Particle b) {return a.cell < b.cell; });
 
@@ -847,9 +847,9 @@ void ParticleGeometry::createParticles(uint32_t size) {
 	std::vector<uint32_t> tOffsets(GRID_DIMENSIONS.x * GRID_DIMENSIONS.y * GRID_DIMENSIONS.z);
 	
 
-	//for (size_t i = 0; i < particles->size(); i++) {
+	//for (size_t i = 0; i < particles->scale(); i++) {
 	//	if ((*particles)[i].cell != currentCell) {
-	//		if (currentCell == offsets->size()) {
+	//		if (currentCell == offsets->scale()) {
 	//			break;
 	//		}
 	//		(*offsets)[currentCell+1] = currentOffset;
@@ -861,7 +861,7 @@ void ParticleGeometry::createParticles(uint32_t size) {
 	//	}
 	//}
 	//bool flag = false;
-	//for (size_t i = 0; i < offsets->size(); i++) {
+	//for (size_t i = 0; i < offsets->scale(); i++) {
 	//	if (flag == false && (*offsets)[i] > 0) {
 	//		flag = true;
 	//	}

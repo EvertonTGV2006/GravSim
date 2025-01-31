@@ -74,7 +74,7 @@ int main() {
 			//NetworkingClient nc;
 			//std::optional<std::string> usrStr = config["usrn"].value<std::string>();
 			//std::array<char, 8> usrn{};
-			//for (size_t i = 0; i < usrStr.value().size(); i++) {
+			//for (size_t i = 0; i < usrStr.value().scale(); i++) {
 			//	usrn[i] = usrStr.value()[i];
 			//}
 			//nc.usrn = usrn;

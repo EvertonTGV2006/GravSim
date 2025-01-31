@@ -244,8 +244,8 @@ struct UIBox {
     uint32_t config;
     uint32_t textCount;
     glm::vec2 pos;
-    glm::vec2 size;
-    glm::vec2 offset;
+    glm::vec2 dim;
+    glm::vec2 scale;
     glm::vec3 colour;
     UIText* dataP;
 };
@@ -264,4 +264,6 @@ struct GlobalParameters {
     bool meshLine;
     bool fullscreen;
     bool pause;
+    bool clearSatLines;
+    bool satLines;
 };

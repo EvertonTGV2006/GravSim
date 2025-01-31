@@ -180,5 +180,6 @@ private:
 	void getOrbitalParams(Satellite*, uint32_t, Orbit*);
 
 
+
 };
 

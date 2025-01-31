@@ -16231,7 +16231,7 @@ TOML_ANON_NAMESPACE_START
 		if (!file.is_open())
 			TOML_PARSE_FILE_ERROR("File could not be opened for reading", file_path_str);
 
-		// get size
+		// get scale
 		const auto file_size = file.tellg();
 		if (file_size == -1)
 			TOML_PARSE_FILE_ERROR("Could not determine file size", file_path_str);

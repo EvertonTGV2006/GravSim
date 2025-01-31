@@ -709,6 +709,13 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 	}
 	lineFrame = (lineFrame + 1) % FRAMES_PER_LINE;
 
+
+	if (params->clearSatLines) {
+		lineCursor = 0;
+		lineSegments = 0;
+		params->clearSatLines = false;
+	}
+
 }
 void SatelliteEngine::simulateSatsRaw(uint32_t frameIndex, double dt) {
 

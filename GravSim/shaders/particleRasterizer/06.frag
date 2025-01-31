@@ -79,7 +79,7 @@ void main() {
     if(normalize(fragNormal).z > 0.999999f){
         outColour = vec4(1, 1, 1, 1);
     }
-    if(mod(pos.z, 5e6) < 1e5){
+    if(mod(pos.z, 2e6) < 2e5){
         outColour = vec4(0, 0, 0, 1.0);
     }
     

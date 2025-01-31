@@ -90,19 +90,6 @@ void main() {
         fragColor = constants.model[0].yzw;
     }
 
-    fragColor = normalize(baseColour.xyz);
-    vec3 testVec = normalize(baseColour.xyz);
-    if(testVec.z > 0.999999f){
-        fragColor = vec3(1,1,1);
-    }
-    float zCalc = mod(inPosition.z,5e6);
-    float thresh = 1e5;
-    if(zCalc < thresh){
-        fragColor = vec3(1, 0, 0);
-    }
-
-
-
 
     //vec3 Color = {1.0f, 1.0f, 1.0f};
     //float mass = inVelocity.w;

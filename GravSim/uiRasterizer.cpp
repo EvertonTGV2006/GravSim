@@ -611,7 +611,7 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 
 
 
-	//memcpy(uniformsMapped[frameIndex], str.data(), sizeof(str[0]) * str.size());
+	//memcpy(uniformsMapped[frameIndex], str.data(), sizeof(str[0]) * str.scale());
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[frameIndex], 0, nullptr);
@@ -693,30 +693,30 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 		//for (uint32_t j = 0; j < workingBox.textCount; j++) {
 		//	workingText = workingBox.dataP + j;
 		//	populateCharVector(workingText, &charCount);
-		//	if ((blockConfigs[blockConfigs.size() - 1] & UI_NEWLINE_MASK) == UI_NEWLINE_TRUE) {
+		//	if ((blockConfigs[blockConfigs.scale() - 1] & UI_NEWLINE_MASK) == UI_NEWLINE_TRUE) {
 		//		blockConfigs.push_back(workingText->config);
 		//		blockCounts.push_back(charCount);
 		//		blockLengths.push_back(1);
 		//	}
-		//	else if ((blockConfigs[blockConfigs.size() - 1] & UI_ALIGNMENT_H_MASK) != (workingText->config & UI_ALIGNMENT_H_MASK)) {
+		//	else if ((blockConfigs[blockConfigs.scale() - 1] & UI_ALIGNMENT_H_MASK) != (workingText->config & UI_ALIGNMENT_H_MASK)) {
 		//		blockConfigs.push_back(workingText->config);
 		//		blockCounts.push_back(charCount);
 		//		blockLengths.push_back(1);
 		//	}
-		//	else if ((blockConfigs[blockConfigs.size() - 1] & UI_ALIGNMENT_V_MASK) != (workingText->config & UI_ALIGNMENT_V_MASK)) {
+		//	else if ((blockConfigs[blockConfigs.scale() - 1] & UI_ALIGNMENT_V_MASK) != (workingText->config & UI_ALIGNMENT_V_MASK)) {
 		//		blockConfigs.push_back(workingText->config);
 		//		blockConfigs.push_back(charCount);
 		//		blockLengths.push_back(1);
 		//	}
 		//	else {
-		//		blockCounts[blockCounts.size() - 1] += charCount;
-		//		blockLengths[blockLengths.size() - 1] += 1;
-		//		blockConfigs[blockConfigs.size() - 1] = workingText->config;
+		//		blockCounts[blockCounts.scale() - 1] += charCount;
+		//		blockLengths[blockLengths.scale() - 1] += 1;
+		//		blockConfigs[blockConfigs.scale() - 1] = workingText->config;
 		//	}
 		//}
 		//uint32_t blockIndex = 0;
 		//uint32_t newlineCount = 0;
-		//for (uint32_t j = 0; j < blockConfigs.size(); j++) {
+		//for (uint32_t j = 0; j < blockConfigs.scale(); j++) {
 		//	for (uint32_t k = 0; k < blockLengths[j]; k++) {
 		//		switch (blockConfigs[j] & UI_ALIGNMENT_H_MASK) {
 		//		case UI_ALIGNMENT_H_L:
@@ -875,12 +875,12 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 				throw std::runtime_error("UI_ALIGNENT_V fall through");
 			}
 			
-			blockBoxCoords = glm::vec2(px - (texAdvance * dx), py - (charDimensions.y * dy));
-			blockScreenCoords = glm::vec2(workingBox->pos.x + (blockBoxCoords.x * workingBox->size.x), workingBox->pos.y + (blockBoxCoords.y * workingBox->size.y));
+			//blockBoxCoords = glm::vec2(px * workingBox->scale.x - (texAdvance * dx), py * workingBox->scale.y - (charDimensions.y * dy));
+			//blockScreenCoords = glm::vec2(workingBox->pos.x + (blockBoxCoords.x), workingBox->pos.y + (blockBoxCoords.y));
 			pc.charDimensions = charDimensions;
 			pc.screenPosition = blockScreenCoords;
 			pc.renderStage = 3;
-			pc.texAdvance = texAdvance*0.9f;//0.9f makes text on the right align correctly, as to why I have no idea;
+			pc.texAdvance = texAdvance;	
 			pc.texDimensions = glm::vec2(1.0f / charCount, 1.0f);
 			pc.instanceOffset = charIndex + boxCountc[i];
 			pc.inColour = glm::vec4(workingText->colour.x, workingText->colour.y, workingText->colour.z, 0.0f);
@@ -910,10 +910,10 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 
 
 
-	//vkCmdDraw(commandBuffer, vertices.size(), 11, 0, 0);
+	//vkCmdDraw(commandBuffer, vertices.scale(), 11, 0, 0);
 
-	//std::vector<glm::uvec4> charVecData(charData.size()/16);
-	//memcpy(charVecData.data(), charData.data(), charData.size() * sizeof(char));
+	//std::vector<glm::uvec4> charVecData(charData.scale()/16);
+	//memcpy(charVecData.data(), charData.data(), charData.scale() * sizeof(char));
 	//for (uint32_t i = 0; i < charCounter; i++) {
 	//	uint32_t uboVecIndex = i >> 4;
 	//	uint32_t uboValIndex = (i >> 2) & 3;
