@@ -53,6 +53,7 @@ enum UIOptions {
     UI_DATA_STRING = 4 << 4,
     UI_DATA_DOUBLE = 5 << 4,
     UI_DATA_BOOL = 6 << 4,
+    UI_DATA_DOUBLE_SECONDS = 7 << 4,
 
     //n
     UI_NEWLINE_MASK = 3 << 8,
@@ -260,6 +261,7 @@ struct SatExternalMembers {
 };
 struct GlobalParameters {
     double dt;
+    double elapsedTime;
     bool mesh;
     bool meshLine;
     bool fullscreen;

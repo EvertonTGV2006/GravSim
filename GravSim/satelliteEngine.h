@@ -136,7 +136,7 @@ private:
 	const uint32_t FRAMES_PER_LINE = 10;
 	const uint32_t WRITE_FRAME = 0;
 
-	std::array<Satellite, SATELLITE_COUNT> satData;
+	std::array<Satellite, SATELLITE_COUNT>* satData;
 
 
 

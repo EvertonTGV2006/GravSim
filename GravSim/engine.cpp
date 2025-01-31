@@ -529,11 +529,12 @@ void VulkanEngine::executeCompute() {
     std::vector<VkSemaphoreSubmitInfo> signalInfos = {signalInfo1, signalInfo2}; //rf, gc
     if (!firstCompute) {
         waitInfos = { waitInfo1, waitInfo2 };
+        if (firstComputeCycle) {
+            waitInfos = { waitInfo1 };
+        }
     }
     firstCompute = false;
-    if (firstComputeCycle) {
-        waitInfos = { waitInfo1 };
-    }
+
 
     //for compute
     //wait: cc[-1], gc //cc ensures no compute overlap //gc ensures no compute runaway /desync with graphics.
@@ -553,11 +554,12 @@ void VulkanEngine::executeCompute() {
 
     if (vkQueueSubmit2(computeQueue, 1, &submitInfo2, cfFences[computeIndex]) != VK_SUCCESS) { throw std::runtime_error("Failed to submit draw command buffer"); }
 
-
-    computeIndex = (computeIndex + 1) % FRAMES_IN_FLIGHT;
     if (computeIndex == FRAMES_IN_FLIGHT - 1) {
         firstComputeCycle = false;
     }
+
+    computeIndex = (computeIndex + 1) % FRAMES_IN_FLIGHT;
+
 }
 
 

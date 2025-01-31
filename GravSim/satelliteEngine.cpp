@@ -19,6 +19,7 @@ void SatelliteEngine::initSatEngine_A(SatInit details) {
 	createBuffers();
 
 	satUBO = new SatPlanetBuffer;
+	satData = new std::array<Satellite, SATELLITE_COUNT>;
 }
 void SatelliteEngine::initSatEngine_B() {
 	createDescriptorSets();
@@ -500,16 +501,16 @@ void SatelliteEngine::initBufferData_B(VkCommandBuffer transferCommandBuffer, Vk
 
 	//NEW SATS
 	//4 sets of 16 velocities in LEO
-	createInitialSatellitesBase(&satData[0], 4, 16, 200e3f, 1.0f, 0.017f, 0.0f, 1);
+	createInitialSatellitesBase(&(*satData)[0], 4, 16, 200e3f, 1.0f, 0.017f, 0.0f, 1);
 
-	createInitialSatellitesOffset(&satData[64], 6, 32, 400e3, 1.35, 1.5, 0.6, 0);
+	createInitialSatellitesOffset(&(*satData)[64], 6, 32, 400e3, 1.35, 1.5, 0.6, 0);
 
-	createInitialSatellitesOffset(&satData[256], 60, 64, 1e4, 1.35, 1.6, 0.7, 0);
+	createInitialSatellitesOffset(&(*satData)[256], 60, 64, 1e4, 1.35, 1.6, 0.7, 0);
 
 	Orbit orb{};
-	getOrbitalParams(&satData[1], 0, &orb);
+	getOrbitalParams(&(*satData)[1], 0, &orb);
 
-	memcpy(data, satData.data(), satData.size() * sizeof(Satellite));
+	memcpy(data, satData->data(), satData->size() * sizeof(Satellite));
 
 	VkFence transferFence;
 	VkFenceCreateInfo fenceInfo{};
@@ -533,7 +534,7 @@ void SatelliteEngine::initBufferData_B(VkCommandBuffer transferCommandBuffer, Vk
 	VkBufferCopy cpy{};
 	cpy.srcOffset = 0;
 	cpy.dstOffset = 0;
-	cpy.size = satData.size() * sizeof(Satellite);
+	cpy.size = satData->size() * sizeof(Satellite);
 
 	if (vkBeginCommandBuffer(transferCommandBuffer, &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to begin transfer command buffer"); }
 	for (uint32_t i = 0; i < satBuffers.size(); i++) { vkCmdCopyBuffer(transferCommandBuffer, stagingBuffer, satBuffers[i], 1, &cpy); }
@@ -610,6 +611,7 @@ void SatelliteEngine::initBufferData_B(VkCommandBuffer transferCommandBuffer, Vk
 
 	vkUnmapMemory(device, memory.memory);
 
+	delete indexData;
 
 	vkDestroyFence(device, transferFence, nullptr);
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
@@ -622,6 +624,7 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 	dt *= 1e1;
 
 	dt = params->dt;
+	
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
 	
@@ -665,6 +668,7 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 		satPC.planetIndex = i;
 		satPC.elapsedTime = elapsedTime;
 		elapsedTime += dt;
+		params->elapsedTime += dt;
 
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 1, &descriptorSets[2 * frameIndex + i % 2], 0, nullptr);
 
@@ -955,11 +959,11 @@ void SatelliteEngine::satelliteTransfer(VkCommandBuffer transferCommandBuffer, V
 	VkBufferCopy cpy{};
 	cpy.srcOffset = 0;
 	cpy.dstOffset = 0;
-	cpy.size = satData.size() * sizeof(Satellite);
+	cpy.size = satData->size() * sizeof(Satellite);
 	if (vkBeginCommandBuffer(transferCommandBuffer, &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to begin transfer command buffer"); }
 
 	if (direction) {
-		memcpy(satTransferMapped, satData.data(), satData.size() * sizeof(Satellite));
+		memcpy(satTransferMapped, satData->data(), satData->size() * sizeof(Satellite));
 		for (uint32_t i = 0; i < satBuffers.size(); i++) {
 			vkCmdCopyBuffer(transferCommandBuffer, satTransferBuffer, satBuffers[i], 1, &cpy);
 		}
@@ -973,7 +977,7 @@ void SatelliteEngine::satelliteTransfer(VkCommandBuffer transferCommandBuffer, V
 	if (vkQueueSubmit(transferQueue, 1, &submitInfo, transferFence) != VK_SUCCESS) { throw std::runtime_error("Failed to submit transfer command buffer"); }
 	vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
 	if (!direction) {
-		memcpy(satData.data(), satTransferMapped, satData.size() * sizeof(Satellite));
+		memcpy(satData->data(), satTransferMapped, satData->size() * sizeof(Satellite));
 	}
 
 
@@ -986,6 +990,7 @@ void SatelliteEngine::satelliteTransfer(VkCommandBuffer transferCommandBuffer, V
 
 void SatelliteEngine::cleanup() {
 	delete satUBO;
+	delete satData;
 
 	vkUnmapMemory(device, planetHostMemory.memory);
 	vkUnmapMemory(device, satTransferMemory.memory);

@@ -131,8 +131,8 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 	//inputString.push_back('w');
 
 	UIBox paramBox{};
-	paramBox.pos = glm::vec2(0.6f, 0.8f);
-	paramBox.scale = glm::vec2(0.35f, 1.0f);
+	paramBox.pos = glm::vec2(0.2f, 0.8f);
+	paramBox.scale = glm::vec2(0.75f, 1.0f);
 	paramBox.colour = glm::vec3(1.0f, 1.0f, 1.0f);
 	paramBox.dataP = &(texts[8]);
 	paramBox.textCount = 6;
@@ -150,18 +150,25 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 	texts[9] = paramText;
 	paramText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_TRUE | UI_DATA_STRING;
 	paramText.dataP = &strings[3];
-	strings[3] = "Mesh:";
+	strings[3] = "Elasped Time:";
 	texts[10] = paramText;
-	paramText.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_BOOL;
-	paramText.dataP = &params.mesh;
+	paramText.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_DOUBLE_SECONDS;
+	paramText.dataP = &params.elapsedTime;
 	texts[11] = paramText;
 	paramText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_TRUE | UI_DATA_STRING;
 	paramText.dataP = &strings[4];
-	strings[4] = "Pause:";
+	strings[4] = "Mesh:";
 	texts[12] = paramText;
 	paramText.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_BOOL;
-	paramText.dataP = &params.pause;
+	paramText.dataP = &params.mesh;
 	texts[13] = paramText;
+	paramText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_TRUE | UI_DATA_STRING;
+	paramText.dataP = &strings[5];
+	strings[5] = "Pause:";
+	texts[14] = paramText;
+	paramText.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_BOOL;
+	paramText.dataP = &params.pause;
+	texts[15] = paramText;
 
 	boxes.push_back(paramBox);
 
@@ -385,6 +392,9 @@ void PlayerObject::processCommand() {
 		else {
 			success = false;
 		}
+	}
+	else if (str.substr(0, 5) == "/kill") {
+		glfwSetWindowShouldClose(winmanager->window, GLFW_TRUE);
 	}
 	else {
 		success = false;

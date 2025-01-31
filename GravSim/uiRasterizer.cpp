@@ -875,8 +875,8 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 				throw std::runtime_error("UI_ALIGNENT_V fall through");
 			}
 			
-			//blockBoxCoords = glm::vec2(px * workingBox->scale.x - (texAdvance * dx), py * workingBox->scale.y - (charDimensions.y * dy));
-			//blockScreenCoords = glm::vec2(workingBox->pos.x + (blockBoxCoords.x), workingBox->pos.y + (blockBoxCoords.y));
+			blockBoxCoords = glm::vec2(px * workingBox->scale.x - (texAdvance * dx), py * workingBox->scale.y - (charDimensions.y * dy));
+			blockScreenCoords = glm::vec2(workingBox->pos.x + (blockBoxCoords.x), workingBox->pos.y + (blockBoxCoords.y));
 			pc.charDimensions = charDimensions;
 			pc.screenPosition = blockScreenCoords;
 			pc.renderStage = 3;
@@ -941,6 +941,20 @@ void UIRasterizer::populateCharVector(UIText* text,uint32_t* charCounts) {
 
 	std::ostringstream oss;
 	std::string str;
+	double time = 0;
+	uint32_t tInt = 0;
+
+	uint32_t secDur = 1;
+	uint32_t minDur = 60;
+	uint32_t hr = 60 * minDur;
+	uint32_t day = 24 * hr;
+	uint32_t year = 365 * day;
+
+	uint32_t yC = 0;
+	uint32_t dC = 0;
+	uint32_t hC = 0;
+	uint32_t mC = 0;
+	uint32_t sC = 0;
 
 	switch (tConfig) {
 	case UI_DATA_UINT32_T:
@@ -999,6 +1013,27 @@ void UIRasterizer::populateCharVector(UIText* text,uint32_t* charCounts) {
 			charVec.push_back('e');
 			*charCounts = 5;
 		}
+		break;
+	case UI_DATA_DOUBLE_SECONDS:
+		time = (*reinterpret_cast<double*>(text->dataP));
+		tInt = uint32_t(time);
+		yC = tInt / year;
+		dC = tInt % year / day;
+		hC = tInt % year % day / hr;
+		mC = tInt % year % day % hr / minDur;
+		sC = tInt % year % day % hr % minDur;
+		oss << yC << "Y " << dC << "D ";
+		if (hC < 10) { oss << '0'; }
+		oss << hC << ":";
+		if (mC < 10) { oss << '0'; }
+		oss << mC << ":";
+		if (sC < 10) { oss << "0"; }
+		oss << sC;
+		str = oss.str();
+		for (uint32_t i = 0; i < str.size(); i++) {
+			charVec.push_back(str[i]);
+		}
+		*charCounts = static_cast<uint32_t>(str.size());
 		break;
 	default:
 		throw std::runtime_error("Unsupported text data type");
