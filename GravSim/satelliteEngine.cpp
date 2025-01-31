@@ -12,7 +12,7 @@ void SatelliteEngine::initSatEngine_A(SatInit details) {
 
 	planets = details.planets;
 
-	settings = details.settings;
+	params = details.params;
 
 	memcpy(shaderCode.data(), details.shaderCode.data(), shaderCode.size() * sizeof(shaderCode[0]));
 
@@ -85,6 +85,18 @@ void SatelliteEngine::createBuffers() {
 	vkGetBufferMemoryRequirements(device, satTransferBuffer, &satTransferRequirements.requirements);
 	satTransferSize = bufferInfo.size;
 
+	//so if we have a mesh with MESH_STEPS_MAJOR * MESH_STEPS_MAJOR
+	//we have rectangle grid MESH_STEPS_MAJOR - 1 ** 2
+	//so that * 2 tri
+	// * 3 indices
+	// * sizeof(index) == sizeof(uint16_t)
+	bufferInfo.size = (fieldMeshResMajor - 1) * (fieldMeshResMajor - 1) * 2 * 3 * sizeof(uint32_t);
+	bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+	if (vkCreateBuffer(device, &bufferInfo, nullptr, &fieldMeshIndexBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create field mesh buffer"); }
+	vkGetBufferMemoryRequirements(device, fieldMeshIndexBuffer, &fieldMeshIndexRequirements.requirements);
+
+
+
 	lineRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	satRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	planetHostRequirements.flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
@@ -93,6 +105,7 @@ void SatelliteEngine::createBuffers() {
 	planetRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	satInfoRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	satTransferRequirements.flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	fieldMeshIndexRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 }
 
 void SatelliteEngine::createDescriptorSets() {
@@ -297,8 +310,9 @@ void SatelliteEngine::createPipeline() {
 	specConstantsData.MESH_STEPS_MINOR = fieldMeshResMinor;
 	specConstantsData.SATELLITES_PER_SHADER = SATELLITES_PER_SHADER;
 	specConstantsData.STEPS_PER_SHADER = STEPS_PER_SHADER;
+	specConstantsData.MESH_PER_SHADER = MESH_PER_SHADER;
 
-	std::array<VkSpecializationMapEntry, 9> specEntries{};
+	std::array<VkSpecializationMapEntry, 10> specEntries{};
 	specEntries[0].constantID = 0;
 	specEntries[0].offset = offsetof(SatSpecConstants, G);
 	specEntries[0].size = sizeof(specConstantsData.G);
@@ -326,6 +340,9 @@ void SatelliteEngine::createPipeline() {
 	specEntries[8].constantID = 8;
 	specEntries[8].offset = offsetof(SatSpecConstants, STEPS_PER_SHADER);
 	specEntries[8].size = sizeof(specConstantsData.STEPS_PER_SHADER);
+	specEntries[9].constantID = 9;
+	specEntries[9].offset = offsetof(SatSpecConstants, MESH_PER_SHADER);
+	specEntries[9].size = sizeof(specConstantsData.MESH_PER_SHADER);
 
 	VkSpecializationInfo specInfo{};
 	specInfo.mapEntryCount = static_cast<uint32_t>(specEntries.size());
@@ -395,10 +412,11 @@ void SatelliteEngine::getMemoryRequirements(std::vector<MemoryDetails>* mem, std
 	mem->push_back(planetRequirements);
 	mem->push_back(satInfoRequirements);
 	mem->push_back(satTransferRequirements);
-	count->push_back(8);
+	mem->push_back(fieldMeshIndexRequirements);
+	count->push_back(9);
 }
 void SatelliteEngine::initMemory(MemInit* detPtr) {
-	std::array<MemInit, 8> details{};
+	std::array<MemInit, 9> details{};
 	memcpy(details.data(), detPtr, details.size() * sizeof(MemInit));
 
 	lineMemory = details[0];
@@ -409,6 +427,7 @@ void SatelliteEngine::initMemory(MemInit* detPtr) {
 	planetMemory = details[5];
 	satInfoMemory = details[6];
 	satTransferMemory = details[7];
+	fieldMeshIndexMemory = details[8];
 
 	vkBindBufferMemory(device, lineBuffer, lineMemory.memory, lineMemory.offset);
 
@@ -438,12 +457,14 @@ void SatelliteEngine::initMemory(MemInit* detPtr) {
 
 	satTransferMapped = reinterpret_cast<char*>(data);
 
+	vkBindBufferMemory(device, fieldMeshIndexBuffer, fieldMeshIndexMemory.memory, fieldMeshIndexMemory.offset);
+
 }
 void SatelliteEngine::initBufferData_A(MemoryDetails* stagingRequiements) {
 	VkBufferCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	createInfo.size = std::max(satRequirements.requirements.size, satInfoRequirements.requirements.size);
+	createInfo.size = std::max(std::max(satRequirements.requirements.size, satInfoRequirements.requirements.size), fieldMeshIndexRequirements.requirements.size);
 	createInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 
 	if (vkCreateBuffer(device, &createInfo, nullptr, &stagingBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create satellite staging buffer"); }
@@ -537,6 +558,55 @@ void SatelliteEngine::initBufferData_B(VkCommandBuffer transferCommandBuffer, Vk
 	if (vkEndCommandBuffer(transferCommandBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to end transfer command buffer"); }
 	if (vkQueueSubmit(transferQueue, 1, &submitInfo, transferFence) != VK_SUCCESS) { throw std::runtime_error("Failed to submit transfer command buffer"); }
 	vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
+	vkResetFences(device, 1, &transferFence);
+	vkResetCommandBuffer(transferCommandBuffer, 0);
+
+	//index buffer;
+	uint32_t writeIndex = 0;
+	const uint32_t totalSize = (fieldMeshResMajor - 1) * (fieldMeshResMajor - 1) * 2 * 3;
+	std::array<uint32_t, totalSize>* indexData = new std::array<uint32_t, totalSize>;
+	for (uint32_t i = 0; i < fieldMeshResMajor - 1; i++) {
+		for (uint32_t j = 0; j < fieldMeshResMajor - 1; j++) {
+			/*
+			A ----- B
+			| \		|
+			|	\	|
+			|	  \	|
+			C ----- D
+			
+			C = (i, j)
+			A = (i + 1, j);
+			B = (i + 1, j + 1);
+			D = (i, j + 1)
+			
+			*/
+			//DAC
+			(*indexData)[writeIndex] = i * fieldMeshResMajor + (j + 1); //D
+			writeIndex++;
+			(*indexData)[writeIndex] = (i + 1) * fieldMeshResMajor + j; //A
+			writeIndex++;
+			(*indexData)[writeIndex] = i * fieldMeshResMajor + j; //C
+			writeIndex++;
+
+			//DBA
+
+			(*indexData)[writeIndex] = i * fieldMeshResMajor + (j + 1); //D
+			writeIndex++;
+			(*indexData)[writeIndex] = (i + 1) * fieldMeshResMajor + (j + 1); //B
+			writeIndex++;
+			(*indexData)[writeIndex] = (i + 1) * fieldMeshResMajor + j; //A
+			writeIndex++;
+		}
+	}
+	memcpy(data, indexData->data(), indexData->size() * sizeof(uint32_t));
+
+	cpy.size = indexData->size() * sizeof(uint32_t);
+
+	if (vkBeginCommandBuffer(transferCommandBuffer, &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to begin transfer command buffer"); }
+	vkCmdCopyBuffer(transferCommandBuffer, stagingBuffer, fieldMeshIndexBuffer, 1, &cpy);
+	if (vkEndCommandBuffer(transferCommandBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to end transfer command buffer"); }
+	if (vkQueueSubmit(transferQueue, 1, &submitInfo, transferFence) != VK_SUCCESS) { throw std::runtime_error("Failed to submit transfer command buffer"); }
+	vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
 
 	vkUnmapMemory(device, memory.memory);
 
@@ -550,6 +620,8 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 
 	dt = 1.0/400;
 	dt *= 1e1;
+
+	dt = params->dt;
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
 	
@@ -613,9 +685,9 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 
 		vkCmdDispatch(commandBuffer, shaderDispatches, 1, 1);
 
-		if (settings->renderFieldMesh) {
+		if (params->mesh) {
 			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, meshPipeline);
-			vkCmdDispatch(commandBuffer, fieldMeshResMajor * 2, 1, 1);
+			vkCmdDispatch(commandBuffer, (fieldMeshResMajor * 2)/MESH_PER_SHADER, 1, 1);
 		}
 
 		VkMemoryBarrier mem{};
@@ -678,6 +750,7 @@ SatExternalMembers SatelliteEngine::getSatellitePtrs() {
 	data.lineSegments = &lineSegments;
 	data.lineInfoBuffer = &lineInfoBuffer;
 	data.meshBuffer = &fieldMeshBuffer;
+	data.meshIndexBuffer = &fieldMeshIndexBuffer;
 	return data;
 }
 
@@ -917,6 +990,7 @@ void SatelliteEngine::cleanup() {
 	vkDestroyBuffer(device, planetBuffer, nullptr);
 	vkDestroyBuffer(device, satInfoBuffer, nullptr);
 	vkDestroyBuffer(device, satTransferBuffer, nullptr);
+	vkDestroyBuffer(device, fieldMeshIndexBuffer, nullptr);
 
 
 	vkDestroyPipeline(device, pipeline, nullptr);

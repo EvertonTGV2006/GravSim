@@ -68,14 +68,15 @@ public:
 	double xpos = 0;
 	double ypos = 0;
 
+	int windowxpos = 0;
+	int windowypos = 0;
+
 	float anglez = glm::atan(viewDirection.z / sqrt(viewDirection.x * viewDirection.x + viewDirection.y * viewDirection.y));
 	float anglexy = glm::atan(viewDirection.y / viewDirection.x) - glm::pi<float>() * 0.5f;
 	float scrollScale = 0.1f;
 
 	float xscale = 0.005f;
 	float yscale = 0.005f;
-
-	DrawSettings settings{ true };
 
 	std::atomic_bool timeAccel = false;
 	std::atomic_bool timeStep = true;
@@ -104,6 +105,8 @@ public:
 	static void windowCloseCallback(GLFWwindow*);
 	static void charCallback(GLFWwindow*, uint32_t);
 
+	void processCommand();
+
 	double currentTime = glfwGetTime();;
 	double prevTime = glfwGetTime();
 	float deltaTime = 0;
@@ -125,6 +128,8 @@ public:
 	std::vector<char> inputString;
 	std::atomic_bool commandSubmit;
 	bool shiftModifier;
+
+	GlobalParameters params = { 0.1, true, false, false, false };
 
 
 };

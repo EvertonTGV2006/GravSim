@@ -9,6 +9,7 @@
 
 #include <fstream>
 #include <charconv>
+#include <sstream>
 
 #include "uiRasterizer.h"
 #include "structs.h"
@@ -938,6 +939,8 @@ void UIRasterizer::populateCharVector(UIText* text,uint32_t* charCounts) {
 	uint32_t tConfig = text->config & UI_DATA_MASK;
 	uint32_t endLimit = 0;
 
+	std::ostringstream oss;
+	std::string str;
 
 	switch (tConfig) {
 	case UI_DATA_UINT32_T:
@@ -954,8 +957,12 @@ void UIRasterizer::populateCharVector(UIText* text,uint32_t* charCounts) {
 
 		break;
 	case UI_DATA_FLOAT:
-		charVec.push_back('0');
-		*charCounts = 1;
+		oss << (*reinterpret_cast<float*>(text->dataP));
+		str = oss.str();
+		for (uint32_t i = 0; i < str.size(); i++) {
+			charVec.push_back(str[i]);
+		}
+		*charCounts = static_cast<uint32_t>(str.size());
 		break;
 	case UI_DATA_CHAR_VEC:
 		charVec.resize(charVec.size() + reinterpret_cast<std::vector<char>*>(text->dataP)->size());
@@ -967,6 +974,31 @@ void UIRasterizer::populateCharVector(UIText* text,uint32_t* charCounts) {
 			charVec.push_back((*reinterpret_cast<std::string*>(text->dataP))[i]);
 		}
 		*charCounts = static_cast<uint32_t>(reinterpret_cast<std::string*>(text->dataP)->size());
+		break;
+	case UI_DATA_DOUBLE:
+		oss << (*reinterpret_cast<double*>(text->dataP));
+		str = oss.str();
+		for (uint32_t i = 0; i < str.size(); i++) {
+			charVec.push_back(str[i]);
+		}
+		*charCounts = static_cast<uint32_t>(str.size());
+		break;
+	case UI_DATA_BOOL:
+		if (*reinterpret_cast<bool*>(text->dataP)) {
+			charVec.push_back('T');
+			charVec.push_back('r');
+			charVec.push_back('u');
+			charVec.push_back('e');
+			*charCounts = 4;
+		}
+		else {
+			charVec.push_back('F');
+			charVec.push_back('a');
+			charVec.push_back('l');
+			charVec.push_back('s');
+			charVec.push_back('e');
+			*charCounts = 5;
+		}
 		break;
 	default:
 		throw std::runtime_error("Unsupported text data type");

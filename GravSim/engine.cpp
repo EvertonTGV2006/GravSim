@@ -120,7 +120,7 @@ void VulkanEngine::initEngine() {
     sat.device = device;
     sat.memProperties = memProperties;
     sat.planets = &planets;
-    sat.settings = &player->settings;
+    sat.params = &player->params;
     for (uint16_t i = shaderCounts[shaderCursor]; i < shaderCounts[shaderCursor + 1]; i++) {
         sat.shaderCode.push_back(&shaderCode[i]);
     }
@@ -149,7 +149,7 @@ void VulkanEngine::initEngine() {
     rast.memProperties = memProperties;
     rast.meshes = meshes;
     rast.planets = &planets;
-    rast.settings = &player->settings;
+    rast.params = &player->params;
     for (uint16_t i = shaderCounts[shaderCursor]; i < shaderCounts[shaderCursor + 1]; i++) {
         rast.shaderCode.push_back(&shaderCode[i]);
     }
@@ -236,6 +236,10 @@ void VulkanEngine::startDraw() {
 }
 void VulkanEngine::runGraphics() {
     while (!glfwWindowShouldClose(winmanager.window)) {
+        if (player->commandSubmit) {
+            player->processCommand();
+            player->commandSubmit = false;
+        }
         executeCompute();
         executeGraphics();
     }
@@ -475,7 +479,9 @@ void VulkanEngine::executeCompute() {
             beginInfo.flags = 0;
             if (vkBeginCommandBuffer(cCommandBuffers[computeIndex], &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to start draw recording"); }
 
-            satEngine.simulateSats(cCommandBuffers[computeIndex], computeIndex, 0.01);
+            if (!player->params.pause) {
+                satEngine.simulateSats(cCommandBuffers[computeIndex], computeIndex, 0.01);
+            }
 
             if (vkEndCommandBuffer(cCommandBuffers[computeIndex]) != VK_SUCCESS) { throw std::runtime_error("Failed to record draw"); }
         }
@@ -487,8 +493,10 @@ void VulkanEngine::executeCompute() {
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = 0;
         if (vkBeginCommandBuffer(cCommandBuffers[computeIndex], &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to start draw recording"); }
-
-        satEngine.simulateSats(cCommandBuffers[computeIndex], computeIndex, 0.01);
+        
+        if (!player->params.pause) {
+            satEngine.simulateSats(cCommandBuffers[computeIndex], computeIndex, 0.01);
+        }
 
         if (vkEndCommandBuffer(cCommandBuffers[computeIndex]) != VK_SUCCESS) { throw std::runtime_error("Failed to record draw"); }
     }

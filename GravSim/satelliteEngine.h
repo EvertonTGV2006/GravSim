@@ -6,6 +6,7 @@
 
 
 #include "structs.h"
+#include "player.h"
 
 struct SatInit {
 	VkDevice device;
@@ -13,7 +14,7 @@ struct SatInit {
 
 	VkPhysicalDeviceMemoryProperties memProperties;
 
-	DrawSettings* settings;
+	GlobalParameters* params;
 
 	std::array<Planet, MAX_PLANET_ARRAY_SIZE>* planets;
 
@@ -39,6 +40,7 @@ struct SatSpecConstants {
 	uint32_t MESH_STEPS_MINOR;
 	uint32_t SATELLITES_PER_SHADER;
 	uint32_t STEPS_PER_SHADER;
+	uint32_t MESH_PER_SHADER;
 };
 
 class SatelliteEngine
@@ -70,6 +72,7 @@ public:
 	MemoryDetails planetRequirements{};
 	MemoryDetails satInfoRequirements{};
 	MemoryDetails satTransferRequirements{};
+	MemoryDetails fieldMeshIndexRequirements{};
 
 	SatExternalMembers getSatellitePtrs();
 
@@ -86,7 +89,7 @@ private:
 	VkPipeline meshPipeline;
 	VkPipelineLayout pipelineLayout;
 
-	DrawSettings* settings;
+	GlobalParameters* params;
 	std::array<std::vector <char>*, 3> shaderCode;
 
 	std::array<VkDescriptorSet, FRAMES_IN_FLIGHT * 2> descriptorSets;
@@ -118,8 +121,11 @@ private:
 	MemInit planetMemory;
 
 	VkBuffer fieldMeshBuffer;
+	VkBuffer fieldMeshIndexBuffer;
 	MemInit fieldMeshMemory;
+	MemInit fieldMeshIndexMemory;
 	VkDeviceSize fieldMeshSize;
+	VkDeviceSize fieldMeshIndexSize;
 
 	glm::vec2 fieldMeshCorner1 = glm::vec2(-1e9f, -1e9f);
 	glm::vec2 fieldMeshCorner2 = glm::vec2(1e9f, 1e9f);

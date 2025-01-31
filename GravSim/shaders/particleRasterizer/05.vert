@@ -69,37 +69,10 @@ const uint lineCount = 1024 - 1;
 
 
 void main() {
-    const float velMax = 15;
-    const float velMin = 0;
-    gl_PointSize = 1.0;
-    uint i = gl_InstanceIndex;
 
-    float vertIndex = ((gl_VertexIndex - constants.model[0][0])/ lineCount);
-    uint infoIndex = uint(constants.model[0][1]);
-    LineInfo info = infos[infoIndex];
 
-    float baseColourWeight = (0.5f <= vertIndex && vertIndex <= 1.0f) ? 2.0f * (vertIndex - 0.5f) : 0.0f;
-    float intColourWeight = 1.0f - 2.0f * abs(vertIndex - 0.5f);
-    float finColourWeight = (0.0f <= vertIndex && vertIndex <=0.5f) ? 1.0f - 2.0f * (vertIndex - 0.5f) : 0.0f;
+    
 
-    fragColor = baseColour * baseColourWeight + intColour * intColourWeight + finColour * finColourWeight;
-    //fragColor = vec3(1);
-
-    fragColor = HSVtoRGB(vertIndex * 360.0f, 1.0f, vertIndex * vertIndex);
-    if(constants.model[0][0] > float(LINE_VERTEX_COUNT * SATELLITE_COUNT)){
-        fragColor = constants.model[0].yzw;
-    }
-
-    fragColor = normalize(baseColour.xyz);
-    vec3 testVec = normalize(baseColour.xyz);
-    if(testVec.z > 0.999999f){
-        fragColor = vec3(1,1,1);
-    }
-    float zCalc = mod(inPosition.z,5e6);
-    float thresh = 1e5;
-    if(zCalc < thresh){
-        fragColor = vec3(1, 0, 0);
-    }
 
 
 
@@ -118,11 +91,8 @@ void main() {
     //fragColor = normalize(inVelocity.xyz) + inColor * 0.3;
     fragNormal = (vec4(inPosition.xyz, 0.0)).xyz;
 
-    
+    fragNormal = baseColour.xyz;
     
     fragTexCoord = vec2(0.0f, 0.0f);
     
 }
-
-
-

@@ -42,6 +42,7 @@ layout(constant_id = 5) const uint MESH_STEPS_MAJOR = 16;
 layout(constant_id = 6) const uint MESH_STEPS_MINOR = 8;
 layout(constant_id = 7) const uint SATELLITES_PER_SHADER = 1;
 layout(constant_id = 8) const uint STEPS_PER_SHADER = 1;
+layout(constant_id = 9) const uint MESH_PER_SHADER = 1;
 
 layout(binding = 0) readonly buffer UniformBufferObject{
     Planet planets[MAX_PLANETS_ARRAY_SIZE * COMPUTE_STEPS_PER_FRAME * STEPS_PER_SHADER];

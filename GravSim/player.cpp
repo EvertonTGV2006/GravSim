@@ -126,9 +126,46 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 
 	boxes.push_back(commandBox);
 	boxes.push_back(frameCounterBox);
-	boxes.push_back(statBox);
+	//boxes.push_back(statBox);
 
 	//inputString.push_back('w');
+
+	UIBox paramBox{};
+	paramBox.pos = glm::vec2(0.02f, 0.02f);
+	paramBox.size = glm::vec2(0.9f, 0.9f);
+	paramBox.colour = glm::vec3(1.0f, 1.0f, 1.0f);
+	paramBox.dataP = &(texts[8]);
+	paramBox.textCount = 6;
+
+
+
+	UIText paramText{};
+	paramText.colour = glm::vec3(0.5, 1, 1);
+	paramText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_STRING;
+	paramText.dataP = &strings[2];
+	strings[2] = "Timestep:";
+	texts[8] = paramText;
+	paramText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_DOUBLE;
+	paramText.dataP = &params.dt;
+	texts[9] = paramText;
+	paramText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_TRUE | UI_DATA_STRING;
+	paramText.dataP = &strings[3];
+	strings[3] = "Mesh:";
+	texts[10] = paramText;
+	paramText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_BOOL;
+	paramText.dataP = &params.mesh;
+	texts[11] = paramText;
+	paramText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_TRUE | UI_DATA_STRING;
+	paramText.dataP = &strings[4];
+	strings[4] = "Pause:";
+	texts[12] = paramText;
+	paramText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_BOOL;
+	paramText.dataP = &params.pause;
+	texts[13] = paramText;
+
+	boxes.push_back(paramBox);
+
+	
 }
 
 void PlayerObject::framebufferResizeCallback(GLFWwindow* window, int width, int height){
@@ -268,9 +305,6 @@ void PlayerObject::keyCallback(GLFWwindow* window, int key, int scancode, int ac
 				app->planetIndex = (app->planetIndex) ? app->planetIndex - 1 : MAX_PLANET_ARRAY_SIZE - 1;
 			}
 		}
-		if (key == GLFW_KEY_M) {
-			app->settings.renderFieldMesh = !app->settings.renderFieldMesh;
-		}
 	}
 	
 }
@@ -289,11 +323,51 @@ void PlayerObject::scrollCallback(GLFWwindow* window, double xoffset, double yof
 }
 void PlayerObject::charCallback(GLFWwindow* window, uint32_t code) {
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
-	if (code != 'M' && code != 'm') {
-		app->inputString.push_back(code);
-	}
+
+	app->inputString.push_back(code);
+
 }
 
+void PlayerObject::processCommand() {
+	std::string str;
+	str.resize(inputString.size());
+	memcpy(str.data(), inputString.data(), inputString.size());
+
+	bool success = true;
+
+	if (str.substr(0, 5) == "/mesh") {
+		params.mesh = !params.mesh;
+	}
+	else if (str.substr(0, 6) == "/pause") {
+		params.pause = !params.pause;
+	}
+	else if (str.substr(0, 11) == "/fullscreen") {
+		params.fullscreen = !params.fullscreen;
+		if(params.fullscreen){
+			if (glfwGetWindowMonitor(winmanager->window) == NULL) {
+				glfwGetWindowPos(winmanager->window, &windowxpos, &windowypos);
+				glfwSetWindowMonitor(winmanager->window, glfwGetPrimaryMonitor(), 0, 0, 1920, 1080, GLFW_DONT_CARE);
+			}
+		}
+		else {
+			if (glfwGetWindowMonitor(winmanager->window) != NULL) {
+				glfwSetWindowMonitor(winmanager->window, NULL, windowxpos, windowypos, 800, 600, GLFW_DONT_CARE);
+			}
+		}
+	}
+	else if (str.substr(0, 5) == "/time") {
+		std::stringstream iss(str.substr(6));
+		iss >> params.dt;
+		stat->addMessage(MSG_LEVEL_USER, "Set Timestep to " + iss.str());
+	}
+	else {
+		success = false;
+		stat->addMessage(MSG_LEVEL_USER, "Invalid Command");
+	}
+	if (success) {
+		inputString.clear();
+	}
+}
 
 void PlayerObject::updatePlayerMovement() {
 	

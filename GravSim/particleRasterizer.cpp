@@ -23,7 +23,7 @@ void particleRasterizer::initRast_A(RastInit details) {
 
 	planets = details.planets;
 
-	settings = details.settings;
+	params = details.params;
 
 	createBuffers();
 
@@ -87,10 +87,10 @@ void particleRasterizer::initRast_B() {
 void particleRasterizer::createPipeline() {
 
 	//first create shader modules
-	std::array<VkShaderModule, 4> shaderModules;
-	std::array<VkPipelineShaderStageCreateInfo, 4> shaderStages;
-	std::array<VkShaderStageFlagBits, 4> flagBits{ VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT,VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
-	std::array<VkSpecializationInfo*, 4> specInfos{};
+	std::array<VkShaderModule, 6> shaderModules;
+	std::array<VkPipelineShaderStageCreateInfo, 6> shaderStages;
+	std::array<VkShaderStageFlagBits, 6> flagBits{ VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT,VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT, VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
+	std::array<VkSpecializationInfo*, 6> specInfos{};
 
 	std::array<uint32_t, 3> specData = { MAX_PLANET_ARRAY_SIZE, SATELLITE_COUNT, LINE_VERTEX_COUNT };
 	std::array<VkSpecializationMapEntry, 3> specEntries{};
@@ -261,6 +261,30 @@ void particleRasterizer::createPipeline() {
 	//depthStencil.depthWriteEnable = VK_FALSE;
 
 	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &createInfo, nullptr, &linePipeline) != VK_SUCCESS) { throw std::runtime_error("Failed to create particleRasterizer linePipeline"); }
+
+	pipelineStages = { shaderStages[4], shaderStages[5] };
+
+	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &createInfo, nullptr, &meshPipelineLine) != VK_SUCCESS) { throw std::runtime_error("Failed to create particleRasterizer meshPipelienLine"); }
+
+	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+	rasterizer.cullMode = VK_CULL_MODE_NONE;
+
+	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	colorBlendAttachment.blendEnable = VK_TRUE;
+	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+
+	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &createInfo, nullptr, &meshPipelineTri) != VK_SUCCESS) { throw std::runtime_error("Failed to create particleRasterizer meshPipelineTri"); }
+
+
+
 
 	for (uint32_t i = 0; i < shaderModules.size(); i++) {
 		vkDestroyShaderModule(device, shaderModules[i], nullptr);
@@ -749,15 +773,22 @@ void particleRasterizer::drawObjects(VkCommandBuffer commandBuffer, uint32_t fra
 	}
 
 	//now draw field lines
-	if (settings->renderFieldMesh) {
+	if (params->mesh) {
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, meshBuffer, offsets);
 		model[0][0] = float(LINE_VERTEX_COUNT * SATELLITE_COUNT + 1);
 		model[0][1] = 1.0f;
 		model[0][2] = 0.8f;
 		model[0][3] = 0.5f;
 		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &model);
-		for (uint32_t i = 0; i < fieldMeshResMajor * 2; i++) {
-			vkCmdDraw(commandBuffer, fieldMeshResMajor * fieldMeshResMinor, 1, fieldMeshResMajor * fieldMeshResMinor * i, 0);
+		if (params->meshLine) {
+			for (uint32_t i = 0; i < fieldMeshResMajor * 2; i++) {
+				vkCmdDraw(commandBuffer, fieldMeshResMajor * fieldMeshResMinor, 1, fieldMeshResMajor * fieldMeshResMinor * i, 0);
+			}
+		}
+		else {
+			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipelineTri);
+			vkCmdBindIndexBuffer(commandBuffer, *meshIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdDrawIndexed(commandBuffer, (fieldMeshResMajor - 1) * (fieldMeshResMajor - 1) * 2 * 3, 1, 0, 0, 0);
 		}
 	}
 
@@ -785,6 +816,7 @@ void particleRasterizer::setExternalPtrs(SatExternalMembers details) {
 	satLineSegments = details.lineSegments;
 	satLineInfoBuffer = details.lineInfoBuffer;
 	meshBuffer = details.meshBuffer;
+	meshIndexBuffer = details.meshIndexBuffer;
 }
 
 void particleRasterizer::cleanup() {

@@ -36,6 +36,7 @@ layout(constant_id = 5) const uint MESH_STEPS_MAJOR = 16;
 layout(constant_id = 6) const uint MESH_STEPS_MINOR = 8;
 layout(constant_id = 7) const uint SATELLITES_PER_SHADER = 1;
 layout(constant_id = 8) const uint STEPS_PER_SHADER = 1;
+layout(constant_id = 9) const uint MESH_PER_SHADER = 1;
 const vec2 MESH_CORNER_1 = {-6e8, -6e8};
 const vec2 MESH_CORNER_2 = {6e8, 6e8};
 
@@ -66,101 +67,105 @@ layout(local_size_x = 1024) in;
 
 void main(){
     uint lineCursor = uint(constants.dt);
-    uint i = gl_LocalInvocationID.x;
-    uint j = gl_WorkGroupID.x;
+    uint lID = gl_LocalInvocationID.x;
+    uint wID = gl_WorkGroupID.x;
     LineVertex sampleVertex;
-    if(i < MESH_STEPS_MAJOR * MESH_STEPS_MINOR){
+    for(uint lIx = 0; lIx < MESH_PER_SHADER; lIx++){
+        for(uint wIx = 0; wIx < MESH_PER_SHADER; wIx++){
+            uint i = lID * MESH_PER_SHADER + lIx;
+            uint j = wID * MESH_PER_SHADER + wIx;
 
-        float dx;
-        float dy;
-        float x;
-        float y;
+            if(i < MESH_STEPS_MAJOR * MESH_STEPS_MINOR){
 
-        float scale = 1e2f;
+                float dx;
+                float dy;
+                float x;
+                float y;
 
-        if(j < MESH_STEPS_MAJOR){
-            //we are doing horizontal lines
-            //along x direction
-            dx = (MESH_CORNER_2.x - MESH_CORNER_1.x) / (MESH_STEPS_MAJOR-1);
-            dy = (MESH_CORNER_2.y - MESH_CORNER_1.y) / (MESH_STEPS_MAJOR * MESH_STEPS_MINOR);
+                float scale = 1e2f;
 
-            x = MESH_CORNER_1.x + dx * j;
-            y = MESH_CORNER_1.y + dy * i;
+                if(j < MESH_STEPS_MAJOR){
+                    //we are doing horizontal lines
+                    //along x direction
+                    dx = (MESH_CORNER_2.x - MESH_CORNER_1.x) / (MESH_STEPS_MAJOR-1);
+                    dy = (MESH_CORNER_2.y - MESH_CORNER_1.y) / (MESH_STEPS_MAJOR * MESH_STEPS_MINOR);
+
+                    x = MESH_CORNER_1.x + dx * j;
+                    y = MESH_CORNER_1.y + dy * i;
+                }
+                else{
+                    dx = (MESH_CORNER_2.x - MESH_CORNER_1.x) / (MESH_STEPS_MAJOR * MESH_STEPS_MINOR);
+                    dy = (MESH_CORNER_2.y - MESH_CORNER_1.y) / (MESH_STEPS_MAJOR-1);
+
+                    x = MESH_CORNER_1.x + dx * i;
+                    y = MESH_CORNER_1.y + dy * (j-MESH_STEPS_MAJOR);
+                }
+                double z = 0.0f;
+                double zX = 0.0f;
+                double zY = 0.0f;
+
+                double ddx = 1.0;
+                double ddy = 1.0;
+
+
+                dvec4 vertPos = dvec4(x, y, 0.0, 0.0);
+                dvec4 vX = vertPos + dvec4(ddx, 0, 0, 0);
+                dvec4 vY = vertPos + dvec4(0, ddy, 0, 0);
+                for(uint i = 0; i < MAX_PLANETS_ARRAY_SIZE; i++){
+                    //for gravitational potenential
+                    dvec3 sep = (ubo.planets[i].pos[2] - vertPos).xyz;
+                    double pot = -G * ubo.planets[i].pos[2].w / length(sep);
+                    z += (pot);
+                    dvec3 sepX = (ubo.planets[i].pos[2] - vX).xyz;
+                    double potX = -G * ubo.planets[i].pos[2].w / length(sepX);
+                    zX += (potX);
+                    dvec3 sepY = (ubo.planets[i].pos[2] - vY).xyz;
+                    double potY = -G * ubo.planets[i].pos[2].w / length(sepY);
+                    zY += (potY);
+                }
+                // dvec3 sep = (ubo.planets[0].pos[2] - vertPos).xyz;
+                // dvec3 planetSep = (ubo.planets[0].pos[2] - ubo.planets[1].pos[2]).xyz;
+                // double pot = -G * (ubo.planets[0].pos[2].z + ubo.planets[1].pos[2].w) * dot(sep, sep) / (length(planetSep) * length(planetSep) * length(planetSep));
+                // z+=float(pot);
+
+                uint indA = 0;
+                uint indB = 1;
+
+                dvec3 R = (ubo.planets[indA].pos[2] - ubo.planets[indB].pos[2]).xyz;
+                double MT = ubo.planets[indA].pos[2].w + ubo.planets[indB].pos[2].w;
+                dvec3 rCOM = (ubo.planets[indA].pos[2].xyz * ubo.planets[indA].pos[2].w + ubo.planets[indB].pos[2].xyz * ubo.planets[indB].pos[2].w) / MT;
+                dvec3 vCOM = (ubo.planets[indA].vel[2].xyz * ubo.planets[indA].pos[2].w + ubo.planets[indB].vel[2].xyz * ubo.planets[indB].pos[2].w) / MT;
+                dvec3 r = vertPos.xyz - rCOM;
+                dvec3 rA = ubo.planets[indA].pos[2].xyz - rCOM;
+                dvec3 rB = ubo.planets[indB].pos[2].xyz - rCOM;
+                double OMEGA = sqrt(G * MT / (length(R) * length(R) * length(R)));
+                dvec3 OMVEC = OMEGA * dvec3(0, 0, 1);
+                dvec3 OMCRR = cross(OMVEC, r);
+                z+= -0.5 * (dot(OMCRR, OMCRR));
+
+
+                dvec3 rX = vX.xyz - rCOM;
+                dvec3 rY = vY.xyz - rCOM;
+                dvec3 OMCRX = cross(OMVEC, rX);
+                dvec3 OMCRY = cross(OMVEC, rY);
+
+                zX += -0.5 * (dot(OMCRX, OMCRX));
+                zY += -0.5 * (dot(OMCRY, OMCRY));
+
+                dvec3 nX = dvec3(vX.x, vX.y, zX * scale);
+                dvec3 nY = dvec3(vY.x, vY.y, zY * scale);
+                dvec3 n0 = dvec3(vertPos.x, vertPos.y, z * scale);
+
+                dvec3 n = cross(nX-n0, nY-n0);
+
+                sampleVertex.pos = vec4(x, y, z * scale, 0.0);
+                sampleVertex.base = vec4(n, 1);
+                sampleVertex.inter = vec4(nY-n0,1);
+                sampleVertex.fin = vec4(nY,1);
+                uint outIndex = j * MESH_STEPS_MAJOR * MESH_STEPS_MINOR + i;
+
+                mesh[outIndex] = sampleVertex;
+            }
         }
-        else{
-            dx = (MESH_CORNER_2.x - MESH_CORNER_1.x) / (MESH_STEPS_MAJOR * MESH_STEPS_MINOR);
-            dy = (MESH_CORNER_2.y - MESH_CORNER_1.y) / (MESH_STEPS_MAJOR-1);
-
-            x = MESH_CORNER_1.x + dx * i;
-            y = MESH_CORNER_1.y + dy * (j-MESH_STEPS_MAJOR);
-        }
-        double z = 0.0f;
-        double zX = 0.0f;
-        double zY = 0.0f;
-
-        double ddx = 1.0;
-        double ddy = 1.0;
-
-
-        dvec4 vertPos = dvec4(x, y, 0.0, 0.0);
-        dvec4 vX = vertPos + dvec4(ddx, 0, 0, 0);
-        dvec4 vY = vertPos + dvec4(0, ddy, 0, 0);
-        for(uint i = 0; i < MAX_PLANETS_ARRAY_SIZE; i++){
-            //for gravitational potenential
-            dvec3 sep = (ubo.planets[i].pos[2] - vertPos).xyz;
-            double pot = -G * ubo.planets[i].pos[2].w / length(sep);
-            z += (pot);
-            dvec3 sepX = (ubo.planets[i].pos[2] - vX).xyz;
-            double potX = -G * ubo.planets[i].pos[2].w / length(sepX);
-            zX += (potX);
-            dvec3 sepY = (ubo.planets[i].pos[2] - vY).xyz;
-            double potY = -G * ubo.planets[i].pos[2].w / length(sepY);
-            zY += (potY);
-        }
-        // dvec3 sep = (ubo.planets[0].pos[2] - vertPos).xyz;
-        // dvec3 planetSep = (ubo.planets[0].pos[2] - ubo.planets[1].pos[2]).xyz;
-        // double pot = -G * (ubo.planets[0].pos[2].z + ubo.planets[1].pos[2].w) * dot(sep, sep) / (length(planetSep) * length(planetSep) * length(planetSep));
-        // z+=float(pot);
-
-        uint indA = 0;
-        uint indB = 1;
-
-        dvec3 R = (ubo.planets[indA].pos[2] - ubo.planets[indB].pos[2]).xyz;
-        double MT = ubo.planets[indA].pos[2].w + ubo.planets[indB].pos[2].w;
-        dvec3 rCOM = (ubo.planets[indA].pos[2].xyz * ubo.planets[indA].pos[2].w + ubo.planets[indB].pos[2].xyz * ubo.planets[indB].pos[2].w) / MT;
-        dvec3 vCOM = (ubo.planets[indA].vel[2].xyz * ubo.planets[indA].pos[2].w + ubo.planets[indB].vel[2].xyz * ubo.planets[indB].pos[2].w) / MT;
-        dvec3 r = vertPos.xyz - rCOM;
-        dvec3 rA = ubo.planets[indA].pos[2].xyz - rCOM;
-        dvec3 rB = ubo.planets[indB].pos[2].xyz - rCOM;
-        double OMEGA = sqrt(G * MT / (length(R) * length(R) * length(R)));
-        dvec3 OMVEC = OMEGA * dvec3(0, 0, 1);
-        dvec3 OMCRR = cross(OMVEC, r);
-        z+= -0.5f * (dot(OMCRR, OMCRR));
-
-
-        dvec3 rX = vX.xyz - rCOM;
-        dvec3 rY = vY.xyz - rCOM;
-        dvec3 OMCRX = cross(OMVEC, rX);
-        dvec3 OMCRY = cross(OMVEC, rY);
-
-        zX += -0.5f * (dot(OMCRX, OMCRX));
-        zY += -0.5f * (dot(OMCRY, OMCRY));
-
-        dvec3 nX = dvec3(vX.x, vX.y, zX * scale);
-        dvec3 nY = dvec3(vY.x, vY.y, zY * scale);
-        dvec3 n0 = dvec3(vertPos.x, vertPos.y, z * scale);
-
-        dvec3 n = cross(nX-n0, nY-n0);
-
-
-        sampleVertex.pos = vec4(x, y, z * scale, 0.0);
-        sampleVertex.base = vec4(n, 1);
-        sampleVertex.inter = vec4(nY-n0,1);
-        sampleVertex.fin = vec4(nY,1);
-        uint outIndex = j * MESH_STEPS_MAJOR * MESH_STEPS_MINOR + i;
-
-        mesh[outIndex] = sampleVertex;
     }
-
-
 }

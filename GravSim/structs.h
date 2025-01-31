@@ -24,8 +24,9 @@ const uint32_t MAX_PLANET_ARRAY_SIZE = 2;
 const uint32_t COMPUTE_STEPS_PER_FRAME = 128; // CANNOT BE 1
 const uint32_t SATELLITES_PER_SHADER = 4; 
 const uint32_t STEPS_PER_SHADER = 1;
-const uint32_t fieldMeshResMajor = 1024;
+const uint32_t fieldMeshResMajor = 4096;
 const uint32_t fieldMeshResMinor = 1;
+const uint32_t MESH_PER_SHADER = 4; //aim to make fieldmeshmajor / mesh pershader 1024
 
 
 enum UIOptions {
@@ -50,6 +51,8 @@ enum UIOptions {
     UI_DATA_FLOAT = 2 << 4,
     UI_DATA_CHAR_VEC = 3 << 4,
     UI_DATA_STRING = 4 << 4,
+    UI_DATA_DOUBLE = 5 << 4,
+    UI_DATA_BOOL = 6 << 4,
 
     //n
     UI_NEWLINE_MASK = 3 << 8,
@@ -253,7 +256,12 @@ struct SatExternalMembers {
     uint32_t* lineSegments;
     VkBuffer* lineInfoBuffer;
     VkBuffer* meshBuffer;
+    VkBuffer* meshIndexBuffer;
 };
-struct DrawSettings {
-    bool renderFieldMesh;
+struct GlobalParameters {
+    double dt;
+    bool mesh;
+    bool meshLine;
+    bool fullscreen;
+    bool pause;
 };

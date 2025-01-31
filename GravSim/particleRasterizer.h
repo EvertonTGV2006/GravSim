@@ -18,7 +18,7 @@ struct RastInit {
 
 	std::vector<std::vector<char>*> shaderCode;
 	std::vector<Mesh> meshes;
-	DrawSettings* settings;
+	GlobalParameters* params;
 
 	std::array<Planet, MAX_PLANET_ARRAY_SIZE>* planets;
 };
@@ -48,7 +48,7 @@ public:
 
 	static const uint32_t FRAMES_IN_FLIGHT = 3;
 
-	std::vector<std::string> shaderFiles = { "shaders/particleRasterizer/01.spv", "shaders/particleRasterizer/02.spv", "shaders/particleRasterizer/03.spv", "shaders/particleRasterizer/04.spv" };
+	std::vector<std::string> shaderFiles = { "shaders/particleRasterizer/01.spv", "shaders/particleRasterizer/02.spv", "shaders/particleRasterizer/03.spv", "shaders/particleRasterizer/04.spv", "shaders/particleRasterizer/05.spv", "shaders/particleRasterizer/06.spv"};
 	
 	void setExternalPtrs(SatExternalMembers);
 
@@ -67,6 +67,8 @@ private:
 	VkDescriptorSetLayout descriptorSetLayout;
 
 	VkPipeline linePipeline;
+	VkPipeline meshPipelineLine;
+	VkPipeline meshPipelineTri;
 
 	std::vector<VkBuffer> vertexBuffers;
 	std::vector<VkBuffer> indexBuffers;
@@ -91,6 +93,7 @@ private:
 	uint32_t* satLineSegments;
 	VkBuffer* satLineInfoBuffer;
 	VkBuffer* meshBuffer;
+	VkBuffer* meshIndexBuffer;
 
 	uint32_t lineFrame = 0;
 	std::vector<std::array<LineVertex, LINE_VERTEX_COUNT>> lineVertices;
@@ -105,9 +108,9 @@ private:
 	char* uniformBufferMapped;
 	uint32_t uniformBufferSize;
 
-	DrawSettings* settings;
+	GlobalParameters* params;
 
-	std::array<std::vector<char>*, 4> shaderCode;
+	std::array<std::vector<char>*, 6> shaderCode;
 
 	std::vector<Mesh> meshes;
 
