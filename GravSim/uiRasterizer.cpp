@@ -578,12 +578,26 @@ void UIRasterizer::initFreetype() {
 	vertices = { glm::vec2(0, 0), glm::vec2(1, 0), glm::vec2(0, 1), glm::vec2(0, 1), glm::vec2(1, 0), glm::vec2(1, 1) };
 
 
-	FT_Done_FreeType(library);
+	//FT_Done_FreeType(library);
 
 	stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Initialized FreeType font atlas");
 
 	//std::ofstream file;
 	//file.open("out.csv");
+	int dimxCount = 0;
+	int dimyMax = 0;
+
+	for (uint32_t c = 0; c < 128; c++) {
+		FT_Load_Char(face, c, FT_LOAD_NO_BITMAP);
+		UIAttr ct{};
+		ct.advx = face->glyph->metrics.horiAdvance / 64;
+		ct.bx = face->glyph->metrics.horiBearingX / 64;
+		ct.by = face->glyph->metrics.horiBearingY / 64;
+		ct.dimx = face->glyph->metrics.width / 64;
+		ct.dimy = face->glyph->metrics.height / 64;
+		charAttributes[c] = ct;
+	}
+
 
 	//
 

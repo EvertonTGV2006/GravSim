@@ -107,6 +107,8 @@ void SatelliteEngine::createBuffers() {
 	satInfoRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	satTransferRequirements.flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 	fieldMeshIndexRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+
 }
 
 void SatelliteEngine::createDescriptorSets() {

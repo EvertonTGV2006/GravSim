@@ -250,6 +250,22 @@ struct UIBox {
     glm::vec3 colour;
     UIText* dataP;
 };
+struct UIAttr {
+    char c;
+    int advx;
+    int bx;
+    int by;
+    int dimx;
+    int dimy;
+};
+struct UIChar {
+    int c;
+    int padding;
+    glm::vec2 tP;
+    glm::vec2 tD;
+    glm::vec2 sP;
+};
+
 
 struct SatExternalMembers {
     VkBuffer* lineBuffer;
@@ -269,3 +285,4 @@ struct GlobalParameters {
     bool clearSatLines;
     bool satLines;
 };
+

@@ -140,5 +140,9 @@ private:
 
 	std::vector<glm::vec2> vertices;
 
+	std::array<UIAttr, 128> charAttributes;
 
+	uint8_t* mapPixels;
+
+	std::array<VkImage, 128> texImages;
 };
