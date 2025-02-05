@@ -23,7 +23,7 @@ struct UIInit {
 	VkPhysicalDeviceMemoryProperties memProperties;
 	std::vector<std::vector<char>*> shaderCode;
 
-	float* aspectRatio;
+	glm::vec2* screenDim;
 
 	PlayerObject* player;
 	
@@ -107,7 +107,6 @@ private:
 	std::vector<char*> bitmapData;
 	uint32_t bitmapHeight;
 	uint32_t bitmapWidth;
-	;
 
 	std::array<char, MAX_STRING_LENGTH> charData;
 	
@@ -116,16 +115,22 @@ private:
 	MemoryDetails vertexRequirements{};
 	MemoryDetails uniformRequirements{};
 	MemoryDetails texRequirements{};
+	std::array<MemoryDetails, 128> texImageRequirements{};
 
 	void createPipeline();
 	void createDescriptorSets();
 	void createBuffers();
+	void createTexImages();
+	void createTexImageViews();
 	void createImageView();
 	void createSampler();
 
 	void initFreetype();
 
 	void populateCharVector(UIText*, uint32_t*);
+	std::string textToStr(UIText*);
+	float strToLen(std::string);
+	void strToData(std::string, glm::vec2 strP, float scale);
 	std::vector<char> charVec;
 
 	std::vector<uint8_t> texPixels;
@@ -141,8 +146,18 @@ private:
 	std::vector<glm::vec2> vertices;
 
 	std::array<UIAttr, 128> charAttributes;
+	float charAttrHeight = 0;
+	float tScale = 128;
+	std::vector<UIChar> strData;
+
+
+	glm::vec2* screenDim;
 
 	uint8_t* mapPixels;
 
 	std::array<VkImage, 128> texImages;
+	std::array<VkImageView, 128> texImageViews;
+	std::array<MemInit, 128> texImageMemory;
+
+	VkSampler texImageSampler;
 };

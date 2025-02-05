@@ -109,7 +109,7 @@ void VulkanEngine::initEngine() {
     ui.player = player;
     ui.renderPass = renderPass;
     ui.msaaSamples = msaaSamples;
-    ui.aspectRatio = &swapChainAspectRatio;
+    ui.screenDim = &player->screenDim;
     for (uint16_t i = shaderCounts[shaderCursor]; i < shaderCounts[shaderCursor + 1]; i++) {
         ui.shaderCode.push_back(&shaderCode[i]);
     }
@@ -1060,6 +1060,16 @@ void VulkanEngine::allocateMemory() {
             orderedFlags[i] = true;
         }
     }
+    //now make sure size is multiple of alignment
+    for (size_t i = 0; i < memRequirements.size(); i++) {
+        if (orderedMemRequirements[i].requirements.size % orderedMemRequirements[i].requirements.alignment != 0) {
+            orderedMemRequirements[i].requirements.size = orderedMemRequirements[i].requirements.size + orderedMemRequirements[i].requirements.alignment - (orderedMemRequirements[i].requirements.size % orderedMemRequirements[i].requirements.alignment);
+        }
+    }
+
+
+
+
     //now that they are ordered merge them into single memory requirements
     size_t k = 0;
     std::vector<MemoryDetails> mergedMemRequirements;

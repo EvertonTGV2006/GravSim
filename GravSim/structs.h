@@ -235,7 +235,7 @@ struct textBitmapWrapper {
 
 struct UIText {
     uint32_t config;
-    uint32_t charCount;
+    float scale;
     glm::vec2 size;
     glm::vec2 offset;
     glm::vec3 colour;
@@ -252,18 +252,18 @@ struct UIBox {
 };
 struct UIAttr {
     char c;
-    int advx;
-    int bx;
-    int by;
-    int dimx;
-    int dimy;
+    float advx;
+    float bx;
+    float by;
+    float dimx;
+    float dimy;
 };
 struct UIChar {
     int c;
-    int padding;
-    glm::vec2 tP;
-    glm::vec2 tD;
+    float scale;
     glm::vec2 sP;
+    glm::vec2 sD;
+    double padding;
 };
 
 
