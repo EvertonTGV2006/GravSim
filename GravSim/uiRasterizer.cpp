@@ -37,26 +37,23 @@ void UIRasterizer::initUI_A(UIInit details) {
 
 void UIRasterizer::initUI_B() {
 	createTexImageViews();
-	createImageView();
-	createSampler();
 	createDescriptorSets();
 	createPipeline();
 }
 
 void UIRasterizer::initMemory(MemInit* detPtr) {
-	std::array<MemInit, 3 + 128> details;
+	std::array<MemInit, 2 + 128> details;
 	memcpy(details.data(), detPtr, details.size() * sizeof(MemInit));
 
 	vertexMemory = details[0];
 	uniformBufferMemory = details[1];
-	texMemory = details[2];
+
 	for (uint32_t i = 0; i < texImageMemory.size(); i++) {
-		texImageMemory[i] = details[i + 3];
+		texImageMemory[i] = details[i + 2];
 	}
 
 	vkBindBufferMemory(device, vertexBuffer, vertexMemory.memory, vertexMemory.offset);
 	vkBindBufferMemory(device, uniformBuffer, uniformBufferMemory.memory, uniformBufferMemory.offset);
-	vkBindImageMemory(device, texImage, texMemory.memory, texMemory.offset);
 
 	void* data;
 	vkMapMemory(device, uniformBufferMemory.memory, uniformBufferMemory.offset, uniformBufferMemory.range, 0, &data);
@@ -74,8 +71,7 @@ void UIRasterizer::initMemory(MemInit* detPtr) {
 }
 
 void UIRasterizer::initBufferData_A(MemoryDetails* stagingRequirements) {
-	uint32_t maxSize = std::max(uint32_t(sizeof(texPixels[0]) * texPixels.size()), uniformBufferSize);
-	maxSize = std::max(maxSize, uint32_t(sizeof(vertices[0]) * vertices.size()));
+	uint32_t maxSize = uint32_t(sizeof(vertices[0]) * vertices.size());
 	for (uint32_t i = 0; i < texImageRequirements.size(); i++) {
 		maxSize = std::max(uint32_t(texImageRequirements[i].requirements.size), maxSize);
 	}
@@ -129,8 +125,6 @@ void UIRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer, VkQue
 	vkResetFences(device, 1, &transferFence);
 	vkResetCommandBuffer(transferCommandBuffer, 0);
 
-	copySize = texPixels.size() * sizeof(texPixels[0]);
-	memcpy(data, texPixels.data(), copySize);
 
 	VkImageMemoryBarrier barrier{};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -138,7 +132,6 @@ void UIRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer, VkQue
 	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.image = texImage;
 	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	barrier.subresourceRange.baseMipLevel = 0;
 	barrier.subresourceRange.levelCount = 1;
@@ -146,10 +139,6 @@ void UIRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer, VkQue
 	barrier.subresourceRange.layerCount = 1;
 	barrier.srcAccessMask = 0;
 	barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-	if (vkBeginCommandBuffer(transferCommandBuffer, &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to begin transfer command buffer"); }
-
-	vkCmdPipelineBarrier(transferCommandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
 	VkBufferImageCopy region{};
 	region.bufferOffset = 0;
@@ -160,22 +149,7 @@ void UIRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer, VkQue
 	region.imageSubresource.baseArrayLayer = 0;
 	region.imageSubresource.layerCount = 1;
 	region.imageOffset = { 0, 0, 0 };
-	region.imageExtent = { texWidth, texHeight, 1 };
 	
-	vkCmdCopyBufferToImage(transferCommandBuffer, stagingBuffer, texImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-	vkCmdPipelineBarrier(transferCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-	if (vkEndCommandBuffer(transferCommandBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to end transfer command buffer"); }
-	vkQueueSubmit(transferQueue, 1, &submitInfo, transferFence);
-	vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
-	vkResetFences(device, 1, &transferFence);
-	vkResetCommandBuffer(transferCommandBuffer, 0);
 
 	//now initialsie letter textures;
 	for (uint32_t i = 0; i < texImages.size(); i++) {
@@ -249,30 +223,12 @@ void UIRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer, VkQue
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
 
-	texPixels.clear();
-
 	FT_Done_FreeType(library);
 }
 
 void UIRasterizer::createBuffers() {
 	//create texture atlas
 
-	VkDeviceSize imageSize = texWidth * texHeight * sizeof(texPixels[0]);
-	VkImageCreateInfo imageInfo{};
-	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	imageInfo.imageType = VK_IMAGE_TYPE_2D;
-	imageInfo.extent.width = static_cast<uint32_t>(texWidth);
-	imageInfo.extent.height = static_cast<uint32_t>(texHeight);
-	imageInfo.extent.depth = 1;
-	imageInfo.mipLevels = 1;
-	imageInfo.arrayLayers = 1;
-	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	imageInfo.format = VK_FORMAT_R8_UINT;
-	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	if (vkCreateImage(device, &imageInfo, nullptr, &texImage) != VK_SUCCESS) { throw std::runtime_error("Failed to create texture atlas image"); }
 
 	uniformBufferRegion = sizeof(UIChar) * MAX_STRING_LENGTH;
 	uniformBufferSize = uniformBufferRegion * FRAMES_IN_FLIGHT;
@@ -290,10 +246,7 @@ void UIRasterizer::createBuffers() {
 	vkGetBufferMemoryRequirements(device, vertexBuffer, &vertexRequirements.requirements);
 	vkGetBufferMemoryRequirements(device, uniformBuffer, &uniformRequirements.requirements);
 
-	vkGetImageMemoryRequirements(device, texImage, &texRequirements.requirements);
-
 	vertexRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	texRequirements.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	uniformRequirements.flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
 
@@ -359,40 +312,7 @@ void UIRasterizer::createTexImageViews() {
 	if (vkCreateSampler(device, &sInfo, nullptr, &texImageSampler) != VK_SUCCESS) { throw std::runtime_error("Failed to create UI sampler"); }
 }
 
-void UIRasterizer::createImageView() {
-	VkImageViewCreateInfo viewInfo{};
-	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	viewInfo.image = texImage;
-	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	viewInfo.format = VK_FORMAT_R8_UINT;
-	viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	viewInfo.subresourceRange.baseMipLevel = 0;
-	viewInfo.subresourceRange.levelCount = 1;
-	viewInfo.subresourceRange.baseArrayLayer = 0;
-	viewInfo.subresourceRange.layerCount = 1;
-	
-	if (vkCreateImageView(device, &viewInfo, nullptr, &texImageView) != VK_SUCCESS) { throw std::runtime_error("Failed to create UI image view"); }
 
-}
-void UIRasterizer::createSampler() {
-	VkSamplerCreateInfo createInfo{};
-	createInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	createInfo.magFilter = VK_FILTER_NEAREST;
-	createInfo.minFilter = VK_FILTER_NEAREST;
-	createInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	createInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	createInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	createInfo.anisotropyEnable = VK_FALSE;
-	createInfo.unnormalizedCoordinates = VK_FALSE;
-	createInfo.compareEnable =  VK_FALSE;
-	createInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-	createInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-	createInfo.mipLodBias = 0.0f;
-	createInfo.minLod = 0.0f;
-	createInfo.maxLod = 0.0f;
-
-	if (vkCreateSampler(device, &createInfo, nullptr, &texSampler) != VK_SUCCESS) { throw std::runtime_error("Failed to create UI sampler"); }
-}
 
 void UIRasterizer::createDescriptorSets() {
 	VkDescriptorSetLayoutBinding uboBinding{};
@@ -402,22 +322,15 @@ void UIRasterizer::createDescriptorSets() {
 	uboBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	uboBinding.pImmutableSamplers = nullptr;
 
-	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-	samplerLayoutBinding.binding = 1;
-	samplerLayoutBinding.descriptorCount = 1;
-	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-	samplerLayoutBinding.pImmutableSamplers = nullptr;
-
 	VkDescriptorSetLayoutBinding imageBinding{};
-	imageBinding.binding = 2;
+	imageBinding.binding = 1;
 	imageBinding.descriptorCount = 128;
 	imageBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 	imageBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	imageBinding.pImmutableSamplers = nullptr;
 
 	VkDescriptorSetLayoutBinding texSamplerBinding{};
-	texSamplerBinding.binding = 3;
+	texSamplerBinding.binding = 2;
 	texSamplerBinding.descriptorCount = 1;
 	texSamplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
 	texSamplerBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -426,7 +339,7 @@ void UIRasterizer::createDescriptorSets() {
 
 
 
-	std::array<VkDescriptorSetLayoutBinding, 4> bindings = { uboBinding, samplerLayoutBinding, imageBinding, texSamplerBinding };
+	std::array<VkDescriptorSetLayoutBinding, 3> bindings = { uboBinding, imageBinding, texSamplerBinding };
 	VkDescriptorSetLayoutCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	createInfo.bindingCount = static_cast<uint32_t>(bindings.size());
@@ -457,10 +370,6 @@ void UIRasterizer::createDescriptorSets() {
 		bufferInfo.offset = i * uniformBufferRegion;
 		bufferInfo.range = uniformBufferRegion;
 
-		VkDescriptorImageInfo imageInfo{};
-		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = texImageView;
-		imageInfo.sampler = texSampler;
 
 		VkDescriptorImageInfo sInfo{};
 		sInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -476,19 +385,10 @@ void UIRasterizer::createDescriptorSets() {
 		bufferWrite.descriptorCount = 1;
 		bufferWrite.pBufferInfo = &bufferInfo;
 
-		VkWriteDescriptorSet imageWrite{};
-		imageWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		imageWrite.dstSet = descriptorSets[i];
-		imageWrite.dstBinding = 1;
-		imageWrite.dstArrayElement = 0;
-		imageWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		imageWrite.descriptorCount = 1;
-		imageWrite.pImageInfo = &imageInfo;
-
 		VkWriteDescriptorSet texImageWrites{};
 		texImageWrites.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		texImageWrites.dstSet = descriptorSets[i];
-		texImageWrites.dstBinding = 2;
+		texImageWrites.dstBinding = 1;
 		texImageWrites.dstArrayElement = 0;
 		texImageWrites.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 		texImageWrites.descriptorCount = 128;
@@ -497,13 +397,13 @@ void UIRasterizer::createDescriptorSets() {
 		VkWriteDescriptorSet samplerWrite{};
 		samplerWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		samplerWrite.dstSet = descriptorSets[i];
-		samplerWrite.dstBinding = 3;
+		samplerWrite.dstBinding = 2;
 		samplerWrite.dstArrayElement = 0;
 		samplerWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
 		samplerWrite.descriptorCount = 1;
 		samplerWrite.pImageInfo = &sInfo;
 
-		std::array<VkWriteDescriptorSet, 4> descriptorWrites = { bufferWrite, imageWrite, texImageWrites, samplerWrite };
+		std::array<VkWriteDescriptorSet, 3> descriptorWrites = { bufferWrite, texImageWrites, samplerWrite };
 
 		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 	}
@@ -660,10 +560,9 @@ void UIRasterizer::createPipeline() {
 }
 
 void UIRasterizer::getMemoryRequirements(std::vector<MemoryDetails>* details, std::vector<uint16_t>* count) {
-	count->push_back(3 + 128);
+	count->push_back(2 + 128);
 	details->push_back(vertexRequirements);
 	details->push_back(uniformRequirements);
-	details->push_back(texRequirements);
 	for (uint32_t i = 0; i < texImageRequirements.size(); i++) {
 		details->push_back(texImageRequirements[i]);
 	}
@@ -677,103 +576,8 @@ void UIRasterizer::initFreetype() {
 
 	FT_Set_Pixel_Sizes(face, 0, 128);
 
-
-	char character = 22;
-
-	uint32_t glyphIndex = FT_Get_Char_Index(face, 'c');
-
-	FT_Load_Glyph(face, glyphIndex, FT_LOAD_RENDER);
-	FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL);
-
-	std::vector<FT_GlyphSlot> glyphs;
-
-	int16_t xMin = 10;
-	int16_t xMax = 10;
-	int16_t bxMax = 0;
-	int16_t yMin = 10;
-	int16_t yMax = 10;
-	int16_t advMax = 10;
-
-	std::vector<textBitmapWrapper> textContainers;
-
-	textContainers.reserve(charCount);
-
-	for (int16_t i = charStart; i < charStart + charCount; i++) {
-		//std::cout << i << ": ";
-		FT_Load_Char(face, i, FT_LOAD_RENDER);
-		//std::cout << face->glyph->bitmap.width << ", " << face->glyph->bitmap_top << ", " << face->glyph->advance.x / 64 << std::endl;
-
-		textBitmapWrapper tempContainer;
-		tempContainer.character = static_cast<char>(i);
-		tempContainer.advance = int16_t(face->glyph->advance.x) / 64;
-		tempContainer.bearingX = face->glyph->bitmap_left;
-		tempContainer.bearingY = face->glyph->bitmap_top;
-		tempContainer.address = new FT_Bitmap;
-
-		xMin = std::min(xMin, tempContainer.bearingX);
-		xMax = std::max(xMax, static_cast<int16_t>(face->glyph->bitmap.width));
-		bxMax = std::max(bxMax, tempContainer.bearingX);
-		yMin = std::min(yMin, (int16_t)(tempContainer.bearingY - face->glyph->bitmap.rows));
-		yMax = std::max(yMax, tempContainer.bearingY);
-		advMax = std::max(advMax, tempContainer.advance);
-
-
-		FT_Bitmap_Init(tempContainer.address);
-		FT_Bitmap_Copy(library, &(face->glyph->bitmap), tempContainer.address);
-
-		textContainers.push_back(tempContainer);
-	}
-	
-	charWidth = 4 * uint16_t(ceil(((float)(xMax + bxMax - xMin)) / 4));
-	texWidth = charCount * charWidth;
-	texHeight = 4 * uint16_t(ceil(((float)(yMax - yMin)) / 4));
-	charAdvance = advMax;
-	rawCharDimensions.y = rawCharDimensions.x * float(texHeight) / float(charWidth);
-	int16_t orgHeight = -yMin;
-	int16_t orgWidth = xMin;
-
-	
-	texPixels.resize(texWidth * texHeight);
-	int16_t orgX = 0;
-	int16_t orgY = 0;
-	int16_t rows = 0;
-	int16_t cols = 0;
-	int16_t penX = 0;
-	int16_t penY = 0;
-
-
-
-	for (int16_t i = 0; i < charCount; i++) {
-		rows = textContainers[i].address->rows;
-		cols = textContainers[i].address->width;
-		orgX = i * charWidth + orgWidth;
-		orgY = orgHeight;
-		penX = orgX + textContainers[i].bearingX;
-		penY = texHeight - orgY - textContainers[i].bearingY;
-
-
-		for (int32_t x = 0; x < cols; x++) {
-			for (int32_t y = 0; y < rows; y++) {
-				int32_t index = (penY + y) * texWidth + penX + x;
-				int16_t index2 = y * (textContainers[i].address->pitch) + x;
-				auto value = textContainers[i].address->buffer[y * (textContainers[i].address->pitch) + x];
-				texPixels[index] = value;
-				
-			}
-		}
-		FT_Bitmap_Done(library, textContainers[i].address);
-		delete textContainers[i].address;
-	}
-
 	vertices = { glm::vec2(0, 0), glm::vec2(1, 0), glm::vec2(0, 1), glm::vec2(0, 1), glm::vec2(1, 0), glm::vec2(1, 1) };
 
-
-	//FT_Done_FreeType(library);
-
-	stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Initialized FreeType font atlas");
-
-	//std::ofstream file;
-	//file.open("out.csv");
 	int dimxCount = 0;
 	int dimyMax = 0;
 
@@ -789,73 +593,34 @@ void UIRasterizer::initFreetype() {
 		ct.dimx = face->glyph->metrics.width / 64.0f;
 		ct.dimy = face->glyph->metrics.height / 64.0f;
 		charAttributes[c] = ct;
-		//std::cout <<c<< ": (" << ct.dimx << ", " << ct.dimy << ", "<<ct.advx << ")" << std::endl;
 	}
 
-
-	//
-
-	//for (int32_t y = 0; y < texHeight; y++) {
-	//	for (int32_t x = 0; x < texWidth; x++) {
-	//		file << uint32_t(texPixels[(y * texWidth) + x]) <<", ";
-	//	}
-	//	file << "\n";
-	//}
-
-	//file.close();
+	stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Initialized FreeType font atlas");
 }
 
 void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameIndex) {
-	UIPushConstants pushConstant{};
-	pushConstant.texAdvance = float(charAdvance) / texWidth;
-	pushConstant.charDimensions = glm::vec2(float(charWidth) / float(texWidth), 1);
-	pushConstant.renderStage = 1;
-
-	glm::vec2 screenPos1 = glm::vec2(-0.5, -0.5);
-	glm::vec2 screenDim1 = glm::vec2(10, 0.25);
-
-	pushConstant.screenPosition = screenPos1;
-	pushConstant.texDimensions = screenDim1;
 
 
 
-	//memcpy(uniformsMapped[frameIndex], str.data(), sizeof(str[0]) * str.scale());
+
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[frameIndex], 0, nullptr);
-	//vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &pushConstant);
+
 	VkDeviceSize offsets[] = { 0 };
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, offsets);
-	charVec.clear();
 
-	std::vector<char> charData;
-	//std::vector<uint32_t> blockLengths;
-	//std::vector<uint32_t> blockCounts;
-	//std::vector<uint32_t> blockConfigs;
-	//std::vector<glm::vec2> textPositions;
-	//std::vector<glm::vec2> textDimensions;
-	glm::vec2 blockCursor = glm::vec2(-1, -1);
 
-	std::vector<uint32_t> hBlockCountc;
-	std::vector<uint32_t> hBlockCount;
-	std::vector<uint32_t> nBlockCounth;
-	std::vector<uint32_t> nBlockCount;
-	std::vector<uint32_t> vBlockCountn;
-	std::vector<uint32_t> vBlockCount;
 
-	UIBox* workingBox;
-	UIText* workingText;
-	uint32_t localCharCount = 0;
+
+
+
 	std::vector<char> localChar = { 'a','9' };
 
 	UIText sText{};
 	sText.scale = 0.3f;
 	sText.dataP = &localChar;
 	sText.config = UI_DATA_CHAR_VEC;
-	
-	charDimensions.y = rawCharDimensions.y /*/ *aspectRatio*/;
-	charDimensions.x = charDimensions.x;
-
 	
 	UIText tTexts[6] = { sText, sText,sText,sText,sText,sText };
 	tTexts[0].config |= UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE;
@@ -870,258 +635,6 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 	tBox.dataP = &tTexts[0];
 	tBox.pos = { 0.1, 0.2 };
 	tBox.dim = { 0.8, 0.4 };
-
-	//player->boxes.resize(1);
-	//player->boxes.push_back(tBox);
-
-	float px;
-	float py;
-	float dx;
-	float dy;
-	uint32_t workingConfig = 0;
-	float texAdvance = float(charAdvance) / float(charWidth) * charDimensions.x;
-
-	glm::vec2 screenCoords{};
-	glm::vec2 boxScreenCoords = glm::vec2(0.1,0.1);
-	glm::vec2 boxDimCoords = glm::vec2(0.9,0.9);
-	glm::vec2 blockBoxCoords = glm::vec2(0,0);
-	glm::vec2 blockScreenCoords{};
-
-	std::vector<glm::vec2> localPos;
-
-	UIPushConstants pc{};
-
-	std::vector<uint32_t> boxCountc;
-	boxCountc.push_back(0);
-
-	//for (uint32_t i = 0; i < player->boxes.size(); i++) {
-	//	//blockCounts.clear();
-	//	//blockConfigs.clear();
-	//	//blockLengths.clear();
-	//	//blockConfigs.push_back(0);
-	//	//workingBox = (player->boxes)[i];
-	//	//for (uint32_t j = 0; j < workingBox.textCount; j++) {
-	//	//	workingText = workingBox.dataP + j;
-	//	//	populateCharVector(workingText, &charCount);
-	//	//	if ((blockConfigs[blockConfigs.scale() - 1] & UI_NEWLINE_MASK) == UI_NEWLINE_TRUE) {
-	//	//		blockConfigs.push_back(workingText->config);
-	//	//		blockCounts.push_back(charCount);
-	//	//		blockLengths.push_back(1);
-	//	//	}
-	//	//	else if ((blockConfigs[blockConfigs.scale() - 1] & UI_ALIGNMENT_H_MASK) != (workingText->config & UI_ALIGNMENT_H_MASK)) {
-	//	//		blockConfigs.push_back(workingText->config);
-	//	//		blockCounts.push_back(charCount);
-	//	//		blockLengths.push_back(1);
-	//	//	}
-	//	//	else if ((blockConfigs[blockConfigs.scale() - 1] & UI_ALIGNMENT_V_MASK) != (workingText->config & UI_ALIGNMENT_V_MASK)) {
-	//	//		blockConfigs.push_back(workingText->config);
-	//	//		blockConfigs.push_back(charCount);
-	//	//		blockLengths.push_back(1);
-	//	//	}
-	//	//	else {
-	//	//		blockCounts[blockCounts.scale() - 1] += charCount;
-	//	//		blockLengths[blockLengths.scale() - 1] += 1;
-	//	//		blockConfigs[blockConfigs.scale() - 1] = workingText->config;
-	//	//	}
-	//	//}
-	//	//uint32_t blockIndex = 0;
-	//	//uint32_t newlineCount = 0;
-	//	//for (uint32_t j = 0; j < blockConfigs.scale(); j++) {
-	//	//	for (uint32_t k = 0; k < blockLengths[j]; k++) {
-	//	//		switch (blockConfigs[j] & UI_ALIGNMENT_H_MASK) {
-	//	//		case UI_ALIGNMENT_H_L:
-	//	//		}
-	//	//	}
-	//	//}
-	//	vBlockCount.clear();
-	//	nBlockCount.clear();
-	//	hBlockCount.clear();
-	//	hBlockCountc.clear();
-	//	nBlockCounth.clear();
-	//	vBlockCountn.clear();
-
-
-	//	
-
-	//	vBlockCount.push_back(0);
-	//	nBlockCount.push_back(0);
-	//	hBlockCount.push_back(0);
-
-
-
-	//	workingBox = &player->boxes[i];
-	//	uint32_t prevConfig = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE;
-
-	//	if (workingBox->textCount == 0) {
-	//		continue;
-	//	}
-
-	//	for (uint32_t j = 0; j < workingBox->textCount; j++) {
-	//		workingText = workingBox->dataP + j;
-
-	//		if ((workingText->config & UI_ALIGNMENT_V_MASK) != (prevConfig & UI_ALIGNMENT_V_MASK)) {
-	//			//action if v_block different
-	//			vBlockCount.push_back(1);
-	//			nBlockCount.push_back(1);
-	//			hBlockCount.push_back(1);
-	//			prevConfig = (workingText->config & UI_ALIGNMENT_V_MASK) | UI_ALIGNMENT_H_L | UI_NEWLINE_FALSE;
-	//		}
-	//		else if ((workingText->config & UI_NEWLINE_MASK) == UI_NEWLINE_TRUE) {
-	//			//action if newline
-	//			vBlockCount[vBlockCount.size() - 1]++;
-	//			nBlockCount.push_back(1);
-	//			hBlockCount.push_back(1);
-	//			prevConfig = (workingText->config & UI_ALIGNMENT_V_MASK) | UI_ALIGNMENT_H_L | UI_NEWLINE_FALSE;
-	//		}
-	//		else if ((workingText->config & UI_ALIGNMENT_H_MASK) != (prevConfig & UI_ALIGNMENT_H_MASK)) {
-	//			//action if h_block different
-	//			vBlockCount[vBlockCount.size() - 1]++;
-	//			nBlockCount[nBlockCount.size() - 1]++;
-	//			hBlockCount.push_back(1);
-	//			prevConfig = workingText->config;
-	//		}
-	//		else {
-	//			hBlockCount[hBlockCount.size() - 1]++;
-	//			nBlockCount[nBlockCount.size() - 1]++;
-	//			vBlockCount[vBlockCount.size() - 1]++;
-	//		}
-	//	}
-
-	//	uint32_t hBlockIndex = 0;
-	//	uint32_t hBlockLimit = hBlockCount[0];
-	//	uint32_t nBlockIndex = 0;
-	//	uint32_t nBlockLimit = nBlockCount[0];
-	//	uint32_t vBlockIndex = 0;
-	//	uint32_t vBlockLimit = vBlockCount[0];
-	//	uint32_t texIndex = 0;
-	//	uint32_t lineIndex = 0;
-	//	uint32_t charIndex = 0;
-
-
-	//	nBlockCounth.push_back(0);
-	//	vBlockCountn.push_back(0);
-	//	hBlockCountc.push_back(0);
-
-	//	for (uint32_t j = 0; j < workingBox->textCount; j++) {
-	//		workingText = workingBox->dataP + j;
-	//		if (j >= vBlockLimit) {
-	//			nBlockIndex++;
-	//			nBlockLimit += nBlockCount[hBlockIndex];
-	//			hBlockIndex++;
-	//			hBlockLimit += hBlockCount[hBlockIndex];
-	//			vBlockIndex++;
-	//			vBlockLimit += vBlockCount[vBlockIndex];
-	//			nBlockCounth[nBlockCounth.size() - 1]++;
-	//			vBlockCountn[vBlockCountn.size() - 1]++;
-	//			hBlockCountc.push_back(0);
-	//			nBlockCounth.push_back(0);
-	//			vBlockCountn.push_back(0);
-	//			
-	//		}
-	//		else if (j >= nBlockLimit) {
-	//			nBlockIndex++;
-	//			nBlockLimit += nBlockCount[nBlockIndex];
-	//			hBlockIndex++;
-	//			hBlockLimit += hBlockCount[hBlockIndex];
-	//			nBlockCounth[nBlockCounth.size() - 1]++;
-	//			vBlockCountn[vBlockCountn.size() - 1]++;
-	//			hBlockCountc.push_back(0);
-	//			nBlockCounth.push_back(0);
-	//		}
-	//		else if (j >= hBlockLimit) {
-	//			hBlockIndex++;
-	//			hBlockLimit += hBlockCount[hBlockIndex];
-	//			nBlockCounth[nBlockCounth.size() - 1]++;;
-	//			hBlockCountc.push_back(0);
-	//		}
-	//		populateCharVector(workingText, &localCharCount);
-	//		hBlockCountc[hBlockCountc.size() - 1] += localCharCount;
-	//	}
-	//	nBlockCounth[nBlockCounth.size() - 1]++;
-	//	vBlockCountn[vBlockCountn.size() - 1]++;
-
-	//	hBlockIndex = 0;
-	//	hBlockLimit = 0;
-	//	nBlockIndex = 0;
-	//	nBlockLimit = nBlockCount[0];
-	//	vBlockIndex = 0;
-	//	vBlockLimit = vBlockCount[0];
-	//	
-
-
-	//	for (uint32_t k = 0; k < hBlockCount.size(); k++){
-	//		workingConfig = (workingBox->dataP + texIndex)->config;
-	//		workingText = workingBox->dataP + texIndex;
-	//		switch (workingConfig & UI_ALIGNMENT_H_MASK) {
-	//		case UI_ALIGNMENT_H_L:
-	//			px = 0;
-	//			dx = 0;
-	//			break;
-	//		case UI_ALIGNMENT_H_C:
-	//			px = 0.5;
-	//			dx = float(hBlockCountc[k]) / 2.0f;
-	//			break;
-	//		case UI_ALIGNMENT_H_R:
-	//			px = 1;
-	//			dx = float(hBlockCountc[k]);
-	//			break;
-	//		default:
-	//			throw std::runtime_error("UI_ALIGNENT_H fall through");
-	//		}
-	//		switch (workingConfig & UI_ALIGNMENT_V_MASK) {
-	//		case UI_ALIGNMENT_V_T:
-	//			py = 0;
-	//			dy = 0.0f - lineIndex;
-	//			break;
-	//		case UI_ALIGNMENT_V_C:
-	//			py = 0.5;
-	//			dy = float(vBlockCountn[vBlockIndex]) / 2.0f - float(lineIndex);
-	//			break;
-	//		case UI_ALIGNMENT_V_B:
-	//			py = 1;
-	//			dy = float(vBlockCountn[vBlockIndex]) - float(lineIndex);
-	//			break;
-	//		default:
-	//			throw std::runtime_error("UI_ALIGNENT_V fall through");
-	//		}
-	//		
-	//		blockBoxCoords = glm::vec2(px * workingBox->scale.x - (texAdvance * dx), py * workingBox->scale.y - (charDimensions.y * dy));
-	//		blockScreenCoords = glm::vec2(workingBox->pos.x + (blockBoxCoords.x), workingBox->pos.y + (blockBoxCoords.y));
-	//		pc.charDimensions = charDimensions;
-	//		pc.screenPosition = blockScreenCoords;
-	//		pc.renderStage = 3;
-	//		pc.texAdvance = texAdvance;	
-	//		pc.texDimensions = glm::vec2(1.0f / charCount, 1.0f);
-	//		pc.instanceOffset = charIndex + boxCountc[i];
-	//		pc.inColour = glm::vec4(workingText->colour.x, workingText->colour.y, workingText->colour.z, 0.0f);
-	//		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(UIPushConstants), &pc);
-	//		vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), hBlockCountc[k], 0, 0);
-	//		charIndex += hBlockCountc[k];
-	//		localPos.push_back(blockScreenCoords);
-
-	//		texIndex += hBlockCount[k];
-	//		if (texIndex >= nBlockLimit && texIndex < workingBox->textCount) {
-	//			nBlockIndex++;
-	//			nBlockLimit += nBlockCount[nBlockIndex];
-	//			lineIndex++;
-	//		}
-	//		//redo line index, counting hblocks per line, need to count newline blocks per vblock
-	//		if (texIndex >= vBlockLimit && texIndex < workingBox->textCount) {
-	//			vBlockIndex++;
-	//			vBlockLimit += vBlockCount[vBlockIndex];
-	//			lineIndex = 0;
-	//		}
-
-	//	}
-	//	boxCountc.push_back(static_cast<uint32_t>(charVec.size()));
-
-	//}
-	//memcpy(uniformsMapped[frameIndex], charVec.data(), charVec.size() * sizeof(charVec[0]));
-
-
-
-
-
 
 
 	for (uint32_t i = 0; i < player->boxes.size(); i++) {
@@ -1291,27 +804,8 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 
 
 
-			//vkCmdDraw(commandBuffer, vertices.scale(), 11, 0, 0);
-
-			//std::vector<glm::uvec4> charVecData(charData.scale()/16);
-			//memcpy(charVecData.data(), charData.data(), charData.scale() * sizeof(char));
-			//for (uint32_t i = 0; i < charCounter; i++) {
-			//	uint32_t uboVecIndex = i >> 4;
-			//	uint32_t uboValIndex = (i >> 2) & 3;
-			//	uint32_t uboShiftIndex = i & 3;
-			//	uint32_t uboShiftValue = 8 * uboShiftIndex;
-			//	uint32_t uboMask = 127;
-
-			//	glm::uvec4 uboVec = charVecData[uboVecIndex];
-			//	uint32_t uboVal = uboVec[uboValIndex];
-			//	uint32_t char1 = (uboVal >> uboShiftValue) & uboMask;
-			//	char char2 = char1;
-			//	std::cout << char2;
-			//}
 		}
 	}
-
-	//vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float), aspectRatio);
 
 	vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), static_cast<uint32_t>(strData.size()), 0, 0);
 
@@ -1319,113 +813,8 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 
 	strData.clear();
 
-	
 }
 
-void UIRasterizer::populateCharVector(UIText* text, uint32_t* charCounts) {
-	uint32_t tConfig = text->config & UI_DATA_MASK;
-	uint32_t endLimit = 0;
-
-	std::ostringstream oss;
-	std::string str;
-	double time = 0;
-	uint32_t tInt = 0;
-
-	uint32_t secDur = 1;
-	uint32_t minDur = 60;
-	uint32_t hr = 60 * minDur;
-	uint32_t day = 24 * hr;
-	uint32_t year = 365 * day;
-
-	uint32_t yC = 0;
-	uint32_t dC = 0;
-	uint32_t hC = 0;
-	uint32_t mC = 0;
-	uint32_t sC = 0;
-	switch (tConfig){
-	case UI_DATA_UINT32_T:
-		charVec.resize(10 + charVec.size());
-		std::to_chars(charVec.data() + charVec.size() - 10, charVec.data() + charVec.size(), *reinterpret_cast<uint32_t*>(text->dataP));
-		for (uint32_t i = 0; i < 10; i++) {
-			if (charVec[charVec.size() - 1 - i] != 0) {
-				endLimit = i;
-				break;
-			}
-		}
-		charVec.resize(charVec.size() - endLimit);
-		*charCounts = 10 - endLimit;
-
-		break;
-	case UI_DATA_FLOAT:
-		oss << (*reinterpret_cast<float*>(text->dataP));
-		str = oss.str();
-		for (uint32_t i = 0; i < str.size(); i++) {
-			charVec.push_back(str[i]);
-		}
-		*charCounts = static_cast<uint32_t>(str.size());
-		break;
-	case UI_DATA_CHAR_VEC:
-		charVec.resize(charVec.size() + reinterpret_cast<std::vector<char>*>(text->dataP)->size());
-		std::memcpy(charVec.data() + charVec.size() - reinterpret_cast<std::vector<char>*>(text->dataP)->size(), reinterpret_cast<std::vector<char>*>(text->dataP)->data(), reinterpret_cast<std::vector<char>*>(text->dataP)->size());
-		*charCounts = static_cast<uint32_t>(reinterpret_cast<std::vector<char>*>(text->dataP)->size());
-		break;
-	case UI_DATA_STRING:
-		for (uint32_t i = 0; i < reinterpret_cast<std::string*>(text->dataP)->size(); i++) {
-			charVec.push_back((*reinterpret_cast<std::string*>(text->dataP))[i]);
-		}
-		*charCounts = static_cast<uint32_t>(reinterpret_cast<std::string*>(text->dataP)->size());
-		break;
-	case UI_DATA_DOUBLE:
-		oss << (*reinterpret_cast<double*>(text->dataP));
-		str = oss.str();
-		for (uint32_t i = 0; i < str.size(); i++) {
-			charVec.push_back(str[i]);
-		}
-		*charCounts = static_cast<uint32_t>(str.size());
-		break;
-	case UI_DATA_BOOL:
-		if (*reinterpret_cast<bool*>(text->dataP)) {
-			charVec.push_back('T');
-			charVec.push_back('r');
-			charVec.push_back('u');
-			charVec.push_back('e');
-			*charCounts = 4;
-		}
-		else {
-			charVec.push_back('F');
-			charVec.push_back('a');
-			charVec.push_back('l');
-			charVec.push_back('s');
-			charVec.push_back('e');
-			*charCounts = 5;
-		}
-		break;
-	case UI_DATA_DOUBLE_SECONDS:
-		time = (*reinterpret_cast<double*>(text->dataP));
-		tInt = uint32_t(time);
-		yC = tInt / year;
-		dC = tInt % year / day;
-		hC = tInt % year % day / hr;
-		mC = tInt % year % day % hr / minDur;
-		sC = tInt % year % day % hr % minDur;
-		oss << yC << "Y " << dC << "D ";
-		if (hC < 10) { oss << '0'; }
-		oss << hC << ":";
-		if (mC < 10) { oss << '0'; }
-		oss << mC << ":";
-		if (sC < 10) { oss << "0"; }
-		oss << sC;
-		str = oss.str();
-		for (uint32_t i = 0; i < str.size(); i++) {
-			charVec.push_back(str[i]);
-		}
-		*charCounts = static_cast<uint32_t>(str.size());
-		break;
-	default:
-		throw std::runtime_error("Unsupported text data type");
-		break;
-	}
-}
 
 std::string UIRasterizer::textToStr(UIText* text) {
 	std::ostringstream oss;
@@ -1521,9 +910,6 @@ void UIRasterizer::strToData(std::string str, glm::vec2 strP, float scale) {
 void UIRasterizer::cleanup() {
 	vkDestroyBuffer(device, vertexBuffer, nullptr);
 	vkDestroyBuffer(device, uniformBuffer, nullptr);
-	vkDestroyImageView(device, texImageView, nullptr);
-	vkDestroySampler(device, texSampler, nullptr);
-	vkDestroyImage(device, texImage, nullptr);
 
 	for (uint32_t i = 0; i < texImages.size(); i++) {
 		vkDestroyImage(device, texImages[i], nullptr);

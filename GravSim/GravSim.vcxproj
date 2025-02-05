@@ -205,47 +205,6 @@ CALL compile.bat</Command>
     <None Include="profiles\default.toml">
       <DeploymentContent>true</DeploymentContent>
     </None>
-    <None Include="shaders\cardRasterizer\01.spv">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="shaders\cardRasterizer\02.spv">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="shaders\GravEngine\01.comp" />
-    <None Include="shaders\GravEngine\01.spv">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="shaders\GravEngine\SortShaders\01.comp">
-      <DeploymentContent>false</DeploymentContent>
-    </None>
-    <None Include="shaders\GravEngine\SortShaders\01.spv">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="shaders\GravEngine\SortShaders\02.comp">
-      <DeploymentContent>false</DeploymentContent>
-    </None>
-    <None Include="shaders\GravEngine\SortShaders\02.spv">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="shaders\GravEngine\SortShaders\03.comp" />
-    <None Include="shaders\GravEngine\SortShaders\03.spv">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="shaders\GravEngine\SortShaders\04.comp">
-      <DeploymentContent>false</DeploymentContent>
-    </None>
-    <None Include="shaders\GravEngine\SortShaders\04.spv">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="shaders\GravEngine\SortShaders\05.comp" />
-    <None Include="shaders\GravEngine\SortShaders\05.spv">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="shaders\GravEngine\SortShaders\06.comp" />
-    <None Include="shaders\GravEngine\SortShaders\07.comp" />
-    <None Include="shaders\GravEngine\SortShaders\08.comp" />
-    <None Include="shaders\GravEngine\SortShaders\09.comp" />
-    <None Include="shaders\GravEngine\SortShaders\10.comp" />
     <None Include="shaders\particleRasterizer\01.spv">
       <DeploymentContent>true</DeploymentContent>
     </None>

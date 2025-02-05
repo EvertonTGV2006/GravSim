@@ -82,10 +82,6 @@ private:
 
 	VkBuffer vertexBuffer;
 	MemInit vertexMemory;
-	VkImage texImage;
-	VkImageView texImageView;
-	VkSampler texSampler;
-	MemInit texMemory;
 
 	VkBuffer stagingBuffer;
 	MemInit stagingMemory;
@@ -114,7 +110,6 @@ private:
 
 	MemoryDetails vertexRequirements{};
 	MemoryDetails uniformRequirements{};
-	MemoryDetails texRequirements{};
 	std::array<MemoryDetails, 128> texImageRequirements{};
 
 	void createPipeline();
@@ -122,26 +117,12 @@ private:
 	void createBuffers();
 	void createTexImages();
 	void createTexImageViews();
-	void createImageView();
-	void createSampler();
 
 	void initFreetype();
 
-	void populateCharVector(UIText*, uint32_t*);
 	std::string textToStr(UIText*);
 	float strToLen(std::string);
 	void strToData(std::string, glm::vec2 strP, float scale);
-	std::vector<char> charVec;
-
-	std::vector<uint8_t> texPixels;
-	uint16_t texWidth = 0;
-	uint16_t texHeight = 0;
-	uint16_t charWidth = 0;
-	uint16_t charAdvance = 0;
-	glm::vec2 rawCharDimensions = glm::vec2(0.03f, 0.13f);
-	glm::vec2 charDimensions = glm::vec2(0.03f, 0.13f);
-	int16_t charStart = 32;
-	int16_t charCount = 128 - charStart;
 
 	std::vector<glm::vec2> vertices;
 
@@ -149,7 +130,6 @@ private:
 	float charAttrHeight = 0;
 	float tScale = 128;
 	std::vector<UIChar> strData;
-
 
 	glm::vec2* screenDim;
 
