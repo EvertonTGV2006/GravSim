@@ -53,7 +53,7 @@ public:
 
 	void cleanup();
 
-	static const uint32_t MAX_STRING_LENGTH = 4096;
+	static const uint32_t MAX_STRING_LENGTH = 2048;
 
 	void drawElements(VkCommandBuffer, uint32_t);
 

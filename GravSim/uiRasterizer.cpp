@@ -777,7 +777,7 @@ void UIRasterizer::initFreetype() {
 	int dimxCount = 0;
 	int dimyMax = 0;
 
-	charAttrHeight = face->height / 26.6f;
+	charAttrHeight = face->height / 24.0f;
 
 	for (uint32_t c = 0; c < 128; c++) {
 		FT_Load_Char(face, c, FT_LOAD_NO_BITMAP);
@@ -789,7 +789,7 @@ void UIRasterizer::initFreetype() {
 		ct.dimx = face->glyph->metrics.width / 64.0f;
 		ct.dimy = face->glyph->metrics.height / 64.0f;
 		charAttributes[c] = ct;
-		std::cout <<c<< ": (" << ct.dimx << ", " << ct.dimy << ", "<<ct.advx << ")" << std::endl;
+		//std::cout <<c<< ": (" << ct.dimx << ", " << ct.dimy << ", "<<ct.advx << ")" << std::endl;
 	}
 
 
@@ -849,7 +849,7 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 	std::vector<char> localChar = { 'a','9' };
 
 	UIText sText{};
-	sText.scale = 1.0f;
+	sText.scale = 0.3f;
 	sText.dataP = &localChar;
 	sText.config = UI_DATA_CHAR_VEC;
 	
@@ -1131,7 +1131,7 @@ void UIRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameInd
 		//then we have vblocks made up of different different lblocks
 		//we have up to 3 different vblocks per box aligned to different heights
 
-		wBox = &tBox;
+		//wBox = &tBox;
 
 		std::vector<std::string> wStr{};
 		std::vector<float> tcw{}; //width per text;

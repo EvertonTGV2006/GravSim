@@ -2,7 +2,7 @@
 
 const uint CHAR_COUNT = 128 - 32;
 const uint CHAR_START = 32;
-const uint STRING_LENGTH = 4096;
+const uint STRING_LENGTH = 2048;
 
 struct UIChar{
     int c;
@@ -34,7 +34,7 @@ void main() {
 
     UIChar wChar = ubo.strData[i];
 
-    vec2 vPos = vec2(inPos.x*wChar.sD.y, inPos.y*wChar.sD.y);
+    vec2 vPos = vec2(inPos.x * wChar.sD.x, inPos.y  *wChar.sD.y);
     vec2 sPos = vPos + wChar.sP;
     vec2 tPos = 2.0f * (sPos - vec2(0.5f, 0.5f));
 
