@@ -54,7 +54,7 @@ void SatelliteEngine::createBuffers() {
 	vkGetBufferMemoryRequirements(device, planetHostBuffer, &planetHostRequirements.requirements);
 
 	bufferInfo.size = SATELLITE_COUNT * sizeof(LineInfo);
-	bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 	lineInfoSize = bufferInfo.size;
 
 	if (vkCreateBuffer(device, &bufferInfo, nullptr, &lineInfoBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create Satellite lineInfo buffer"); }
@@ -620,12 +620,10 @@ void SatelliteEngine::initBufferData_B(VkCommandBuffer transferCommandBuffer, Vk
 
 }
 
-void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frameIndex, double dt) {
+void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frameIndex) {
 
-	dt = 1.0/400;
-	dt *= 1e1;
 
-	dt = params->dt;
+	double dt = params->dt;
 	
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
@@ -723,12 +721,11 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 	}
 
 }
-void SatelliteEngine::simulateSatsRaw(uint32_t frameIndex, double dt) {
-
-	dt = 1.0 / 400.0;
-	dt *= 1e1;
+void SatelliteEngine::simulateSatsRaw(uint32_t frameIndex) {
 
 
+
+	double dt = params->dt;
 
 
 	SatPushConstants satPC{};

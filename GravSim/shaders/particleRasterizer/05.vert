@@ -1,13 +1,5 @@
 #version 460
 
-
-struct LineInfo{
-    float eccentricity;
-    float apoapsis;
-    float periapsis;
-    float cost;
-};
-
 layout(constant_id = 0) const uint MAX_PLANETS_ARRAY_SIZE = 2;
 layout(constant_id = 1) const uint SATELLITE_COUNT = 256;
 layout(constant_id = 2) const uint LINE_VERTEX_COUNT = 1024;
@@ -17,9 +9,7 @@ layout(binding = 0) uniform UniformBufferObject {
     mat4 proj;
     mat4 models[MAX_PLANETS_ARRAY_SIZE];
 } ubo;
-layout(binding = 1) uniform LineInfoUniforms{
-    LineInfo infos[SATELLITE_COUNT];
-};
+
 
 
 layout(push_constant) uniform pc {

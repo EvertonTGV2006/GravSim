@@ -300,15 +300,15 @@ void particleRasterizer::createDescriptorSets() {
 	ubo.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	ubo.pImmutableSamplers = nullptr;
 
-	VkDescriptorSetLayoutBinding lInfo{};
-	lInfo.binding = 1;
-	lInfo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	lInfo.descriptorCount = 1;
-	lInfo.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	lInfo.pImmutableSamplers = nullptr;
+	//VkDescriptorSetLayoutBinding lInfo{};
+	//lInfo.binding = 1;
+	//lInfo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	//lInfo.descriptorCount = 1;
+	//lInfo.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	//lInfo.pImmutableSamplers = nullptr;
 
 
-	std::array<VkDescriptorSetLayoutBinding, 2> bindings = { ubo, lInfo };
+	std::array<VkDescriptorSetLayoutBinding, 1> bindings = { ubo };
 
 	VkDescriptorSetLayoutCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -335,13 +335,13 @@ void particleRasterizer::createDescriptorSets() {
 		bufferInfo.offset = i * sizeof(UniformBufferObject);
 		bufferInfo.range = sizeof(UniformBufferObject);
 
-		VkDescriptorBufferInfo lIBuffer{};
-		lIBuffer.buffer = *satLineInfoBuffer;
-		lIBuffer.offset = 0;
-		lIBuffer.range = sizeof(LineInfo) * SATELLITE_COUNT;
+		//VkDescriptorBufferInfo lIBuffer{};
+		//lIBuffer.buffer = *satLineInfoBuffer;
+		//lIBuffer.offset = 0;
+		//lIBuffer.range = sizeof(LineInfo) * SATELLITE_COUNT;
 
 
-		std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+		std::array<VkWriteDescriptorSet, 1> descriptorWrites{};
 
 		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrites[0].dstSet = descriptorSets[i];
@@ -351,13 +351,13 @@ void particleRasterizer::createDescriptorSets() {
 		descriptorWrites[0].descriptorCount = 1;
 		descriptorWrites[0].pBufferInfo = &bufferInfo;
 
-		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[1].dstSet = descriptorSets[i];
-		descriptorWrites[1].dstBinding = 1;
-		descriptorWrites[1].dstArrayElement = 0;
-		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		descriptorWrites[1].descriptorCount = 1;
-		descriptorWrites[1].pBufferInfo = &lIBuffer;
+		//descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		//descriptorWrites[1].dstSet = descriptorSets[i];
+		//descriptorWrites[1].dstBinding = 1;
+		//descriptorWrites[1].dstArrayElement = 0;
+		//descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		//descriptorWrites[1].descriptorCount = 1;
+		//descriptorWrites[1].pBufferInfo = &lIBuffer;
 
 		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 	}

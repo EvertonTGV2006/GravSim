@@ -20,10 +20,13 @@ struct LineVertex{
     vec4 fin;
 };
 struct LineInfo{
-    float eccentricity;
-    float apoapsis;
-    float periapsis;
-    float cost;
+    dvec4 relSep;
+    dvec4 relVel;
+    float score;
+    float time;
+    float p2;
+    float p3;
+    vec4 p4;
 };
 
 

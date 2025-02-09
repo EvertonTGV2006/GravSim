@@ -96,7 +96,13 @@ struct LineVertex {
     static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions();
 };
 struct LineInfo {
-    float eccentricity;
+    alignas(32) glm::dvec3 relSep;
+    alignas(32) glm::dvec3 relVel;
+    float score;
+    float time;
+    float p2;
+    float p3;
+    glm::vec4 p4;
 };
 
 struct UniformBufferObject {

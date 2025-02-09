@@ -18,9 +18,7 @@ layout(binding = 0) uniform UniformBufferObject {
     mat4 proj;
     mat4 models[MAX_PLANETS_ARRAY_SIZE];
 } ubo;
-layout(binding = 1) uniform LineInfoUniforms{
-    LineInfo infos[SATELLITE_COUNT];
-};
+
 
 
 layout(push_constant) uniform pc {

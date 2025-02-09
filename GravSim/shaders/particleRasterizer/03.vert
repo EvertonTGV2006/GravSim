@@ -17,9 +17,7 @@ layout(binding = 0) uniform UniformBufferObject {
     mat4 proj;
     mat4 models[MAX_PLANETS_ARRAY_SIZE];
 } ubo;
-layout(binding = 1) uniform LineInfoUniforms{
-    LineInfo infos[SATELLITE_COUNT];
-};
+
 
 
 layout(push_constant) uniform pc {
@@ -76,7 +74,7 @@ void main() {
 
     float vertIndex = ((gl_VertexIndex - constants.model[0][0])/ lineCount);
     uint infoIndex = uint(constants.model[0][1]);
-    LineInfo info = infos[infoIndex];
+
 
     float baseColourWeight = (0.5f <= vertIndex && vertIndex <= 1.0f) ? 2.0f * (vertIndex - 0.5f) : 0.0f;
     float intColourWeight = 1.0f - 2.0f * abs(vertIndex - 0.5f);

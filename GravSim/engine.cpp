@@ -469,7 +469,7 @@ void VulkanEngine::executeCompute() {
         }
 
         if (!firstComputeCycle) {
-            satEngine.simulateSatsRaw(computeIndex, 0.01);
+            satEngine.simulateSatsRaw(computeIndex);
         }
         else {
             VkCommandBufferBeginInfo beginInfo{};
@@ -478,7 +478,7 @@ void VulkanEngine::executeCompute() {
             if (vkBeginCommandBuffer(cCommandBuffers[computeIndex], &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to start draw recording"); }
 
             if (!player->params.pause) {
-                satEngine.simulateSats(cCommandBuffers[computeIndex], computeIndex, 0.01);
+                satEngine.simulateSats(cCommandBuffers[computeIndex], computeIndex);
             }
 
             if (vkEndCommandBuffer(cCommandBuffers[computeIndex]) != VK_SUCCESS) { throw std::runtime_error("Failed to record draw"); }
@@ -493,7 +493,7 @@ void VulkanEngine::executeCompute() {
         if (vkBeginCommandBuffer(cCommandBuffers[computeIndex], &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to start draw recording"); }
         
         if (!player->params.pause) {
-            satEngine.simulateSats(cCommandBuffers[computeIndex], computeIndex, 0.01);
+            satEngine.simulateSats(cCommandBuffers[computeIndex], computeIndex);
         }
 
         if (vkEndCommandBuffer(cCommandBuffers[computeIndex]) != VK_SUCCESS) { throw std::runtime_error("Failed to record draw"); }
