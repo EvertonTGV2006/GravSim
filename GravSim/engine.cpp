@@ -121,6 +121,7 @@ void VulkanEngine::initEngine() {
     sat.memProperties = memProperties;
     sat.planets = &planets;
     sat.params = &player->params;
+    sat.stat = stat;
     for (uint16_t i = shaderCounts[shaderCursor]; i < shaderCounts[shaderCursor + 1]; i++) {
         sat.shaderCode.push_back(&shaderCode[i]);
     }
@@ -192,7 +193,7 @@ void VulkanEngine::initEngine() {
 
     //gravEngine.createRandomData();
 
-    
+    satEngine.startNewSatelliteIteration(gCommandBuffers[0], graphicsQueue);
 
 
     std::chrono::time_point endTime = std::chrono::high_resolution_clock::now();
@@ -226,13 +227,19 @@ void VulkanEngine::readFiles(std::vector<std::string> files, std::vector<std::ve
 
 //runtime functions
 void VulkanEngine::startDraw() {
-    //std::thread compute(&VulkanEngine::runCompute, this);
-    std::thread graphics(&VulkanEngine::runGraphics, this);
-    while (!glfwWindowShouldClose(winmanager.window)) {
-        glfwPollEvents();
-    }
-    //compute.join();
-    graphics.join();
+    //old multi-threaded approach with asynchronous compute and graphics dispatch, no performace gain when GPU limitied so disable to improve stability and code efficiency, as now we only poll glfw one per frame cycle 
+    //which is a lot more efficient than just constantly polling glfw for events. could use glfwwaitevents here instead.
+    ////std::thread compute(&VulkanEngine::runCompute, this);
+    //std::thread graphics(&VulkanEngine::runGraphics, this);
+    //while (!glfwWindowShouldClose(winmanager.window)) {
+    //    glfwPollEvents();
+    //}
+    ////compute.join();
+    //graphics.join();
+
+    //this slightly hurts runtine performance but if GPU bound makes no difference on FPS, shifts UI handling events to main thread which avoids data races on player owned 
+    //objects being accessed by main engine and glfw callback functions
+    runGraphics();
 }
 void VulkanEngine::runGraphics() {
     while (!glfwWindowShouldClose(winmanager.window)) {
@@ -242,6 +249,7 @@ void VulkanEngine::runGraphics() {
         }
         executeCompute();
         executeGraphics();
+        glfwPollEvents();
     }
 }
 void VulkanEngine::executeGraphics() {
@@ -462,6 +470,14 @@ void VulkanEngine::runCompute() {
 void VulkanEngine::executeCompute() {
     vkWaitForFences(device, 1, &cfFences[computeIndex], VK_TRUE, UINT64_MAX);
     vkResetFences(device, 1, &cfFences[computeIndex]);
+
+    if (satEngine.triggerNewIteration) {
+        satEngine.startNewSatelliteIteration(cCommandBuffers[computeIndex], computeQueue);
+    }
+
+
+
+
     bool oneTimeRecord = false;
     if (oneTimeRecord){
         if (firstComputeCycle) {

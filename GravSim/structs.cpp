@@ -123,5 +123,3 @@ std::array<VkVertexInputAttributeDescription, 4> LineVertex::getAttributeDescrip
 
     return attributeDescriptions;
 }
-
-    

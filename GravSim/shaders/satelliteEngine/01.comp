@@ -29,7 +29,7 @@ struct SatInfo{
     double relPos;
     double relVel;
     double tApproach;
-    double padding;
+    double score;
 };
 
 
@@ -73,7 +73,7 @@ layout(push_constant) uniform pc {
     uint pOffset;             
 } constants;
 layout(local_size_x = 1024) in;
-
+//FOR SATELLITE INTEGRATION
 
 uint STEP_INDEX = 0;
 // vec3 evaluatePlanetAccelEuler(Satellite sat, Planet pl, uint index){ //OLD CODE, OBSOLETE REPLACED BY evaluateAccelBase;
@@ -213,18 +213,6 @@ void main(){
                 STEP_INDEX++;
             }
             outSats[satIndex] = tempSats[satIndexIn];
-
-            //comparison step to check if satInfos needs to be updated;
-            Satellite compSat = tempSats[satIndexIn];
-            uint planetIndex = constants.pOffset * MAX_PLANETS_ARRAY_SIZE * STEPS_PER_SHADER + STEP_INDEX * MAX_PLANETS_ARRAY_SIZE + constants.targetPlanetIndex;
-            double relPos = length(compSat.pos.xyz - ubo.planets[planetIndex].pos[2].xyz);
-            if(relPos < satInfos[satIndex].relPos){
-                satInfos[satIndex].relPos = relPos;
-                satInfos[satIndex].pos = compSat.pos;
-                satInfos[satIndex].vel = compSat.vel;
-                satInfos[satIndex].relVel = length(ubo.planets[planetIndex].vel[2].xyz - compSat.vel.xyz);
-                satInfos[satIndex].tApproach = constants.tElapsed;
-            }
             
         }
     }

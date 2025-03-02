@@ -185,8 +185,8 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 void PlayerObject::framebufferResizeCallback(GLFWwindow* window, int width, int height){
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
 	app->framebufferResized = true;
-	app->screenDim.x = width;
-	app->screenDim.y = height;
+	app->screenDim.x = float(width);
+	app->screenDim.y = float(height);
 	}
 void PlayerObject::mouseMotionCallback(GLFWwindow* window, double xpos, double ypos) {
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));

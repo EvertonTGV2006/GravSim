@@ -27,57 +27,6 @@ void particleRasterizer::initRast_A(RastInit details) {
 
 	createBuffers();
 
-	(*planets)[0].pos_0 = glm::dvec3(0.0f, 0.0f, 0.0f);
-	(*planets)[0].radius = 6378e3;
-	(*planets)[0].vel_0 = glm::dvec3(0.0f, 0.0f, 0.0f);
-	(*planets)[0].mass = 5.9722e24;
-	(*planets)[0].axis = glm::dvec3(0.0f, glm::asin(glm::radians(23.5)), glm::acos(glm::radians(23.5)));
-	(*planets)[0].theta = 0.0f;
-
-	(*planets)[1].pos_0 = glm::dvec3(0.4055e9/*10.0f*/, 0.0f, 0.0f);
-	(*planets)[1].radius = 1738e3/*0.5f*/;
-	(*planets)[1].vel_0 = glm::dvec3(0.0f, 0.970e3/*0.5f*/, 0.0f);
-	(*planets)[1].mass = 0.07346e24;
-	(*planets)[1].axis = glm::dvec3(0.0f, 0.0f, 1.0f);
-	(*planets)[1].theta = 0.0f;
-
-	for (uint32_t i = 2; i < planets->size(); i++) {
-		(*planets)[i].pos_0 = glm::vec3(glm::linearRand<float>(0, 10) * 7e7, glm::linearRand<float>(0, 10) * 8e7, glm::linearRand<float>(0, 10) * 1e1);
-		(*planets)[i].radius = glm::linearRand<float>(0.1f, 2.0f)*1e6f;
-		//(*planets)[i].vel = glm::vec3(glm::linearRand<float>(0, 1)*1e3, glm::linearRand<float>(0, 1)*1e3, glm::linearRand<float>(0, 1)*1e0 );
-		(*planets)[i].vel_0 = glm::sqrt(float(CONSTANT_G) * (*planets)[0].mass * glm::linearRand<float>(0.7f, 1.4f) / glm::length((*planets)[i].pos_0)) * glm::cross(glm::normalize((*planets)[i].pos_0), glm::dvec3(0.0f, 0.0f, 1.0f));
-		//(*planets)[i].mass = glm::linearRand<float>(0.1f, 2.0f);
-		(*planets)[i].mass = (*planets)[0].mass * glm::pow((*planets)[i].radius / (*planets)[0].radius, 3.0f);
-		(*planets)[i].axis = glm::vec3(glm::linearRand<float>(0, 1), glm::linearRand<float>(0, 1), glm::linearRand<float>(0, 1));
-		(*planets)[i].theta = 0.0f;
-	}
-
-
-	//now we realign system such that static frame has COM stationary at the origin;
-	glm::dvec3 mv{};
-	glm::dvec3 mr{};
-	double m = 0.0;
-	for (uint32_t i = 0; i < planets->size(); i++) {
-		m += (*planets)[i].mass;
-		mv = (*planets)[i].mass * (*planets)[i].vel_0;
-		mr = (*planets)[i].mass * (*planets)[i].pos_0;
-	};
-
-	glm::dvec3 vCOM = mv / m;
-	glm::dvec3 rCOM = mr / m;
-
-	for (uint32_t i = 0; i < planets->size(); i++) {
-		(*planets)[i].vel_0 += -vCOM;
-		(*planets)[i].pos_0 += -rCOM;
-	}
-
-	for (uint32_t i = 0; i < planets->size(); i++) {
-		(*planets)[i].pos_1 = (*planets)[i].pos_0;
-		(*planets)[i].vel_1 = (*planets)[i].vel_0;
-		(*planets)[i].pos_2 = (*planets)[i].pos_0;
-		(*planets)[i].vel_2 = (*planets)[i].vel_0;
-	}
-
 }
 void particleRasterizer::initRast_B() {
 	createDescriptorSets();

@@ -27,7 +27,9 @@ const uint32_t STEPS_PER_SHADER = 1;
 const uint32_t fieldMeshResMajor = 4096;
 const uint32_t fieldMeshResMinor = 1;
 const uint32_t MESH_PER_SHADER = 4; //aim to make fieldmeshmajor / mesh pershader 1024
-
+const uint32_t PICK_BEST_TRAJECTORIES = 16;
+const uint32_t START_PLANET = 0;
+const uint32_t END_PLANET = 1;
 
 enum UIOptions {
     //32Bits
@@ -191,10 +193,10 @@ struct SatInfo {
     double mass;
     glm::dvec3 vel;
     double unused;
-    double relDistance;
+    double relPos;
     double relVel;
     double tApproach;
-    double padding;
+    double score;
 };
 struct Orbit {
     uint32_t planetIndex;
@@ -204,6 +206,11 @@ struct Orbit {
     double ascNodeLong;
     double argPeriapsis;
     double trueAnomaly;
+    double apoapsis;
+    double periapsis;
+    double apocenter;
+    double pericenter;
+    double period;
 
 };
 
@@ -290,5 +297,6 @@ struct GlobalParameters {
     bool pause;
     bool clearSatLines;
     bool satLines;
+    bool getSatInfos;
 };
 

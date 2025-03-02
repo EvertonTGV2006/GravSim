@@ -1,8 +1,12 @@
 #include "satelliteEngine.h"
+#include <algorithm>
+#include <ostream>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/random.hpp>
 
+#include "statusLogger.h"
 
 void SatelliteEngine::initSatEngine_A(SatInit details) {
 	device = details.device;
@@ -11,15 +15,21 @@ void SatelliteEngine::initSatEngine_A(SatInit details) {
 	memProperties = details.memProperties;
 
 	planets = details.planets;
-
+	stat = details.stat;
+	
 	params = details.params;
 
 	memcpy(shaderCode.data(), details.shaderCode.data(), shaderCode.size() * sizeof(shaderCode[0]));
+
+	createInitialPlanets();
 
 	createBuffers();
 
 	satUBO = new SatPlanetBuffer;
 	satData = new std::array<Satellite, SATELLITE_COUNT>;
+	initSatData = new std::array<Satellite, SATELLITE_COUNT>;
+	satInfoData = new std::array<SatInfo, SATELLITE_COUNT>;
+	initOrbits = new std::array<Orbit, SATELLITE_COUNT>;
 }
 void SatelliteEngine::initSatEngine_B() {
 	createDescriptorSets();
@@ -75,12 +85,13 @@ void SatelliteEngine::createBuffers() {
 
 	bufferInfo.size = SATELLITE_COUNT * sizeof(SatInfo);
 	bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-	if (vkCreateBuffer(device, &bufferInfo, nullptr, &satInfoBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create field mesh buffer"); }
+	if (vkCreateBuffer(device, &bufferInfo, nullptr, &satInfoBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create sat info buffer"); }
 	vkGetBufferMemoryRequirements(device, satInfoBuffer, &satInfoRequirements.requirements);
 	satInfoSize = bufferInfo.size;
 
 
-	bufferInfo.size = SATELLITE_COUNT * sizeof(Satellite);
+
+	bufferInfo.size = std::max(satSize, satInfoSize);
 	bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	if (vkCreateBuffer(device, &bufferInfo, nullptr, &satTransferBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create field mesh buffer"); }
 	vkGetBufferMemoryRequirements(device, satTransferBuffer, &satTransferRequirements.requirements);
@@ -503,16 +514,16 @@ void SatelliteEngine::initBufferData_B(VkCommandBuffer transferCommandBuffer, Vk
 
 	//NEW SATS
 	//4 sets of 16 velocities in LEO
-	createInitialSatellitesBase(&(*satData)[0], 4, 16, 200e3f, 1.0f, 0.017f, 0.0f, 1);
 
-	createInitialSatellitesOffset(&(*satData)[64], 6, 32, 400e3, 1.35, 1.5, 0.6, 0);
+	//Sample inital satellites
+	//createInitialSatellitesBase(&(*satData)[0], 4, 16, 200e3f, 1.0f, 0.017f, 0.0f, 1);
+	//createInitialSatellitesOffset(&(*satData)[64], 6, 32, 400e3, 1.35, 1.5, 0.6, 0);
+	//createInitialSatellitesOffset(&(*satData)[256], 60, 64, 1e4, 1.35, 1.6, 0.7, 0);
 
-	createInitialSatellitesOffset(&(*satData)[256], 60, 64, 1e4, 1.35, 1.6, 0.7, 0);
 
-	Orbit orb{};
-	getOrbitalParams(&(*satData)[1], 0, &orb);
 
-	memcpy(data, satData->data(), satData->size() * sizeof(Satellite));
+	//memcpy(data, satData->data(), satData->size() * sizeof(Satellite));
+	//memcpy(initSatData->data(), satData->data(), satData->size() * sizeof(Satellite));
 
 	VkFence transferFence;
 	VkFenceCreateInfo fenceInfo{};
@@ -538,30 +549,32 @@ void SatelliteEngine::initBufferData_B(VkCommandBuffer transferCommandBuffer, Vk
 	cpy.dstOffset = 0;
 	cpy.size = satData->size() * sizeof(Satellite);
 
-	if (vkBeginCommandBuffer(transferCommandBuffer, &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to begin transfer command buffer"); }
-	for (uint32_t i = 0; i < satBuffers.size(); i++) { vkCmdCopyBuffer(transferCommandBuffer, stagingBuffer, satBuffers[i], 1, &cpy); }
-	if (vkEndCommandBuffer(transferCommandBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to end transfer command buffer"); }
-	if (vkQueueSubmit(transferQueue, 1, &submitInfo, transferFence) != VK_SUCCESS) { throw std::runtime_error("Failed to submit transfer command buffer"); }
-	vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
-	vkResetFences(device, 1, &transferFence);
-	vkResetCommandBuffer(transferCommandBuffer, 0);
+	//if (vkBeginCommandBuffer(transferCommandBuffer, &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to begin transfer command buffer"); }
+	//for (uint32_t i = 0; i < satBuffers.size(); i++) { vkCmdCopyBuffer(transferCommandBuffer, stagingBuffer, satBuffers[i], 1, &cpy); }
+	//if (vkEndCommandBuffer(transferCommandBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to end transfer command buffer"); }
+	//if (vkQueueSubmit(transferQueue, 1, &submitInfo, transferFence) != VK_SUCCESS) { throw std::runtime_error("Failed to submit transfer command buffer"); }
+	//vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
+	//vkResetFences(device, 1, &transferFence);
+	//vkResetCommandBuffer(transferCommandBuffer, 0);
 
-	SatInfo nullInfo{};
-	nullInfo.relDistance = 1e15; //big number 
+	//SatInfo nullInfo{};
+	//nullInfo.relPos = 1e15; //big number 
+	//nullInfo.relVel = 1e6;
+	//nullInfo.score = 10000;
 
-	for (uint32_t i = 0; i < SATELLITE_COUNT; i++) {
-		char* cpyPtr = reinterpret_cast<char*>(data) + (i * sizeof(SatInfo));
-		memcpy(cpyPtr, &nullInfo, sizeof(SatInfo));
-	}
+	//for (uint32_t i = 0; i < SATELLITE_COUNT; i++) {
+	//	char* cpyPtr = reinterpret_cast<char*>(data) + (i * sizeof(SatInfo));
+	//	memcpy(cpyPtr, &nullInfo, sizeof(SatInfo));
+	//}
 
-	cpy.size = satInfoSize;
+	//cpy.size = satInfoSize;
 
-	if (vkBeginCommandBuffer(transferCommandBuffer, &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to begin transfer command buffer"); }
-	vkCmdCopyBuffer(transferCommandBuffer, stagingBuffer, satInfoBuffer, 1, &cpy);
-	if (vkEndCommandBuffer(transferCommandBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to end transfer command buffer"); }
-	if (vkQueueSubmit(transferQueue, 1, &submitInfo, transferFence) != VK_SUCCESS) { throw std::runtime_error("Failed to submit transfer command buffer"); }
-	vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
-	vkResetFences(device, 1, &transferFence);
+	//if (vkBeginCommandBuffer(transferCommandBuffer, &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to begin transfer command buffer"); }
+	//vkCmdCopyBuffer(transferCommandBuffer, stagingBuffer, satInfoBuffer, 1, &cpy);
+	//if (vkEndCommandBuffer(transferCommandBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to end transfer command buffer"); }
+	//if (vkQueueSubmit(transferQueue, 1, &submitInfo, transferFence) != VK_SUCCESS) { throw std::runtime_error("Failed to submit transfer command buffer"); }
+	//vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
+	//vkResetFences(device, 1, &transferFence);
 	vkResetCommandBuffer(transferCommandBuffer, 0);
 
 	//index buffer;
@@ -685,6 +698,7 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, linePipeline);
 
 		satPC.deltaTime = float(lineCursor);
+		satPC.targetPlanet = 1;
 		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(SatPushConstants), &satPC);
 
 		vkCmdDispatch(commandBuffer, shaderDispatches, 1, 1);
@@ -708,6 +722,7 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 		//vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, 0, 1, &mem2, 0, nullptr, 0, nullptr);
 		//for combined compute and graphics queue, synchronization now implied by semaphores
 
+
 		lineCursor = (lineCursor + 1) % LINE_VERTEX_COUNT;
 		lineSegments = (lineSegments < 1024) ? lineSegments + 1 : 1024;
 	}
@@ -720,6 +735,9 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 		params->clearSatLines = false;
 	}
 
+	if (elapsedTime > simulationTime) {
+		triggerNewIteration = true;
+	}
 }
 void SatelliteEngine::simulateSatsRaw(uint32_t frameIndex) {
 
@@ -753,6 +771,135 @@ void SatelliteEngine::simulateSatsRaw(uint32_t frameIndex) {
 	lineFrame = (lineFrame + 1) % FRAMES_PER_LINE;
 
 }
+
+void SatelliteEngine::startNewSatelliteIteration(VkCommandBuffer commandBuffer, VkQueue queue) {
+	if (iterationCount == 0) {
+		double startingPeriapsis = 120e3;
+		createInitalSatellitesTarget(startingPeriapsis, START_PLANET, END_PLANET);
+		iterationStartTime = std::chrono::high_resolution_clock::now();
+	}
+	else {
+		iterationEndTime = std::chrono::high_resolution_clock::now();
+		auto duration = iterationStartTime - iterationEndTime;
+		std::stringstream ss;
+		ss << "Iteration completed in " << duration.count() << "s";
+		stat->addMessage(MSG_LEVEL_USER, ss.str());
+
+		satelliteInfoTransfer(commandBuffer, queue, false);
+		evaluateSatelliteScores();
+	}
+	memcpy(initSatData->data(), satData->data(), satData->size() * sizeof((*satData)[0]));
+	satelliteTransfer(commandBuffer, queue, true);
+	satelliteInfoTransfer(commandBuffer, queue, true);
+	createInitialPlanets();
+
+	
+	double maxPeriod = 0;
+	for (uint32_t i = 0; i < SATELLITE_COUNT; i++) {
+		getOrbitalParams(&(*satData)[i], START_PLANET, &(*initOrbits)[i], false);
+		maxPeriod = std::max(maxPeriod, (*initOrbits)[i].period);
+	}
+
+	simulationTime = maxPeriod;
+	uint32_t secDur = 1;
+	uint32_t minDur = 60;
+	uint32_t hr = 60 * minDur;
+	uint32_t day = 24 * hr;
+	uint32_t year = 365 * day;
+
+	uint32_t yC = 0;
+	uint32_t dC = 0;
+	uint32_t hC = 0;
+	uint32_t mC = 0;
+	uint32_t sC = 0;
+
+	std::ostringstream oss;
+
+	uint32_t tInt = uint32_t(simulationTime);
+	
+	oss << "Iteration Simulation Time: ";
+
+	yC = tInt / year;
+	dC = tInt % year / day;
+	hC = tInt % year % day / hr;
+	mC = tInt % year % day % hr / minDur;
+	sC = tInt % year % day % hr % minDur;
+	oss << yC << "Y " << dC << "D ";
+	if (hC < 10) { oss << '0'; }
+	oss << hC << ":";
+	if (mC < 10) { oss << '0'; }
+	oss << mC << ":";
+	if (sC < 10) { oss << "0"; }
+	oss << sC;
+
+	stat->addMessage(MSG_LEVEL_USER, oss.str());
+
+
+	elapsedTime = 0;
+	triggerNewIteration = false;
+}
+
+void SatelliteEngine::evaluateSatelliteScores() {
+	for (uint32_t i = 0; i < satInfoData->size(); i++) {
+		(*satInfoData)[i].unused = i;
+	}
+	std::sort(satInfoData->begin(), satInfoData->end(), [](SatInfo a, SatInfo b) {return a.score > b.score; });
+	std::array<SatInfo, PICK_BEST_TRAJECTORIES>* goodSats = new std::array<SatInfo, PICK_BEST_TRAJECTORIES>;
+	memcpy(goodSats->data(), satInfoData->data(), goodSats->size() * sizeof(SatInfo));
+
+	std::array<Orbit, PICK_BEST_TRAJECTORIES>* goodOrbits = new std::array<Orbit, PICK_BEST_TRAJECTORIES>;
+	uint32_t satIndex = 0;
+
+	uint32_t posCount = std::sqrt(SATELLITE_COUNT / PICK_BEST_TRAJECTORIES);
+	uint32_t velCount = SATELLITE_COUNT / PICK_BEST_TRAJECTORIES / posCount;
+
+	uint32_t satOffset = 0;
+
+	for (uint32_t i = 0; i < goodSats->size(); i++) {
+		satIndex = (*goodSats)[i].unused;
+		getOrbitalParams(&(*initSatData)[satIndex], START_PLANET, &(*goodOrbits)[i], false);
+	}
+	//now compute std deviations of orbital parameters argPeriapsis & pericenter;
+	double sumArgPeriResSq = 0;
+	double sumArgPeri = 0;
+	double sumPericenterResSq = 0;
+	double sumPericenter = 0;
+	for (uint32_t i = 0; i < goodOrbits->size(); i++) {
+		sumArgPeri += (*goodOrbits)[i].argPeriapsis;
+		sumPericenter += (*goodOrbits)[i].pericenter;
+	}
+	double meanArgPeri = sumArgPeri / goodOrbits->size();
+	double meanPericenter = sumPericenter / goodOrbits->size();
+	for (uint32_t i = 0; i < goodOrbits->size(); i++) {
+		sumArgPeriResSq += std::pow(((*goodOrbits)[i].argPeriapsis - meanArgPeri), 2);
+		sumPericenterResSq += std::pow(((*goodOrbits)[i].pericenter - meanPericenter), 2);
+	}
+	double stdDevArgPeri = std::sqrt(sumArgPeriResSq / goodOrbits->size());
+	double stdDevPericenter = std::sqrt(sumPericenterResSq / goodOrbits->size());
+
+	std::stringstream ss;
+	ss << "Picked " << PICK_BEST_TRAJECTORIES << "Orbits";
+	stat->addMessage(MSG_LEVEL_USER, ss.str());
+	ss.clear();
+	ss << "Periapsis Argument: " << meanArgPeri << " Standard Deviation: " << stdDevArgPeri;
+	stat->addMessage(MSG_LEVEL_USER, ss.str());
+	ss.clear();
+	ss << "Pericenter:         " << meanPericenter << " Standard Deviation: " << stdDevPericenter;
+	stat->addMessage(MSG_LEVEL_USER, ss.str());
+	ss.clear();
+	for (uint32_t i = 0; i < goodOrbits->size(); i++) {
+		ss << "Periapsis: " << (*goodOrbits)[i].periapsis << " Pericenter: " << (*goodOrbits)[i].pericenter << " Closest Approach: " << (*goodSats)[i].relPos << " Velocity: " << (*goodSats)[i].relVel << " Score: " << (*goodSats)[i].score;
+		stat->addMessage(MSG_LEVEL_USER, ss.str());
+		ss.clear();
+	}
+
+
+	for (uint32_t i = 0; i < goodOrbits->size(); i++) {
+		createInitialSatellitesOrbit(&(*satData)[satOffset], posCount, velCount, 0.5 * stdDevArgPeri, 0.5 * stdDevPericenter, &(*goodOrbits)[i]);
+		satOffset += posCount * velCount;
+	}
+}
+
 SatExternalMembers SatelliteEngine::getSatellitePtrs() {
 	SatExternalMembers data{};
 	data.lineBuffer = &lineBuffer;
@@ -765,7 +912,7 @@ SatExternalMembers SatelliteEngine::getSatellitePtrs() {
 }
 
 void SatelliteEngine::createInitialSatellitesBase(void* ptr, uint32_t positions, uint32_t velocities, double baseHeight, double baseVelocity, double velocityStep, double inclination, uint32_t planetIndex) {
-	Planet pl = (*planets)[planetIndex];
+	Planet pl = initialPlanets[planetIndex];
 	double orbitRadius = pl.radius + baseHeight;
 	double orbitVel = glm::sqrt(CONSTANT_G * pl.mass / orbitRadius);
 	Satellite sat{};
@@ -788,7 +935,7 @@ void SatelliteEngine::createInitialSatellitesBase(void* ptr, uint32_t positions,
 	}
 }
 void SatelliteEngine::createInitialSatellitesOffset(void* ptr, uint32_t positions, uint32_t velocities, double baseHeight, double minVelocity, double maxVelocity, double distFactor, uint32_t planetIndex) {
-	Planet pl = (*planets)[planetIndex];
+	Planet pl = initialPlanets[planetIndex];
 	double orbitRadius = pl.radius + baseHeight;
 	double orbitVel = glm::sqrt(CONSTANT_G * pl.mass / orbitRadius);
 	Satellite sat{};
@@ -815,6 +962,125 @@ void SatelliteEngine::createInitialSatellitesOffset(void* ptr, uint32_t position
 		}
 	}
 
+}
+void SatelliteEngine::createInitialSatellitesOrbit(void* ptr, uint32_t positions, uint32_t velocities, double varPos, double varVel, Orbit* orbit) {
+	double argPeri = orbit->argPeriapsis;
+	double periapsis = orbit->periapsis;
+	double pericenter = orbit->pericenter;
+	double apocenter = orbit->apocenter;
+
+
+	double velMin = pericenter - varVel;
+	double velStep = 2 * varVel / (velocities - 1);
+	double argMin = argPeri - varPos;
+	double argStep = 2 * varPos / (positions - 1);
+
+	Satellite* satPtr = reinterpret_cast<Satellite*>(ptr);
+
+	double newArg = 0;
+	double newVel = 0;
+	Satellite newSat{};
+
+	uint32_t satIndex = 0;
+	for (uint32_t i = 0; i < positions; i++) {
+		newArg = argMin + i * argStep;
+		for (uint32_t j = 0; j < velocities; j++) {
+			newVel = velMin + j * velStep;
+			glm::dvec3 periVecN = glm::dvec3(glm::cos(newArg), glm::sin(newArg), 0.0);
+			glm::dvec3 velVecN = glm::cross(glm::dvec3(0, 0, 1), periVecN);
+			glm::dvec3 periVec = periapsis * periVecN;
+			glm::dvec3 velVec = newVel * velVecN;
+			newSat.pos = periVec;
+			newSat.vel = velVec;
+			satPtr[satIndex] = newSat;
+			satIndex++;
+		}
+	}
+}
+void SatelliteEngine::createInitialPlanets() {
+	(*planets)[0].pos_0 = glm::dvec3(0.0f, 0.0f, 0.0f);
+	(*planets)[0].radius = 6378e3;
+	(*planets)[0].vel_0 = glm::dvec3(0.0f, 0.0f, 0.0f);
+	(*planets)[0].mass = 5.9722e24;
+	(*planets)[0].axis = glm::dvec3(0.0f, glm::asin(glm::radians(23.5)), glm::acos(glm::radians(23.5)));
+	(*planets)[0].theta = 0.0f;
+
+	(*planets)[1].pos_0 = glm::dvec3(0.4055e9/*10.0f*/, 0.0f, 0.0f);
+	(*planets)[1].radius = 1738e3/*0.5f*/;
+	(*planets)[1].vel_0 = glm::dvec3(0.0f, 0.970e3/*0.5f*/, 0.0f);
+	(*planets)[1].mass = 0.07346e24;
+	(*planets)[1].axis = glm::dvec3(0.0f, 0.0f, 1.0f);
+	(*planets)[1].theta = 0.0f;
+
+	for (uint32_t i = 2; i < planets->size(); i++) {
+		(*planets)[i].pos_0 = glm::vec3(glm::linearRand<float>(0, 10) * 7e7, glm::linearRand<float>(0, 10) * 8e7, glm::linearRand<float>(0, 10) * 1e1);
+		(*planets)[i].radius = glm::linearRand<float>(0.1f, 2.0f) * 1e6f;
+		//(*planets)[i].vel = glm::vec3(glm::linearRand<float>(0, 1)*1e3, glm::linearRand<float>(0, 1)*1e3, glm::linearRand<float>(0, 1)*1e0 );
+		(*planets)[i].vel_0 = glm::sqrt(float(CONSTANT_G) * (*planets)[0].mass * glm::linearRand<float>(0.7f, 1.4f) / glm::length((*planets)[i].pos_0)) * glm::cross(glm::normalize((*planets)[i].pos_0), glm::dvec3(0.0f, 0.0f, 1.0f));
+		//(*planets)[i].mass = glm::linearRand<float>(0.1f, 2.0f);
+		(*planets)[i].mass = (*planets)[0].mass * glm::pow((*planets)[i].radius / (*planets)[0].radius, 3.0f);
+		(*planets)[i].axis = glm::vec3(glm::linearRand<float>(0, 1), glm::linearRand<float>(0, 1), glm::linearRand<float>(0, 1));
+		(*planets)[i].theta = 0.0f;
+	}
+
+
+	//now we realign system such that static frame has COM stationary at the origin;
+	glm::dvec3 mv{};
+	glm::dvec3 mr{};
+	double m = 0.0;
+	for (uint32_t i = 0; i < planets->size(); i++) {
+		m += (*planets)[i].mass;
+		mv = (*planets)[i].mass * (*planets)[i].vel_0;
+		mr = (*planets)[i].mass * (*planets)[i].pos_0;
+	};
+
+	glm::dvec3 vCOM = mv / m;
+	glm::dvec3 rCOM = mr / m;
+
+	for (uint32_t i = 0; i < planets->size(); i++) {
+		(*planets)[i].vel_0 += -vCOM;
+		(*planets)[i].pos_0 += -rCOM;
+	}
+
+	for (uint32_t i = 0; i < planets->size(); i++) {
+		(*planets)[i].pos_1 = (*planets)[i].pos_0;
+		(*planets)[i].vel_1 = (*planets)[i].vel_0;
+		(*planets)[i].pos_2 = (*planets)[i].pos_0;
+		(*planets)[i].vel_2 = (*planets)[i].vel_0;
+	}
+	memcpy(initialPlanets.data(), planets->data(), planets->size() * sizeof(Planet));
+}
+void SatelliteEngine::createInitalSatellitesTarget(double periapsis, uint32_t hostIndex, uint32_t targetIndex) {
+	Planet tPlanet = initialPlanets[targetIndex];
+	Planet hPlanet = initialPlanets[hostIndex];
+
+	double planetOrbitRadius = glm::length(tPlanet.pos_0 - hPlanet.pos_0);
+	double apoapsisMin = 0.9 * planetOrbitRadius;
+	double apoapsisMax = 1.2 * planetOrbitRadius;
+
+	Orbit lowOrbit{};
+	lowOrbit.planetIndex = hostIndex;
+	lowOrbit.periapsis = periapsis + tPlanet.radius;
+	lowOrbit.apoapsis = apoapsisMin;
+	
+	Orbit highOrbit = lowOrbit;
+	highOrbit.apoapsis = apoapsisMax;
+
+	getOrbitalParamsApo(&lowOrbit);
+	getOrbitalParamsApo(&highOrbit);
+
+	double normalisedOrbitVel = std::sqrt(CONSTANT_G * hPlanet.mass / lowOrbit.periapsis);
+
+	double lowPericenter = lowOrbit.pericenter / normalisedOrbitVel;
+	double lowApocenter = lowOrbit.apocenter / normalisedOrbitVel;
+	double highPericenter = highOrbit.pericenter / normalisedOrbitVel;
+	double highApocenter = highOrbit.apocenter /normalisedOrbitVel;
+
+
+	//need to multiply to SATELLITE_COUNT = 4096
+	uint32_t positions = 64;
+	uint32_t velocities = 64;
+	createInitialSatellitesOffset(&(*satData)[0], positions, velocities, periapsis + hPlanet.radius, lowPericenter, highPericenter, 0.8, 0);
 }
 
 void SatelliteEngine::updatePlanets(double dt) {
@@ -872,7 +1138,6 @@ void SatelliteEngine::updatePlanets(double dt) {
 		(*planets)[i].theta = tempPlanets[0][i].theta + 1e-3 * dt;
 	}
 }
-
 void SatelliteEngine::updateAccelerations(uint32_t inputIndex) {
 	for (uint32_t i = 0; i < MAX_PLANET_ARRAY_SIZE; i++) {
 		tempAccelerations[i] = glm::dvec3(0);//initialise element to 0;
@@ -889,9 +1154,9 @@ void SatelliteEngine::updateAccelerations(uint32_t inputIndex) {
 	}
 }
 
-void SatelliteEngine::getOrbitalParams(Satellite* sat, uint32_t planetIndex, Orbit* result) {
+void SatelliteEngine::getOrbitalParams(Satellite* sat, uint32_t planetIndex, Orbit* result, bool currentPlanets) {
 	(*result) = {};
-	Planet targetPlanet = (*planets)[planetIndex];
+	Planet targetPlanet = (currentPlanets) ? (*planets)[planetIndex] : initialPlanets[planetIndex];
 	double mu = CONSTANT_G * targetPlanet.mass;
 	glm::dvec3 r = sat->pos - targetPlanet.pos_2;
 	glm::dvec3 v = sat->vel - targetPlanet.vel_2;
@@ -927,13 +1192,65 @@ void SatelliteEngine::getOrbitalParams(Satellite* sat, uint32_t planetIndex, Orb
 		result->trueAnomaly = trueAnom;
 	}
 
-
-
-	
+	result->periapsis = result->semiMajorAxis * (1 - result->eccentricity);
+	result->apoapsis = result->semiMajorAxis * (1 + result->eccentricity);
+	result->period = glm::two_pi<double>() * std::sqrt(std::pow(result->semiMajorAxis, 3.0) / mu);
 
 
 	//determine orbital paramaters following the procedure on the following page https://en.wikipedia.org/wiki/Orbit_determination#Orbit_Determination_from_a_State_Vector
 
+}
+void SatelliteEngine::getOrbitalParamsInfo(SatInfo* sat, uint32_t planetIndex, Orbit* result, bool currentPlanets) {
+	(*result) = {};
+	Planet targetPlanet = (currentPlanets) ? (*planets)[planetIndex] : initialPlanets[planetIndex];
+	double mu = CONSTANT_G * targetPlanet.mass;
+	glm::dvec3 r = sat->pos - targetPlanet.pos_2;
+	glm::dvec3 v = sat->vel - targetPlanet.vel_2;
+	glm::dvec3 h = glm::cross(r, v); //angular momentum, perpendicular to orbital plane
+	glm::dvec3 e = (glm::cross(v, h) / mu) - glm::normalize(r); //ecentricity vector, points towards perapsis
+	glm::dvec3 n = glm::cross(h, glm::dvec3(0, 0, 1)); //points to ascending node, (0, 0, 1) is normal to refernce plance
+	if (glm::length(n) != 0) {
+		double a = (glm::dot(h, h) / mu) / (1 - glm::dot(e, e)); //semiMajorAxis. p = h^2/mu; p = a(1-e^2) so a = (h^2/mu)/(1-e^2)
+		double inclination = glm::acos(glm::dot(glm::normalize(h), glm::dvec3(0, 0, 1))); //compute inclination
+		double argAscend = glm::acos(glm::dot(glm::normalize(n), glm::dvec3(1, 0, 0)));
+		double argPeri = glm::acos(glm::dot(glm::normalize(n), glm::normalize(e)));
+		double trueAnom = glm::acos(glm::dot(glm::normalize(r), glm::normalize(e)));
+		result->argPeriapsis = argPeri;
+		result->planetIndex = planetIndex;
+		result->semiMajorAxis = a;
+		result->eccentricity = glm::length(e);
+		result->ascNodeLong = argAscend;
+		result->inclination = inclination;
+		result->trueAnomaly = trueAnom;
+	}
+	else {
+		double a = (glm::dot(h, h) / mu) / (1 - glm::dot(e, e)); //semiMajorAxis. p = h^2/mu; p = a(1-e^2) so a = (h^2/mu)/(1-e^2)
+		double inclination = glm::acos(glm::dot(glm::normalize(h), glm::dvec3(0, 0, 1))); //compute inclination
+		double argAscend = 0;
+		double argPeri = glm::acos(glm::dot(glm::normalize(e), glm::dvec3(1, 0, 0)));
+		double trueAnom = glm::acos(glm::dot(glm::normalize(r), glm::normalize(e)));
+		result->argPeriapsis = argPeri;
+		result->planetIndex = planetIndex;
+		result->semiMajorAxis = a;
+		result->eccentricity = glm::length(e);
+		result->ascNodeLong = argAscend;
+		result->inclination = inclination;
+		result->trueAnomaly = trueAnom;
+	}
+	result->periapsis = result->semiMajorAxis * (1 - result->eccentricity);
+	result->apoapsis = result->semiMajorAxis * (1 + result->eccentricity);
+	result->period = glm::two_pi<double>() * std::sqrt(std::pow(result->semiMajorAxis, 3.0) / mu);
+	result->pericenter = std::sqrt(((1 + result->eccentricity) * mu) / ((1 - result->eccentricity) * result->semiMajorAxis));
+	result->apocenter = std::sqrt(((1 - result->eccentricity) * mu) / ((1 + result->eccentricity) * result->semiMajorAxis));
+}
+void SatelliteEngine::getOrbitalParamsApo(Orbit* result) {
+	result->semiMajorAxis = (result->apoapsis + result->periapsis) / 2;
+	result->eccentricity = (result->apoapsis - result->periapsis) / (result->apoapsis + result->periapsis);
+	Planet targetPlanet = initialPlanets[result->planetIndex];
+	double mu = CONSTANT_G * targetPlanet.mass;
+
+	result->pericenter = std::sqrt((1 + result->eccentricity) * mu / result->periapsis);
+	result->apocenter = std::sqrt((1 - result->eccentricity) * mu / result->apoapsis);
 }
 
 void SatelliteEngine::satelliteTransfer(VkCommandBuffer transferCommandBuffer, VkQueue transferQueue, bool direction) {
@@ -963,6 +1280,7 @@ void SatelliteEngine::satelliteTransfer(VkCommandBuffer transferCommandBuffer, V
 
 	if (direction) {
 		memcpy(satTransferMapped, satData->data(), satData->size() * sizeof(Satellite));
+		memcpy(initSatData->data(), satData->data(), satData->size() * sizeof(Satellite));
 		for (uint32_t i = 0; i < satBuffers.size(); i++) {
 			vkCmdCopyBuffer(transferCommandBuffer, satTransferBuffer, satBuffers[i], 1, &cpy);
 		}
@@ -986,10 +1304,68 @@ void SatelliteEngine::satelliteTransfer(VkCommandBuffer transferCommandBuffer, V
 
 
 }
+void SatelliteEngine::satelliteInfoTransfer(VkCommandBuffer transferCommandBuffer, VkQueue transferQueue, bool direction) {
+	//direction true := CPU -> GPU;
+	VkFence transferFence;
+	VkFenceCreateInfo fenceInfo{};
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceInfo.flags = 0;
+
+	if (vkCreateFence(device, &fenceInfo, nullptr, &transferFence) != VK_SUCCESS) { throw std::runtime_error("Failed to create transfer fence for GravDataSync"); }
+
+	//record copy operation
+	VkCommandBufferBeginInfo beginInfo{};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &transferCommandBuffer;
+
+	VkBufferCopy cpy{};
+	cpy.srcOffset = 0;
+	cpy.dstOffset = 0;
+	cpy.size = satInfoData->size() * sizeof(SatInfo);
+	if (vkBeginCommandBuffer(transferCommandBuffer, &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to begin transfer command buffer"); }
+
+	if (direction) {
+		SatInfo nullInfo{};
+		nullInfo.relPos = 1e15; //big number 
+		nullInfo.relVel = 1e6;
+		nullInfo.score = 10000;
+
+		for (uint32_t i = 0; i < SATELLITE_COUNT; i++) {
+			memcpy(&(*satInfoData)[i], &nullInfo, sizeof(SatInfo));
+		}
+		memcpy(satTransferMapped, satInfoData->data(), satInfoData->size() * sizeof(SatInfo));
+		vkCmdCopyBuffer(transferCommandBuffer, satTransferBuffer, satInfoBuffer, 1, &cpy);
+
+	}
+	else {
+		vkCmdCopyBuffer(transferCommandBuffer, satInfoBuffer, satTransferBuffer, 1, &cpy);
+	}
+
+
+	if (vkEndCommandBuffer(transferCommandBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to end transfer command buffer"); }
+	if (vkQueueSubmit(transferQueue, 1, &submitInfo, transferFence) != VK_SUCCESS) { throw std::runtime_error("Failed to submit transfer command buffer"); }
+	vkWaitForFences(device, 1, &transferFence, VK_TRUE, UINT64_MAX);
+	if (!direction) {
+		memcpy(satInfoData->data(), satTransferMapped, satInfoData->size() * sizeof(SatInfo));
+	}
+
+
+	vkResetFences(device, 1, &transferFence);
+	vkResetCommandBuffer(transferCommandBuffer, 0);
+	vkDestroyFence(device, transferFence, nullptr);
+
+
+}
 
 void SatelliteEngine::cleanup() {
 	delete satUBO;
 	delete satData;
+	delete satInfoData;
 
 	vkUnmapMemory(device, planetHostMemory.memory);
 	vkUnmapMemory(device, satTransferMemory.memory);

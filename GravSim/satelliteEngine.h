@@ -4,7 +4,7 @@
 #include <vector>
 #include <chrono>
 
-
+#include "statusLogger.h"
 #include "structs.h"
 #include "player.h"
 
@@ -15,6 +15,8 @@ struct SatInit {
 	VkPhysicalDeviceMemoryProperties memProperties;
 
 	GlobalParameters* params;
+
+	StatusLogger* stat;
 
 	std::array<Planet, MAX_PLANET_ARRAY_SIZE>* planets;
 
@@ -48,6 +50,7 @@ class SatelliteEngine
 public:
 	static const uint32_t FRAMES_IN_FLIGHT = 3;
 
+	StatusLogger* stat;
 	
 	std::array<Planet, MAX_PLANET_ARRAY_SIZE>* planets;
 
@@ -58,11 +61,15 @@ public:
 	void initBufferData_A(MemoryDetails*);
 	void initBufferData_B(VkCommandBuffer, VkQueue, MemInit);
 	void satelliteTransfer(VkCommandBuffer, VkQueue, bool);
+	void satelliteInfoTransfer(VkCommandBuffer, VkQueue, bool);
 
 	std::vector<std::string> shaderFiles = { "shaders/satelliteEngine/01.spv", "shaders/satelliteEngine/02.spv", "shaders/satelliteEngine/03.spv"};
 
 	void simulateSats(VkCommandBuffer, uint32_t);
 	void simulateSatsRaw(uint32_t);
+	void startNewSatelliteIteration(VkCommandBuffer, VkQueue);
+	uint32_t iterationCount = 0;
+	void evaluateSatelliteScores();
 
 	MemoryDetails lineRequirements{};
 	MemoryDetails satRequirements{};
@@ -75,6 +82,8 @@ public:
 	MemoryDetails fieldMeshIndexRequirements{};
 
 	SatExternalMembers getSatellitePtrs();
+
+	bool triggerNewIteration = false;
 
 	void cleanup();
 
@@ -117,6 +126,7 @@ private:
 	MemInit satInfoMemory;
 	VkDeviceSize satInfoSize;
 
+
 	VkBuffer planetBuffer;
 	MemInit planetMemory;
 
@@ -137,15 +147,19 @@ private:
 	const uint32_t WRITE_FRAME = 0;
 
 	std::array<Satellite, SATELLITE_COUNT>* satData;
+	std::array<Satellite, SATELLITE_COUNT>* initSatData;
+	std::array<SatInfo, SATELLITE_COUNT>* satInfoData;
+	std::array<Orbit, SATELLITE_COUNT>* initOrbits;
 
-
+	std::chrono::time_point<std::chrono::high_resolution_clock> iterationStartTime = std::chrono::high_resolution_clock::now();
+	std::chrono::time_point<std::chrono::high_resolution_clock> iterationEndTime = std::chrono::high_resolution_clock::now();
 
 	VkBuffer satTransferBuffer;
 	MemInit satTransferMemory;
 	VkDeviceSize satTransferSize;
 	char* satTransferMapped;
 
-
+	double simulationTime;
 	double elapsedTime;
 
 
@@ -157,10 +171,13 @@ private:
 
 	void createInitialSatellitesBase(void*, uint32_t, uint32_t, double, double,double, double, uint32_t);
 	void createInitialSatellitesOffset(void*, uint32_t, uint32_t, double, double, double, double, uint32_t);
-	
+	void createInitialSatellitesOrbit(void*, uint32_t, uint32_t, double, double, Orbit*);
+	void createInitialPlanets();
+	void createInitalSatellitesTarget(double, uint32_t, uint32_t);
+
 	void updatePlanets(double);
 
-
+	std::array<Planet, MAX_PLANET_ARRAY_SIZE> initialPlanets;
 	std::array<std::array<Planet, MAX_PLANET_ARRAY_SIZE>, 4> tempPlanets;
 	std::array<glm::dvec3, MAX_PLANET_ARRAY_SIZE> tempAccelerations;
 
@@ -177,9 +194,9 @@ private:
 
 	void updateAccelerations(uint32_t);
 
-	void getOrbitalParams(Satellite*, uint32_t, Orbit*);
-
-
+	void getOrbitalParams(Satellite*, uint32_t, Orbit*, bool);
+	void getOrbitalParamsInfo(SatInfo*, uint32_t, Orbit*, bool);
+	void getOrbitalParamsApo(Orbit*);
 
 };
 
