@@ -737,6 +737,7 @@ void SatelliteEngine::simulateSats(VkCommandBuffer commandBuffer, uint32_t frame
 
 	if (elapsedTime > simulationTime) {
 		triggerNewIteration = true;
+		iterationCount++;
 	}
 }
 void SatelliteEngine::simulateSatsRaw(uint32_t frameIndex) {
@@ -773,6 +774,7 @@ void SatelliteEngine::simulateSatsRaw(uint32_t frameIndex) {
 }
 
 void SatelliteEngine::startNewSatelliteIteration(VkCommandBuffer commandBuffer, VkQueue queue) {
+	createInitialPlanets();
 	if (iterationCount == 0) {
 		double startingPeriapsis = 120e3;
 		createInitalSatellitesTarget(startingPeriapsis, START_PLANET, END_PLANET);
@@ -780,9 +782,9 @@ void SatelliteEngine::startNewSatelliteIteration(VkCommandBuffer commandBuffer, 
 	}
 	else {
 		iterationEndTime = std::chrono::high_resolution_clock::now();
-		auto duration = iterationStartTime - iterationEndTime;
+		auto duration = iterationEndTime - iterationStartTime;
 		std::stringstream ss;
-		ss << "Iteration completed in " << duration.count() << "s";
+		ss << "Iteration completed in " << duration.count()/1e9 << "s";
 		stat->addMessage(MSG_LEVEL_USER, ss.str());
 
 		satelliteInfoTransfer(commandBuffer, queue, false);
@@ -791,12 +793,13 @@ void SatelliteEngine::startNewSatelliteIteration(VkCommandBuffer commandBuffer, 
 	memcpy(initSatData->data(), satData->data(), satData->size() * sizeof((*satData)[0]));
 	satelliteTransfer(commandBuffer, queue, true);
 	satelliteInfoTransfer(commandBuffer, queue, true);
-	createInitialPlanets();
+
 
 	
 	double maxPeriod = 0;
 	for (uint32_t i = 0; i < SATELLITE_COUNT; i++) {
 		getOrbitalParams(&(*satData)[i], START_PLANET, &(*initOrbits)[i], false);
+		getOrbitalParamsApo(&(*initOrbits)[i]);
 		maxPeriod = std::max(maxPeriod, (*initOrbits)[i].period);
 	}
 
@@ -831,11 +834,16 @@ void SatelliteEngine::startNewSatelliteIteration(VkCommandBuffer commandBuffer, 
 	oss << mC << ":";
 	if (sC < 10) { oss << "0"; }
 	oss << sC;
+	oss << " | ";
+	oss << simulationTime;
 
 	stat->addMessage(MSG_LEVEL_USER, oss.str());
 
 
 	elapsedTime = 0;
+	lineCursor = 0;
+	lineSegments = 0;
+	params->elapsedTime = 0;
 	triggerNewIteration = false;
 }
 
@@ -843,7 +851,7 @@ void SatelliteEngine::evaluateSatelliteScores() {
 	for (uint32_t i = 0; i < satInfoData->size(); i++) {
 		(*satInfoData)[i].unused = i;
 	}
-	std::sort(satInfoData->begin(), satInfoData->end(), [](SatInfo a, SatInfo b) {return a.score > b.score; });
+	std::sort(satInfoData->begin(), satInfoData->end(), [](SatInfo a, SatInfo b) {return a.score < b.score; });
 	std::array<SatInfo, PICK_BEST_TRAJECTORIES>* goodSats = new std::array<SatInfo, PICK_BEST_TRAJECTORIES>;
 	memcpy(goodSats->data(), satInfoData->data(), goodSats->size() * sizeof(SatInfo));
 
@@ -858,6 +866,7 @@ void SatelliteEngine::evaluateSatelliteScores() {
 	for (uint32_t i = 0; i < goodSats->size(); i++) {
 		satIndex = (*goodSats)[i].unused;
 		getOrbitalParams(&(*initSatData)[satIndex], START_PLANET, &(*goodOrbits)[i], false);
+		getOrbitalParamsApo(&(*goodOrbits)[i]);
 	}
 	//now compute std deviations of orbital parameters argPeriapsis & pericenter;
 	double sumArgPeriResSq = 0;
@@ -880,24 +889,29 @@ void SatelliteEngine::evaluateSatelliteScores() {
 	std::stringstream ss;
 	ss << "Picked " << PICK_BEST_TRAJECTORIES << "Orbits";
 	stat->addMessage(MSG_LEVEL_USER, ss.str());
-	ss.clear();
+	ss.str("");
 	ss << "Periapsis Argument: " << meanArgPeri << " Standard Deviation: " << stdDevArgPeri;
 	stat->addMessage(MSG_LEVEL_USER, ss.str());
-	ss.clear();
+	ss.str("");
 	ss << "Pericenter:         " << meanPericenter << " Standard Deviation: " << stdDevPericenter;
 	stat->addMessage(MSG_LEVEL_USER, ss.str());
-	ss.clear();
+	ss.str("");
 	for (uint32_t i = 0; i < goodOrbits->size(); i++) {
 		ss << "Periapsis: " << (*goodOrbits)[i].periapsis << " Pericenter: " << (*goodOrbits)[i].pericenter << " Closest Approach: " << (*goodSats)[i].relPos << " Velocity: " << (*goodSats)[i].relVel << " Score: " << (*goodSats)[i].score;
 		stat->addMessage(MSG_LEVEL_USER, ss.str());
-		ss.clear();
+		ss.str("");
 	}
+
 
 
 	for (uint32_t i = 0; i < goodOrbits->size(); i++) {
 		createInitialSatellitesOrbit(&(*satData)[satOffset], posCount, velCount, 0.5 * stdDevArgPeri, 0.5 * stdDevPericenter, &(*goodOrbits)[i]);
 		satOffset += posCount * velCount;
 	}
+
+	delete goodSats;
+	delete goodOrbits;
+
 }
 
 SatExternalMembers SatelliteEngine::getSatellitePtrs() {
@@ -1060,7 +1074,7 @@ void SatelliteEngine::createInitalSatellitesTarget(double periapsis, uint32_t ho
 
 	Orbit lowOrbit{};
 	lowOrbit.planetIndex = hostIndex;
-	lowOrbit.periapsis = periapsis + tPlanet.radius;
+	lowOrbit.periapsis = periapsis + hPlanet.radius;
 	lowOrbit.apoapsis = apoapsisMin;
 	
 	Orbit highOrbit = lowOrbit;
@@ -1080,7 +1094,7 @@ void SatelliteEngine::createInitalSatellitesTarget(double periapsis, uint32_t ho
 	//need to multiply to SATELLITE_COUNT = 4096
 	uint32_t positions = 64;
 	uint32_t velocities = 64;
-	createInitialSatellitesOffset(&(*satData)[0], positions, velocities, periapsis + hPlanet.radius, lowPericenter, highPericenter, 0.8, 0);
+	createInitialSatellitesOffset(&(*satData)[0], positions, velocities, periapsis, lowPericenter, highPericenter, 0.8, 0);
 }
 
 void SatelliteEngine::updatePlanets(double dt) {
@@ -1366,6 +1380,8 @@ void SatelliteEngine::cleanup() {
 	delete satUBO;
 	delete satData;
 	delete satInfoData;
+	delete initSatData;
+	delete initOrbits;
 
 	vkUnmapMemory(device, planetHostMemory.memory);
 	vkUnmapMemory(device, satTransferMemory.memory);

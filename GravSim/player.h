@@ -131,7 +131,7 @@ public:
 	std::atomic_bool commandSubmit;
 	bool shiftModifier;
 
-	GlobalParameters params = { 1, 0, false, false, false, false, false, true, false };
+	GlobalParameters params = { 10, 0, false, false, false, false, false, true, false };
 
 
 };

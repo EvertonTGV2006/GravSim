@@ -76,7 +76,8 @@ layout(local_size_x = 1024) in;
 
 double scoringFunction(double relPos, double relVel, double targetVel){
     double score = 0;
-    score = 1e6/relPos -  0.5 * (relVel - targetVel) * (relVel-targetVel);
+    double velDif = relVel - targetVel;
+    score = relPos + velDif * velDif;
     return score;
 }
 
