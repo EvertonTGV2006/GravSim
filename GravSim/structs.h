@@ -49,6 +49,9 @@ enum UIOptions {
     UI_DATA_FLOAT = 2 << 4,
     UI_DATA_CHAR_VEC = 3 << 4,
     UI_DATA_STRING = 4 << 4,
+    UI_DATA_DOUBLE = 5 << 4,
+    UI_DATA_BOOL = 6 << 4,
+    UI_DATA_DOUBLE_SECONDS = 7 << 4,
 
     //n
     UI_NEWLINE_MASK = 3 << 8,
@@ -175,21 +178,11 @@ struct textBitmapWrapper {
     int16_t bearingY;
     FT_Bitmap* address;
 };
-struct UIElement {
-    glm::vec2 textPosition;
-    glm::vec2 textDimension;
-    uint32_t configuration;
-    void* dataPointer;
-    void* labelPointer;
-    uint32_t* fPointer;
-    void getCharVector(std::vector<char>*, std::vector<uint32_t>*);
-};
-
 
 
 struct UIText {
     uint32_t config;
-    uint32_t charCount;
+    float scale;
     glm::vec2 size;
     glm::vec2 offset;
     glm::vec3 colour;
@@ -199,8 +192,23 @@ struct UIBox {
     uint32_t config;
     uint32_t textCount;
     glm::vec2 pos;
-    glm::vec2 size;
-    glm::vec2 offset;
+    glm::vec2 dim;
+    glm::vec2 scale;
     glm::vec3 colour;
     UIText* dataP;
+};
+struct UIAttr {
+    char c;
+    float advx;
+    float bx;
+    float by;
+    float dimx;
+    float dimy;
+};
+struct UIChar {
+    int c;
+    float scale;
+    glm::vec2 sP;
+    glm::vec2 sD;
+    double padding;
 };

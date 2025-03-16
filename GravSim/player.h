@@ -56,6 +56,8 @@ public:
 	double xpos = 0;
 	double ypos = 0;
 
+	glm::vec2 screenDim = { 800, 600 };
+
 	float anglez = glm::atan(viewDirection.z / sqrt(viewDirection.x * viewDirection.x + viewDirection.y * viewDirection.y));
 	float anglexy = glm::atan(viewDirection.y / viewDirection.x) - glm::pi<float>() * 0.5f;
 	float scrollScale = 0.1f;

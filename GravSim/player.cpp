@@ -87,14 +87,14 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 
 	UIBox commandBox{};
 	commandBox.pos = glm::vec2(0.02f, 0.02f);
-	commandBox.size = glm::vec2(0.9f, 0.9f);
+	commandBox.dim = glm::vec2(0.9f, 0.9f);
 	commandBox.colour = glm::vec3(1.0f, 1.0f, 1.0f);;
 	commandBox.dataP = &(texts[4]);
 	commandBox.textCount = 1;
 
 	UIBox frameCounterBox{};
 	frameCounterBox.pos = glm::vec2(0.02f, 0.02f);
-	frameCounterBox.size = glm::vec2(0.9f, 0.9f);
+	frameCounterBox.dim = glm::vec2(0.9f, 0.9f);
 	frameCounterBox.colour = glm::vec3(1.0f, 1.0f, 1.0f);
 	frameCounterBox.dataP = &(texts[0]);
 	frameCounterBox.textCount = 4;
@@ -111,7 +111,7 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 
 	UIBox statBox{};
 	statBox.pos = glm::vec2(0.5f, 0.02f);
-	statBox.size = glm::vec2(0.5f, 0.8f);
+	statBox.dim = glm::vec2(0.5f, 0.8f);
 	statBox.colour = glm::vec3(1);
 	statBox.dataP = &(stat->texts[0]);
 	statBox.textCount = stat->currentMsgCount;
@@ -175,7 +175,7 @@ void PlayerObject::initScoreBoxes(std::vector<std::vector<std::string>*>* player
 	}
 	UIBox commandBox{};
 	commandBox.pos = glm::vec2(0.02f, 0.12f);
-	commandBox.size = glm::vec2(0.9f, 0.9f);
+	commandBox.dim = glm::vec2(0.9f, 0.9f);
 	commandBox.colour = glm::vec3(1.0f, 1.0f, 1.0f);
 	commandBox.dataP = &(texts[textZero]);
 	commandBox.textCount = 4 + minScore + maxScore;
@@ -188,10 +188,12 @@ void PlayerObject::destroyScoreBoxes() {
 	}
 }
 
-void PlayerObject::framebufferResizeCallback(GLFWwindow* window, int width, int height){
+void PlayerObject::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
 	app->framebufferResized = true;
-	}
+	app->screenDim.x = float(width);
+	app->screenDim.y = float(height);
+}
 void PlayerObject::mouseMotionCallback(GLFWwindow* window, double xpos, double ypos) {
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
 	//std::cout << "Mouse callback" << std::endl;
