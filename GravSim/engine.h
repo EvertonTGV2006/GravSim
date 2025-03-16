@@ -104,9 +104,6 @@ private:
 	std::array<VkSemaphore, FRAMES_IN_FLIGHT> gravRenderSemaphores;
 
 
-	std::vector<Vertex> vertices;
-	std::vector<uint16_t> indices;
-
 
 	std::vector<std::chrono::duration<double>> frameTimes;
 

@@ -104,55 +104,11 @@ struct OptionalSettings {
         features->shaderFloat64 = VK_FALSE;
     }
 };
-struct LightingPushConstants {
-    glm::vec3 lightPos;
-    glm::vec3 lightColour;
-};
-struct CameraPushConstants {
-    
-    glm::vec4 cameraPos;
-    glm::vec4 viewDirection;
-    glm::vec4 lightPos;
-    glm::vec4 lightColour;
-   
-};
-struct ModelPushConstants {
-    glm::mat4 modelPos;
-    uint32_t mode;
-};
-struct GlobalPushConstants {
-    glm::vec3 lightPos;
-    glm::vec3 lightColour;
-};
-struct Particle {
-    /*standard:
-    alignas(32) glm::dvec3 position;
-    alignas(32) glm::dvec3 velocity;
-    */
-    /* float 64:
-    alignas(32) glm::dvec3 position;
-    alignas(32) glm::dvec3 velocity;
-    double mass;
-    */
-    alignas(16)glm::vec3 position;
-    alignas(16)glm::vec3 velocity;
-    float mass;
-    uint32_t cell;
-    uint32_t newIndex;
 
-    void print() {
-        std::cout << "Position: " << position.x << ", " << position.y << ", " << position.z << std::endl;
-        std::cout << "Velocity: " << velocity.x << ", " << velocity.y << ", " << velocity.z << std::endl;
-        std::cout << "Mass: " << mass << " | Cell: " << cell << " | newIndex: " << newIndex << std::endl;
-    }
 
-    static std::array<VkVertexInputAttributeDescription, 4> getParticleAttributeDescriptions();
-    static VkVertexInputBindingDescription getParticleInputBindings();
-};
 
-struct ComputeConstants {
-    double deltaTime;
-};
+
+
 
 struct MemInit {
     VkDeviceMemory memory;
@@ -160,24 +116,11 @@ struct MemInit {
     uint32_t range;
 };
 
-struct Mesh {
-    std::vector<Vertex>* vertices;
-    std::vector<uint16_t>* indices;
-    uint32_t vertexCount;
-    uint32_t indexCount;
-};
 struct MemoryDetails {
     VkMemoryRequirements requirements;
     VkMemoryPropertyFlags flags;
 };
 
-struct textBitmapWrapper {
-    char character;
-    int16_t advance;
-    int16_t bearingX;
-    int16_t bearingY;
-    FT_Bitmap* address;
-};
 
 
 struct UIText {

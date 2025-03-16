@@ -77,10 +77,6 @@ void VulkanEngine::initEngine() {
     cardRasterizer.stat = stat;
     uiRasterizer.stat = stat;
 
-    std::vector<Mesh> meshes;
-    meshes.resize(1);
-    meshes[0].vertices = &vertices;
-    meshes[0].indices = &indices;
 
 
 
@@ -162,9 +158,7 @@ void VulkanEngine::initEngine() {
 
 
 
-    meshes[0].vertexCount = static_cast<uint32_t>(meshes[0].vertices->size());
-    meshes[0].indexCount = static_cast<uint32_t>(meshes[0].indices->size());
-    //gravt.join();
+
 
 
 
