@@ -22,8 +22,6 @@
 #include "structs.h"
 #include "player.h"
 
-#include "particleRasterizer.h"
-#include "grav.h"
 #include "uiRasterizer.h"
 #include "cardRasterizer.h"
 #include "networking.h"
@@ -108,9 +106,7 @@ private:
 
 	std::vector<Vertex> vertices;
 	std::vector<uint16_t> indices;
-	std::vector<Particle> particles;
-	std::vector<uint32_t> offsets;
-	const uint32_t partCount = 65536 * 4;
+
 
 	std::vector<std::chrono::duration<double>> frameTimes;
 
@@ -128,8 +124,6 @@ private:
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
 
-	particleRasterizer particleRasterizer;
-	GravEngine gravEngine;
 	UIRasterizer uiRasterizer;
 	CardRasterizer cardRasterizer;
 	CardEngine cardEngine;
@@ -176,8 +170,6 @@ private:
 	void runGraphics();
 	void executeCompute();
 	void executeGraphics();
-
-	void particleDataFetch();
 
 	void recreateSwapChain();
 	void cleanupSwapChain();

@@ -165,11 +165,8 @@ CALL compile.bat</Command>
     <ClCompile Include="cardEngine.cpp" />
     <ClCompile Include="cardRasterizer.cpp" />
     <ClCompile Include="networking.cpp" />
-    <ClCompile Include="particleRasterizer.cpp" />
     <ClCompile Include="engine.cpp" />
-    <ClCompile Include="geometry.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="grav.cpp" />
     <ClCompile Include="player.cpp" />
     <ClCompile Include="statusLogger.cpp" />
     <ClCompile Include="structs.cpp" />
@@ -180,10 +177,7 @@ CALL compile.bat</Command>
     <ClInclude Include="cardEngine.h" />
     <ClInclude Include="cardRasterizer.h" />
     <ClInclude Include="networking.h" />
-    <ClInclude Include="particleRasterizer.h" />
     <ClInclude Include="engine.h" />
-    <ClInclude Include="geometry.h" />
-    <ClInclude Include="grav.h" />
     <ClInclude Include="player.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="statusLogger.h" />
@@ -213,49 +207,6 @@ CALL compile.bat</Command>
       <DeploymentContent>true</DeploymentContent>
     </None>
     <None Include="shaders\cardRasterizer\02.spv">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="shaders\GravEngine\01.comp" />
-    <None Include="shaders\GravEngine\01.spv">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="shaders\GravEngine\SortShaders\01.comp">
-      <DeploymentContent>false</DeploymentContent>
-    </None>
-    <None Include="shaders\GravEngine\SortShaders\01.spv">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="shaders\GravEngine\SortShaders\02.comp">
-      <DeploymentContent>false</DeploymentContent>
-    </None>
-    <None Include="shaders\GravEngine\SortShaders\02.spv">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="shaders\GravEngine\SortShaders\03.comp" />
-    <None Include="shaders\GravEngine\SortShaders\03.spv">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="shaders\GravEngine\SortShaders\04.comp">
-      <DeploymentContent>false</DeploymentContent>
-    </None>
-    <None Include="shaders\GravEngine\SortShaders\04.spv">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="shaders\GravEngine\SortShaders\05.comp" />
-    <None Include="shaders\GravEngine\SortShaders\05.spv">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="shaders\GravEngine\SortShaders\06.comp" />
-    <None Include="shaders\GravEngine\SortShaders\07.comp" />
-    <None Include="shaders\GravEngine\SortShaders\08.comp" />
-    <None Include="shaders\GravEngine\SortShaders\09.comp" />
-    <None Include="shaders\GravEngine\SortShaders\10.comp" />
-    <None Include="shaders\particleRasterizer\01.spv">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="shaders\particleRasterizer\01_1.vert" />
-    <None Include="shaders\particleRasterizer\02.frag" />
-    <None Include="shaders\particleRasterizer\02.spv">
       <DeploymentContent>true</DeploymentContent>
     </None>
     <None Include="shaders\uiRasterizer\01.spv">

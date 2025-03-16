@@ -55,7 +55,7 @@ enum commandError {
 	COMMAND_NEWGAME_STICK = 11,
 	COMMAND_NOACTION = 12
 };
-enum  commmandAction {
+enum commmandAction {
 	COMMAND_ACTION_ADD_TO_TABLE = 'a',
 	COMMAND_ACTION_STACK_ON_TABLE = 's',
 	COMMAND_ACTION_TAKE_FROM_TABLE = 'd',

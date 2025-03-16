@@ -17,7 +17,6 @@
 #include "cardEngine.h"
 #include "engine.h"
 #include "window.h"
-#include "geometry.h"
 
 #include "networking.h"
 #include "statusLogger.h"
@@ -148,7 +147,6 @@ int main() {
 		return EXIT_FAILURE;
 	}
 	stat.writeOutMessages();
-	std::cout << 1 << std::endl;
 	std::cout << "Press ENTER to continue...";
 	std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 	return EXIT_SUCCESS;

@@ -5,7 +5,6 @@
 
 #include "window.h"
 #include "structs.h"
-#include "geometry.h"
 #include "player.h"
 
 #include <cstdlib>
@@ -82,17 +81,8 @@ void VulkanEngine::initEngine() {
     meshes.resize(1);
     meshes[0].vertices = &vertices;
     meshes[0].indices = &indices;
-    SphereGeometry sphere{};
-    sphere.vertices = meshes[0].vertices;
-    sphere.indices = meshes[0].indices;
 
-    std::thread spheret(&SphereGeometry::createSphereIcosphere, &sphere, 0);
 
-    ParticleGeometry part{};
-    part.particles = &particles;
-    part.offsets = &offsets;
-
-    std::thread partt(&ParticleGeometry::createParticles, &part, partCount);
 
     createInstance();
     setupDebugMessenger();
@@ -126,33 +116,18 @@ void VulkanEngine::initEngine() {
     std::vector<uint16_t> shaderCounts;
 
     shaderCounts.push_back(shaderFiles.size());
-    shaderFiles.insert(std::end(shaderFiles), std::begin(gravEngine.shaderFiles), std::end(gravEngine.shaderFiles));
-    shaderCounts.push_back(shaderFiles.size());
-    shaderFiles.insert(std::end(shaderFiles), std::begin(particleRasterizer.shaderFiles), std::end(particleRasterizer.shaderFiles));
-    shaderCounts.push_back(shaderFiles.size());
     shaderFiles.insert(std::end(shaderFiles), std::begin(uiRasterizer.shaderFiles), std::end(uiRasterizer.shaderFiles));
     shaderCounts.push_back(shaderFiles.size());
     shaderFiles.insert(std::end(shaderFiles), std::begin(cardRasterizer.shaderFiles), std::end(cardRasterizer.shaderFiles));
     shaderCounts.push_back(shaderFiles.size());
     uint16_t shaderCursor = 0;
 
-    partt.join();
 
     readFiles(shaderFiles, &shaderCode);
 
-    GravInit grav{};
-    grav.commandPool = computeCommandPool;
-    grav.descriptorPool = descriptorPool;
-    grav.device = device;
-    grav.gravQueue = computeQueue;
-    grav.memProperties = memProperties;
-    grav.particles = &particles;
-    grav.offsets = &offsets;
-    for (uint16_t i = shaderCounts[shaderCursor]; i < shaderCounts[shaderCursor + 1]; i++) {
-        grav.shaderCode.push_back(&shaderCode[i]);
-    }
 
-    shaderCursor = 2;
+
+    shaderCursor = 0;
     UIInit ui{};
     ui.descriptorPool = descriptorPool;
     ui.device = device;
@@ -165,7 +140,7 @@ void VulkanEngine::initEngine() {
         ui.shaderCode.push_back(&shaderCode[i]);
     }
 
-    shaderCursor = 3;
+    shaderCursor = 1;
     CardInit cardInit{};
     cardInit.descriptorPool = descriptorPool;
     cardInit.device = device;
@@ -184,47 +159,30 @@ void VulkanEngine::initEngine() {
     //uiRasterizer.initUI_A(ui);
 
 
-    std::thread gravtA(&GravEngine::initGrav_A, &gravEngine, grav);
-    //gravEngine.initGrav_A(grav);
 
-    spheret.join();
+
 
     meshes[0].vertexCount = static_cast<uint32_t>(meshes[0].vertices->size());
     meshes[0].indexCount = static_cast<uint32_t>(meshes[0].indices->size());
     //gravt.join();
 
-    shaderCursor = 1;
-    RastInit rast{};
-    rast.device = device;
-    rast.descriptorPool = descriptorPool;
-    rast.renderPass = renderPass;
-    rast.msaaSamples = msaaSamples;
-    rast.memProperties = memProperties;
-    rast.meshes = meshes;
-    rast.particleCount = partCount;
-    for (uint16_t i = shaderCounts[shaderCursor]; i < shaderCounts[shaderCursor + 1]; i++) {
-        rast.shaderCode.push_back(&shaderCode[i]);
-    }
 
-    gravtA.join();
 
-    rast.gravStorageBuffer = gravEngine.getInterleavedStorageBuffer();
 
-    std::thread rasttA(&particleRasterizer::initRast_A, &particleRasterizer, rast);
+
+
     //particleRasterizer.initRast_A(rast);
     
-    rasttA.join();
+
     uitA.join();
     cardRA.join();
 
-    particleRasterizer.storeGravStorageBuffer(gravEngine.getInterleavedStorageBuffer());
+ 
 
     allocateMemory();
 
     cardRasterizer.initCard_B();
     uiRasterizer.initUI_B();
-    particleRasterizer.initRast_B();
-    gravEngine.initGrav_B();
 
     //std::thread uitB(&UIRasterizer::initUI_B, &uiRasterizer);
     //std::thread rastB(&particleRasterizer::initRast_B, &particleRasterizer);
@@ -233,8 +191,6 @@ void VulkanEngine::initEngine() {
     //uitB.join();
     //rastB.join();
     //gravtB.join();
-
-    renderGravSemaphores = gravEngine.getInterleavedSemaphores(gravRenderSemaphores);
 
     initSubclassData();
 
@@ -651,11 +607,7 @@ void VulkanEngine::executeGraphics() {
     //    glm::vec3 v = player->pos;
     //    std::cout << v.x << ", " << v.y << ", " << v.z;
     //    std::cout << std::endl;
-    //}
 
-    if (gravEngine.endTrigger) {
-        glfwSetWindowShouldClose(winmanager.window, GLFW_TRUE);
-    }
 
     //gravEngine.createRandomData();
 
@@ -675,11 +627,6 @@ void VulkanEngine::executeGraphics() {
 
 
 
-    //check if validate particles
-    if (player->validateParticles == true && gravEngine.computeIndex==0) {
-        particleDataFetch();
-        player->validateParticles = false;
-   }
 }
 void VulkanEngine::runCompute() {
     while (!glfwWindowShouldClose(winmanager.window)) {
@@ -1124,8 +1071,6 @@ void VulkanEngine::createCommandBuffers() {
 void VulkanEngine::allocateMemory() {
     std::vector<MemoryDetails> memRequirements;
     std::vector<uint16_t> counts;
-    gravEngine.getMemoryRequirements(&memRequirements, &counts);
-    particleRasterizer.getMemoryRequirements(&memRequirements, &counts);
     uiRasterizer.getMemoryRequirements(&memRequirements, &counts);
     cardRasterizer.getMemoryRequirements(&memRequirements, &counts);
 
@@ -1216,31 +1161,27 @@ void VulkanEngine::allocateMemory() {
     //now do prefix sum
     std::exclusive_scan(counts.begin(), counts.end(), memOffsets.data(), 0);
 
-    gravEngine.initMemory(&memoryContainers[0] + memOffsets[0]);
-    particleRasterizer.initMemory(&memoryContainers[0] + memOffsets[1]);
-    uiRasterizer.initMemory(&memoryContainers[0] + memOffsets[2]);
-    cardRasterizer.initMemory(&memoryContainers[0] + memOffsets[3]);
+    uiRasterizer.initMemory(&memoryContainers[0] + memOffsets[0]);
+    cardRasterizer.initMemory(&memoryContainers[0] + memOffsets[1]);
 
 }
 void VulkanEngine::initSubclassData() {
 
     VkDeviceMemory stagingMemory;
 
-    std::array<MemoryDetails,4> memRequirements;
-    particleRasterizer.initBufferData_A(&memRequirements[0]);
-    gravEngine.syncBufferData_A(&memRequirements[1]);
-    uiRasterizer.initBufferData_A(&memRequirements[2]);
-    cardRasterizer.initBufferData_A(&memRequirements[3]);
+    std::array<MemoryDetails,2> memRequirements;
+    uiRasterizer.initBufferData_A(&memRequirements[0]);
+    cardRasterizer.initBufferData_A(&memRequirements[1]);
     
     //memRequirements[0].flags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
     VkMemoryAllocateInfo memoryInfo{};
     memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memoryInfo.allocationSize = memRequirements[0].requirements.size + memRequirements[1].requirements.size + memRequirements[2].requirements.size + memRequirements[3].requirements.size;
+    memoryInfo.allocationSize = memRequirements[0].requirements.size + memRequirements[1].requirements.size;
     memoryInfo.memoryTypeIndex = findMemoryType(memRequirements[0]);
     if (vkAllocateMemory(device, &memoryInfo, nullptr, &stagingMemory) != VK_SUCCESS) { throw std::runtime_error("Failed to allocated memory"); }
 
-    std::array<MemInit, 4> memInitStructs;
+    std::array<MemInit, 2> memInitStructs;
 
     memInitStructs[0].memory = stagingMemory;
     memInitStructs[0].offset = 0;
@@ -1250,13 +1191,7 @@ void VulkanEngine::initSubclassData() {
     memInitStructs[1].offset = memInitStructs[0].offset + memInitStructs[0].range;
     memInitStructs[1].range = static_cast<uint32_t>(memRequirements[1].requirements.size);
 
-    memInitStructs[2].memory = stagingMemory;
-    memInitStructs[2].offset = memInitStructs[1].offset + memInitStructs[1].range;
-    memInitStructs[2].range = static_cast<uint32_t>(memRequirements[2].requirements.size);
 
-    memInitStructs[3].memory = stagingMemory;
-    memInitStructs[3].offset = memInitStructs[2].offset + memInitStructs[2].range;
-    memInitStructs[3].range = static_cast<uint32_t>(memRequirements[3].requirements.size);
 
     VkCommandBufferAllocateInfo commandInfo{};
     commandInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1269,56 +1204,14 @@ void VulkanEngine::initSubclassData() {
 
     vkAllocateCommandBuffers(device, &commandInfo, &transferCommandBuffer);
 
-    particleRasterizer.initBufferData_B(transferCommandBuffer, graphicsQueue, memInitStructs[0]);
-    gravEngine.syncBufferData_B(true, memInitStructs[1]);
-    uiRasterizer.initBufferData_B(transferCommandBuffer, graphicsQueue, memInitStructs[2]);
-    cardRasterizer.initBufferData_B(transferCommandBuffer, graphicsQueue, memInitStructs[3]);
+    uiRasterizer.initBufferData_B(transferCommandBuffer, graphicsQueue, memInitStructs[0]);
+    cardRasterizer.initBufferData_B(transferCommandBuffer, graphicsQueue, memInitStructs[1]);
 
     vkFreeMemory(device, stagingMemory, nullptr);
     vkFreeCommandBuffers(device, graphicsCommandPool, 1, &transferCommandBuffer);
 }
 
-void VulkanEngine::particleDataFetch() {
 
-    VkDeviceMemory stagingMemory;
-
-    MemoryDetails memRequirements;
-    gravEngine.syncBufferData_A(&memRequirements);
-    //memRequirements[0].flags = VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-
-    VkMemoryAllocateInfo memoryInfo{};
-    memoryInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    memoryInfo.allocationSize = memRequirements.requirements.size;
-    memoryInfo.memoryTypeIndex = findMemoryType(memRequirements);
-    if (vkAllocateMemory(device, &memoryInfo, nullptr, &stagingMemory) != VK_SUCCESS) { throw std::runtime_error("Failed to allocated memory"); }
-
-    MemInit memInitStructs;
-
-    memInitStructs.memory = stagingMemory;
-    memInitStructs.offset = 0;
-    memInitStructs.range = static_cast<uint32_t>(memRequirements.requirements.size);
-
-
-
-    VkCommandBufferAllocateInfo commandInfo{};
-    commandInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    commandInfo.commandBufferCount = 1;
-    commandInfo.commandPool = graphicsCommandPool;
-    commandInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-
-
-    VkCommandBuffer transferCommandBuffer;
-
-    vkAllocateCommandBuffers(device, &commandInfo, &transferCommandBuffer);
-
-    gravEngine.syncBufferData_B(false, memInitStructs);
-
-
-    vkFreeMemory(device, stagingMemory, nullptr);
-    vkFreeCommandBuffers(device, graphicsCommandPool, 1, &transferCommandBuffer);
-
-    gravEngine.validateParticles();
-}
 
 
 
@@ -1906,8 +1799,7 @@ void VulkanEngine::cleanupSwapChain() {
 void VulkanEngine::cleanup() {
     vkDeviceWaitIdle(device);
 
-    particleRasterizer.cleanup();
-    gravEngine.cleanup();
+
     uiRasterizer.cleanup();
     cardRasterizer.cleanup();
 

@@ -62,6 +62,7 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 	frameCounterText1.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_STRING;
 	frameCounterText1.colour = glm::vec3(1.0f, 1.0f, 1.0f);
 	frameCounterText1.dataP = &(strings[0]);
+	frameCounterText1.scale = 0.2f;
 	texts[0] = frameCounterText1;
 
 	frameCounterText1.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_T | UI_NEWLINE_FALSE | UI_DATA_UINT32_T;
@@ -83,27 +84,24 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 	commandText.config = UI_ALIGNMENT_H_L | UI_ALIGNMENT_V_B | UI_NEWLINE_FALSE | UI_DATA_CHAR_VEC;
 	commandText.colour = glm::vec3(0.9f, 0.9f, 0.92f);
 	commandText.dataP = &inputString;
+	commandText.scale = 0.3f;
 	texts[4] = commandText;
 
 	UIBox commandBox{};
 	commandBox.pos = glm::vec2(0.02f, 0.02f);
-	commandBox.dim = glm::vec2(0.9f, 0.9f);
+	commandBox.dim = glm::vec2(0.96f, 0.75f);
+	commandBox.scale = glm::vec2(0.9f, 0.9f);
 	commandBox.colour = glm::vec3(1.0f, 1.0f, 1.0f);;
 	commandBox.dataP = &(texts[4]);
 	commandBox.textCount = 1;
 
 	UIBox frameCounterBox{};
-	frameCounterBox.pos = glm::vec2(0.02f, 0.02f);
-	frameCounterBox.dim = glm::vec2(0.9f, 0.9f);
+	frameCounterBox.pos = glm::vec2(0.02f, 0.1f);
+	frameCounterBox.dim = glm::vec2(0.94f, 0.2f);
+	frameCounterBox.scale = glm::vec2(0.9f, 0.9f);
 	frameCounterBox.colour = glm::vec3(1.0f, 1.0f, 1.0f);
 	frameCounterBox.dataP = &(texts[0]);
 	frameCounterBox.textCount = 4;
-	
-	UIText playerTurnText;
-	playerTurnText.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_B | UI_NEWLINE_FALSE | UI_DATA_STRING;
-	playerTurnText.colour = glm::vec3(0.5f, 0.9f, 0.85f);
-	playerTurnText.dataP = playerTurnStr;
-	texts[126] = playerTurnText;
 
 	UIBox playerTurnBox = frameCounterBox;
 	playerTurnBox.dataP = &texts[126];
@@ -111,16 +109,27 @@ void PlayerObject::initUIElements(uint32_t* frameIndex, uint32_t* fpsVal) {
 
 	UIBox statBox{};
 	statBox.pos = glm::vec2(0.5f, 0.02f);
-	statBox.dim = glm::vec2(0.5f, 0.8f);
+	statBox.dim = glm::vec2(0.48f, 0.4f);
+	statBox.scale = glm::vec2(0.5f, 0.8f);
 	statBox.colour = glm::vec3(1);
 	statBox.dataP = &(stat->texts[0]);
 	statBox.textCount = stat->currentMsgCount;
-	
+
 
 	boxes.push_back(commandBox);
 	boxes.push_back(frameCounterBox);
-	boxes.push_back(playerTurnBox);
-	boxes.push_back(statBox);
+	
+	UIText playerTurnText;
+	playerTurnText.config = UI_ALIGNMENT_H_R | UI_ALIGNMENT_V_B | UI_NEWLINE_FALSE | UI_DATA_STRING;
+	playerTurnText.colour = glm::vec3(0.5f, 0.9f, 0.85f);
+	playerTurnText.dataP = playerTurnStr;
+	texts[126] = playerTurnText;
+
+
+	boxes.push_back(commandBox);
+	boxes.push_back(frameCounterBox);
+	//boxes.push_back(playerTurnBox);
+	//boxes.push_back(statBox);
 
 	//inputString.push_back('w');
 	
