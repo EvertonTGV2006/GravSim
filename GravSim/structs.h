@@ -175,21 +175,11 @@ struct textBitmapWrapper {
     int16_t bearingY;
     FT_Bitmap* address;
 };
-struct UIElement {
-    glm::vec2 textPosition;
-    glm::vec2 textDimension;
-    uint32_t configuration;
-    void* dataPointer;
-    void* labelPointer;
-    uint32_t* fPointer;
-    void getCharVector(std::vector<char>*, std::vector<uint32_t>*);
-};
-
 
 
 struct UIText {
     uint32_t config;
-    uint32_t charCount;
+    float scale;
     glm::vec2 size;
     glm::vec2 offset;
     glm::vec3 colour;
@@ -199,8 +189,23 @@ struct UIBox {
     uint32_t config;
     uint32_t textCount;
     glm::vec2 pos;
-    glm::vec2 size;
-    glm::vec2 offset;
+    glm::vec2 dim;
+    glm::vec2 scale;
     glm::vec3 colour;
     UIText* dataP;
+};
+struct UIAttr {
+    char c;
+    float advx;
+    float bx;
+    float by;
+    float dimx;
+    float dimy;
+};
+struct UIChar {
+    int c;
+    float scale;
+    glm::vec2 sP;
+    glm::vec2 sD;
+    double padding;
 };
