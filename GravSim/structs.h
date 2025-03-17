@@ -104,12 +104,6 @@ struct OptionalSettings {
         features->shaderFloat64 = VK_FALSE;
     }
 };
-
-
-
-
-
-
 struct MemInit {
     VkDeviceMemory memory;
     uint32_t offset;
@@ -120,8 +114,6 @@ struct MemoryDetails {
     VkMemoryRequirements requirements;
     VkMemoryPropertyFlags flags;
 };
-
-
 
 struct UIText {
     uint32_t config;
@@ -154,4 +146,19 @@ struct UIChar {
     glm::vec2 sP;
     glm::vec2 sD;
     double padding;
+};
+
+struct PlayerDetails {
+    char gameID;
+    char playerID;
+    std::array<char, 16> name;
+    char local;
+    char unused;
+};
+struct GlobalParamaters {
+    std::array<char, 16> playerName;
+    float animationSpeed = 2.0f;
+    bool animationPlaying = false;
+    int windowWidth;
+    int windowHeight;
 };

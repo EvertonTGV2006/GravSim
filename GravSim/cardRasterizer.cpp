@@ -10,6 +10,7 @@
 #include <charconv>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/string_cast.hpp>
+#include <glm/glm.hpp>
 
 #include "cardRasterizer.h"
 #include "structs.h"
@@ -724,7 +725,6 @@ void CardRasterizer::getMemoryRequirements(std::vector<MemoryDetails>* details, 
 
 void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameIndex, bool newCommand, glm::mat4 viewMat, glm::mat4 projMat) {
 
-
 	//std::cout << glm::to_string(viewProjMat) << std::endl;
 
 	glm::vec2 cardPos;
@@ -763,8 +763,8 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 			glm::vec2(-4.4f, 1.7f) };
 
 
-		glm::vec2 tableLeft = glm::vec2(-0.35f * (table->size()+2), 0.0f);
-		glm::vec2 tableRight = glm::vec2(0.35f * (table->size()+2), 0.0f);
+		glm::vec2 tableLeft = glm::vec2(-0.35f * (table->size() + 2), 0.0f);
+		glm::vec2 tableRight = glm::vec2(0.35f * (table->size() + 2), 0.0f);
 		float tableTraverseStep = float((table->size() > 1) ? table->size() - 1 : 1);
 		glm::vec2 tableTraverse = (tableRight - tableLeft) / tableTraverseStep;
 		tablePositions.clear();
@@ -821,7 +821,7 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 					{0.0f, 0.0f, 0.0f, 1.0f} };
 				cardIndex = (*(*hands)[i])[j].value();
 				cardData[cardIndex].cardMat = glm::transpose(cardMat);
-				currentCardData[cardIndex] = glm::vec4(cardPos.x, cardPos.y, cardHeight, 0.5*glm::pi<float>() + (0.5*-glm::pi<float>() * faceDirection) + cardFlipValue);
+				currentCardData[cardIndex] = glm::vec4(cardPos.x, cardPos.y, cardHeight, 0.5 * glm::pi<float>() + (0.5 * -glm::pi<float>() * faceDirection) + cardFlipValue);
 
 			}
 		}
@@ -853,15 +853,15 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 
 	float animationInterpolation = (timeDuration < animationDuration) ? 0.5f * float(glm::tanh(animationSmoothness * (timeDuration - (animationDuration / 2)))) + 0.5f : 1.0f;
 	glm::vec4 interpolatedCardData;
-	
+
 	glm::mat4 interpolatedMatData;
 	const float animationLiftHeight = -0.4f;
 	float cardMoved;
-	
+
 	for (uint32_t i = 0; i < currentCardData.size(); i++) {
 		interpolatedCardData = (1.0f - animationInterpolation) * prevCardData[i] + animationInterpolation * currentCardData[i];
 		cardMoved = (pow(currentCardData[i].y - prevCardData[i].y, 2.0f) + pow(currentCardData[i].z - prevCardData[i].z, 2.0f) + pow(currentCardData[i].a - prevCardData[i].a, 2.0f) > 0.01f) ? 1.0f : 0.0f;
-		interpolatedCardData.z = cardMoved * animationLiftHeight * (4.0f*animationInterpolation * (1.0f-animationInterpolation))/*glm::sin(glm::pi<float>() * animationInterpolation)*/ + interpolatedCardData.z;
+		interpolatedCardData.z = cardMoved * animationLiftHeight * (4.0f * animationInterpolation * (1.0f - animationInterpolation))/*glm::sin(glm::pi<float>() * animationInterpolation)*/ + interpolatedCardData.z;
 		interpolatedMatData = glm::mat4{
 			{1.0f, 0.0, 0.0f, interpolatedCardData.x},
 			{0.0f, glm::cos(interpolatedCardData.a), -glm::sin(interpolatedCardData.a), interpolatedCardData.y},
@@ -896,7 +896,7 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 			}
 		}
 	}
-	
+
 
 
 
@@ -948,6 +948,218 @@ void CardRasterizer::drawElements(VkCommandBuffer commandBuffer, uint32_t frameI
 
 }
 
+void CardRasterizer::drawDurak(VkCommandBuffer commandBuffer, uint32_t frameIndex, bool cmdFrame) {
+	if (cmdFrame) {
+		cards_0 = cards_1;
+		cards_1 = cards_2;
+		getCardData();
+		animationStartTime = std::chrono::high_resolution_clock::now();
+		params->animationPlaying = true;
+	}
+	//cards0 is 2nd previous positions
+	//cards1 is previous positions
+	//cards2 is is current postions
+	//cards3 is desired positions;
+	animationCurrentTime = std::chrono::high_resolution_clock::now();
+	auto animationElapsedTime = animationCurrentTime - animationStartTime;
+	float animationTicks = animationElapsedTime.count();
+
+	float targetDuration = 1.0f / params->animationSpeed;
+	if (animationTicks > targetDuration) {
+		cards_2 = cards_3;
+		params->animationPlaying = false;
+	}
+	if (params->animationPlaying) {
+		float b = 4.5;
+		float a = 0.5;
+		float h = 0.3f;
+		float x = animationTicks / targetDuration;
+		float xyzFactor = smoothInterpolate(x, a, b);
+		float zLift = 0.0f;
+		if (x < 0.25f) {
+			//lift
+			zLift = smoothInterpolate(4 * x, a, b);
+		}
+		else if (0.25f <= x && x <= 0.5f) {
+			zLift = 1.0f;
+		}
+		else {
+			zLift = smoothInterpolate((4 * x) - 3, a, b);
+		} 
+		for (uint32_t i = 0; i < cards_1.size(); i++) {
+			cards_2[i] = cards_1[i];
+			cards_2[i].pos = (1.0f - xyzFactor) * cards_1[i].pos + xyzFactor * cards_3[i].pos;
+			cards_2[i].pos.z += zLift * h;
+		}
+	}
+	else {
+		//for card in player hand
+	}
+	uint32_t drawCount = getCardMats();
+
+
+}
+float CardRasterizer::smoothInterpolate(float x, float a, float b){
+	return (glm::tanh(b * (x - a)) + glm::tanh(b * a)) / (glm::tanh(b * (1 - a)) + glm::tanh(b * a));
+}
+void CardRasterizer::getCardData() {
+	CardData card{};
+	durakGameState& state = durak->state;
+
+	float height = 0.03f;
+
+	//stock
+	glm::vec2 stockPos = glm::vec2(0.8f, 0.5f);
+	for (char i = 0; i < state.stock.size(); i++) {
+		card.card = state.stock[i];
+		card.pos = glm::vec3(stockPos, i * height);
+		card.xy = 0;
+		card.yz = 0;
+		card.xz = glm::pi<float>();
+		if (i == 0) {
+			card.xz = 0.0f;
+			card.xy = glm::half_pi<float>(); 
+			card.pos.x -= 0.02f;
+		}
+		cards_3[card.card.data] = card;
+	}
+
+
+	//local player's hand
+	char locID = durak->locPlayer.playerID;
+	glm::vec2 locHandCent = glm::vec2(0.4f, -0.3f);
+	float locHandRadius = 0.5f;
+	float angleMax = 15.0f * glm::pi<float>() / 180.0f;
+	float angleStep = 0.0f;
+	float angleStart = 0.0f;
+
+	if (state.hands[locID].size() == 1) {
+		angleStart = 0.0f;
+	}
+	else if (state.hands[locID].size() == 2) {
+		angleStart = -0.3f * angleMax;
+		angleStep = 0.6f * angleMax;
+	}
+	else if (state.hands[locID].size() == 3) {
+		angleStart = -0.5f * angleMax;
+		angleStep = 0.5f * angleMax;
+	}
+	else if (state.hands[locID].size() == 4) {
+		angleStart = -0.7f * angleMax;
+		angleStep = 2.0f * 0.7f * angleMax / 3.0f;
+	}
+	else if (state.hands[locID].size() == 5) {
+		angleStart = -0.85f * angleMax;
+		angleStep = 2.0f * 0.85f * angleMax / 4.0f;
+	}
+	else {
+		angleStart = -1.0f * angleMax;
+		angleStep = 2.0f * angleMax / (state.hands[locID].size() - 1);
+	}
+	for (char i = 0; i < state.hands[locID].size(); i++) {
+		float angle = angleStart + i * angleStep;
+		float radius = locHandRadius * (1 + angle * 0.1f);
+		card.pos = glm::vec3(glm::vec2(radius * glm::sin(angle), radius * glm::cos(angle)) + locHandCent, 0.0f);
+		card.card = state.hands[locID][i];
+		card.xy = angle * 0.3f;
+		card.yz = 0.01f;
+		card.xz = 0.0f;
+		cards_3[card.card.data] = card;
+	}
+
+
+	//opponent's hand
+	char oppID = durak->oppPlayer.playerID;
+	glm::vec2 oppHandCent = glm::vec2(0.4f, 1.3f);
+	float oppHandRadius = 0.5f;
+
+	if (state.hands[oppID].size() == 1) {
+		angleStart = 0.0f;
+	}
+	else if (state.hands[oppID].size() == 2) {
+		angleStart = -0.3f * angleMax;
+		angleStep = 0.6f * angleMax;
+	}
+	else if (state.hands[oppID].size() == 3) {
+		angleStart = -0.5f * angleMax;
+		angleStep = 0.5f * angleMax;
+	}
+	else if (state.hands[oppID].size() == 4) {
+		angleStart = -0.7f * angleMax;
+		angleStep = 2.0f * 0.7f * angleMax / 3.0f;
+	}
+	else if (state.hands[oppID].size() == 5) {
+		angleStart = -0.85f * angleMax;
+		angleStep = 2.0f * 0.85f * angleMax / 4.0f;
+	}
+	else {
+		angleStart = -1.0f * angleMax;
+		angleStep = 2.0f * angleMax / (state.hands[oppID].size() - 1);
+	}
+
+	for (char i = 0; i < state.hands[oppID].size(); i++) {
+		float angle = angleStart + i * angleStep;
+		float radius = oppHandRadius * (1 + angle * 0.1f);
+		card.pos = glm::vec3(glm::vec2(radius * glm::sin(angle), -radius * glm::cos(angle)) + oppHandCent, 0.0f);
+		card.card = state.hands[oppID][i];
+		card.xy = angle * 0.3f;
+		card.yz = 0.01f;
+		card.xz = glm::pi<float>();
+		cards_3[card.card.data] = card;
+	}
+
+	//discard;
+	glm::vec2 discardPos = glm::vec2(0.9f, 0.5f);
+	for (char i = 0; i < state.discard.size(); i++) {
+		card.pos = glm::vec3(discardPos, height * i);
+		card.card = state.discard[i];
+		card.xy = 0.0f;
+		card.xz = glm::pi<float>();
+		card.yz = 0.0f;
+		cards_3[card.card.data] = card;
+	}
+
+	//table
+	glm::vec2 tableStart = glm::vec2(0.2f, 0.5f);
+	glm::vec2 tableStep = glm::vec2(0.09f, 0.5f);
+	glm::vec2 tableCover = glm::vec2(0.005f, 0.05f);
+	char stacks = (state.table.size() + (state.table.size() % 2)) / 2;
+	for (char i = 0; i < stacks; i++) {
+		card.pos = glm::vec3(tableStart + float(i) * tableStep, 0.0f);
+		card.card = state.table[2 * i];
+		card.xy = 0.0f;
+		card.xz = 0.0f;
+		card.yz = 0.0f;
+		cards_3[card.card.data] = card;
+		if ((2 * i) + 1 < state.table.size() - 1) {
+			card.pos = glm::vec3(tableStart + float(i) * tableStep, height);
+			card.card = state.table[2 * i + 1];
+			card.xy = 0.0f;
+			card.xz = 0.0f;
+			card.yz = 0.0f;
+			cards_3[card.card.data] = card;
+		}
+	}
+}
+uint32_t CardRasterizer::getCardMats() {
+	uint32_t index = 0;
+	for (uint32_t i = 0; i < cards_2.size(); i++) {
+		CardData card = cards_2[i];
+		if (card.card.data == 0) {
+			continue;
+		}
+		glm::mat4 sc = glm::mat4(cardSize, 0.0f, 0.0f, 0.0f, 0.0f, cardSize * float(params->windowHeight) / float(params->windowWidth), 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+		glm::mat4 xy = glm::rotate(glm::mat4(1), card.xy, glm::vec3(0.0f, 0.0f, 1.0f));
+		glm::mat4 xz = glm::rotate(glm::mat4(1), card.xz, glm::vec3(0.0f, 1.0f, 0.0f));
+		glm::mat4 yz = glm::rotate(glm::mat4(1), card.yz, glm::vec3(1.0f, 0.0f, 0.0f));
+		glm::mat4 tr = glm::translate(glm::mat4(1), card.pos);
+
+		cardMats[index].mat = sc * xy * yz * xy * tr;
+		cardMats[index].card = card.card.data;
+		index++;
+	}
+	return index;
+}
 
 void CardRasterizer::cleanup() {
 	vkDestroyBuffer(device, vertexBuffer, nullptr);

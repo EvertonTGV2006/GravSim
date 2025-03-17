@@ -10,6 +10,9 @@
 #include <random>
 #include <algorithm>
 
+#include <iostream>
+#include <sstream>
+
 
 void CardEngine::initStock() {
 	stock.clear();
@@ -498,4 +501,213 @@ void CardEngine::writeNextLine(std::ofstream* file, std::vector<playingCard>* da
 		*file << static_cast<int>((*data)[i].data) << ',';
 	}
 	*file << '\n';
+}
+
+void durakGameState::clear() {
+	stock.clear();
+	hands[0].clear();
+	hands[1].clear();
+	discard.clear();
+	table.clear();
+}
+void durakGameState::print() {
+	std::cout << "Stock: " << std::endl;
+	for (uint8_t i = 0; i < stock.size(); i++) {
+		stock[i].print();
+	}
+	for (uint8_t i = 0; i < hands.size(); i++) {
+		std::cout << "Hand " << i << ": " << std::endl;
+		for (uint8_t j = 0; j < hands[i].size(); j++) {
+			hands[i][j].print();
+		}
+	}
+	for (uint8_t i = 0; i < discard.size(); i++) {
+		discard[i].print();
+	}
+	for (uint8_t i = 0; i < table.size(); i++) {
+		table[i].print();
+	}
+}
+
+void DurakEngine::dealGame() {
+	state.clear();
+	for (uint8_t suit = 0; suit < 4; suit++) {
+		playingCard card{};
+		card.setSuit(suit);
+		card.setRank(1);
+		state.stock.push_back(card);
+		for (uint8_t rank = 6; rank < 14; rank++) {
+			playingCard card{};
+			card.setSuit(suit);
+			card.setRank(rank);
+			state.stock.push_back(card);
+		}
+	}
+	std::random_device rd;
+	std::mt19937 gen{ rd() };
+	std::ranges::shuffle(state.stock, gen);
+	
+	for (uint32_t i = 0; i < 6; i++) {
+		for (uint32_t j = 0; j < state.hands.size(); j++) {
+			state.hands[j].push_back(state.stock[state.stock.size() - 1]);
+			state.stock.pop_back();
+		}
+	}
+	state.trumpSuit = state.stock[0].suit();
+	state.print();
+}
+void DurakEngine::cardCommand(std::string cmd) {
+	char cmdTurn = cmd[0];
+	cmd.erase(0, 1);
+
+	uint32_t cmdReturn = 0;
+	uint32_t cardIndex;
+
+	enum cmdReturnValues {
+		CMD_SUCCESS = 1,
+		CMD_INVALID = 2,
+		CMD_INDEX_OUT_OF_RANGE = 1 << 2,
+		CMD_CARD_NOT_ON_TABLE = 2 << 2,
+		CMD_ATTACK_COMPLETE = 3 << 2,
+		CMD_CARD_DOESNT_WIN = 4 << 2,
+		CMD_LAY_CARD = 5 << 2,
+		CMD_PICKUP_TABLE = 6 << 2,
+		CMD_REFILL_HANDS = 7 << 2,
+		CMD_TURN_COMPLETE = 8 << 2,
+		CMD_PASS_ATTACK = 9 << 2,
+		CMD_MASK = UINT32_MAX - 4
+		
+
+	};
+
+	if (cmd[1] == '/') {
+		//special command
+		cmd.erase(0, 1); //erase / from cmd;
+	}
+	else if (cmdTurn == playerTurn) {
+		//correct player turn
+		if (cmdTurn == attacker) {
+			//attacking move
+			if (cmd == "p") {
+				//pass turn
+				cmdReturn = CMD_TURN_COMPLETE | CMD_SUCCESS | CMD_ATTACK_COMPLETE | CMD_REFILL_HANDS | CMD_PASS_ATTACK;
+			}
+			else {
+				cardIndex = std::stoi(cmd);
+				if (cardIndex >= state.hands[cmdTurn].size()) {
+					cmdReturn = CMD_INVALID | CMD_INDEX_OUT_OF_RANGE;
+				}
+				else {
+					if (state.table.size() == 0) {
+						//table empty, opening move, anything valid
+						cmdReturn = CMD_SUCCESS | CMD_TURN_COMPLETE | CMD_LAY_CARD;
+					}
+					else {
+						bool cardOnTable = false;
+						for (char i = 0; i < state.table.size(); i++) {
+							if (state.hands[cmdTurn][cardIndex].rank() == state.table[i].rank()) {
+								cardOnTable = true;
+							}
+						}
+						if (cardOnTable) {
+							cmdReturn = CMD_SUCCESS | CMD_TURN_COMPLETE | CMD_LAY_CARD;
+						}
+						else {
+							cmdReturn = CMD_INVALID | CMD_CARD_NOT_ON_TABLE;
+						}
+					}
+				}
+			}
+		}
+		else if (cmdTurn == (attacker + 1) % 2) {
+			//defending
+			if (cmd == "p") {
+				//pass turn
+				cmdReturn = CMD_SUCCESS | CMD_TURN_COMPLETE | CMD_PICKUP_TABLE | CMD_REFILL_HANDS;
+			}
+			else {
+				uint32_t cardIndex = std::stoi(cmd);
+				if (cardIndex >= state.hands[cmdTurn].size()) {
+					cmdReturn = CMD_INVALID | CMD_INDEX_OUT_OF_RANGE;
+				}
+				else {
+					if (state.table[state.table.size() - 1].suit() == state.trumpSuit) {
+						if (state.hands[cmdTurn][cardIndex].rank() > state.table[state.table.size() - 1].rank()) {
+							cmdReturn = CMD_SUCCESS | CMD_TURN_COMPLETE | CMD_LAY_CARD;
+						}
+						else {
+							cmdReturn = CMD_INVALID | CMD_CARD_DOESNT_WIN;
+						}
+					}
+					else {
+						if (state.hands[cmdTurn][cardIndex].suit() == state.trumpSuit) {
+							cmdReturn = CMD_SUCCESS | CMD_TURN_COMPLETE | CMD_LAY_CARD;
+						}
+						else if (state.hands[cmdTurn][cardIndex].suit() == state.table[state.table.size() - 1].suit() && state.hands[cmdTurn][cardIndex].rank() > state.table[state.table.size() - 1].rank()) {
+							cmdReturn = CMD_SUCCESS | CMD_TURN_COMPLETE | CMD_LAY_CARD;
+						}
+						else {
+							cmdReturn = CMD_INVALID | CMD_CARD_DOESNT_WIN;
+						}
+
+					}
+				}
+			}
+		}
+	}
+	else {
+		//action if not player turn
+	}
+
+
+	if ((cmdReturn & 3) == CMD_SUCCESS) {
+		if ((cmdReturn & CMD_MASK) == CMD_LAY_CARD) {
+			state.table.push_back(state.hands[cmdTurn][cardIndex]);
+			state.hands[cmdTurn].erase(state.hands[cmdTurn].begin() + cardIndex);
+		}
+		if ((cmdReturn & CMD_MASK) == CMD_PICKUP_TABLE) {
+			while(state.table.size() > 0) {
+				state.hands[cmdTurn].push_back(state.table[state.table.size() - 1]);
+				state.table.pop_back();
+			}
+		}
+		if ((cmdReturn & CMD_MASK) == CMD_PASS_ATTACK) {
+			while (state.table.size() > 0) {
+				state.discard.push_back(state.table[state.table.size() - 1]);
+				state.table.pop_back();
+			}
+		}
+		if ((cmdReturn & CMD_MASK) == CMD_REFILL_HANDS) {
+			while (state.hands[attacker].size() < 6) {
+				if (state.stock.size() == 0) {
+					break;
+				}
+				state.hands[attacker].push_back(state.stock[state.stock.size() - 1]);
+				state.stock.pop_back();
+			}
+			while (state.hands[(attacker + 1) % 2].size() < 6) {
+				if (state.stock.size() == 0) {
+					break;
+				}
+				state.hands[(attacker + 1) % 2].push_back(state.stock[state.stock.size() - 1]);
+				state.stock.pop_back();
+			}
+		}
+	}
+	
+	if ((cmdReturn & CMD_MASK) == CMD_TURN_COMPLETE) {
+		playerTurn = (playerTurn + 1) % 2;
+	}
+	if ((cmdReturn & CMD_MASK) == CMD_ATTACK_COMPLETE) {
+		attacker = (attacker + 1) % 2;
+	}
+	
+	for (char i = 0; i < 2; i++) {
+		if (state.hands[i].size() == 0) {
+			winnerID = i;
+		}
+	}
+
+
+
 }

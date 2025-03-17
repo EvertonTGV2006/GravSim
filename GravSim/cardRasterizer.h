@@ -55,11 +55,19 @@ public:
 
 	void cleanup();
 
+	DurakEngine* durak;
+
+	GlobalParamaters* params;
+
+	float cardSize = 0.08f;
+
 	uint32_t playerIndex = 0;
+	uint32_t gameType = 0;
 
 	static const uint32_t MAX_STRING_LENGTH = 4096;
 
 	void drawElements(VkCommandBuffer, uint32_t, bool, glm::mat4, glm::mat4);
+	void drawDurak(VkCommandBuffer, uint32_t, bool);
 
 	static const uint32_t FRAMES_IN_FLIGHT = 3;
 
@@ -172,8 +180,20 @@ private:
 
 
 
+	void getCardData();
+	uint32_t getCardMats();
+
 	std::vector<glm::vec4> vertices;
 
+	std::array<CardData, 64> cards_0;
+	std::array<CardData, 64> cards_1;
+	std::array<CardData, 64> cards_2;
+	std::array<CardData, 64> cards_3;
+	std::array<CardBuf, 64> cardMats;
 
+	//animation data;
+	std::chrono::time_point<std::chrono::high_resolution_clock> animationStartTime = std::chrono::high_resolution_clock::now();
+	std::chrono::time_point<std::chrono::high_resolution_clock> animationCurrentTime = std::chrono::high_resolution_clock::now();
+
+	float smoothInterpolate(float, float, float);
 };
-

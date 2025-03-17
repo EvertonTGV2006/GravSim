@@ -145,6 +145,7 @@ struct playingCard {
 	}
 };
 
+
 struct GameTablePtr {
 	std::vector<std::vector<playingCard>*>* hands;
 	std::vector<std::vector<playingCard>*>* wins;
@@ -209,4 +210,41 @@ public:
 	void printCards(uint8_t);
 
 	void populateGameTableData(GameTableData*);
+};
+
+struct durakGameState {
+	std::vector<playingCard> stock;
+	std::array<std::vector<playingCard>, 2> hands;
+	std::vector<playingCard> discard;
+	std::vector<playingCard> table;
+	char trumpSuit;
+	void clear();
+	void print();
+};
+class DurakEngine {
+public:
+	PlayerDetails locPlayer;
+	PlayerDetails oppPlayer;
+	durakGameState state;
+	char playerTurn;
+	char attacker;
+	char winnerID = CHAR_MAX;
+
+	void dealGame();
+	void cardCommand(std::string);
+
+};
+struct CardData {
+	playingCard card;
+	glm::vec3 pos;
+	float xy;
+	float yz;
+	float xz;
+};
+struct CardBuf {
+	glm::mat4 mat;
+	uint32_t card;
+	uint32_t mod1;
+	uint32_t mod2;
+	uint32_t mod3;
 };

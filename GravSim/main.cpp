@@ -17,6 +17,7 @@
 #include "cardEngine.h"
 #include "engine.h"
 #include "window.h"
+#include "cardEngine.h"
 
 #include "networking.h"
 #include "statusLogger.h"
@@ -48,6 +49,9 @@ int main() {
 	//file.close();
 
 	StatusLogger stat{};
+
+	DurakEngine durak;
+	durak.dealGame(); 
 
 	try {
 		if (config["mode"] == "server") {
