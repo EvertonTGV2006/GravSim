@@ -1,6 +1,6 @@
 #pragma once
 
-#define GLFW_INCLUDE_VULKAN
+#include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 
 
@@ -9,7 +9,11 @@
 #include <vector>
 #include <optional>
 #include <array>
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_LEFT_HANDED
 #include <glm/glm.hpp>
+
 
 
 
@@ -155,10 +159,10 @@ struct PlayerDetails {
     char local;
     char unused;
 };
-struct GlobalParamaters {
+struct GlobalParameters {
     std::array<char, 16> playerName;
     float animationSpeed = 2.0f;
     bool animationPlaying = false;
-    int windowWidth;
-    int windowHeight;
+    int windowWidth = 800;
+    int windowHeight = 600;
 };

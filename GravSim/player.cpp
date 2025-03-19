@@ -2,10 +2,12 @@
 
 #include <iostream>
 #include <chrono>
-#define GLFW_INCLUDE_VULKAN
+
 #include <GLFW/glfw3.h>
 
 #define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_LEFT_HANDED
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/constants.hpp>
@@ -28,7 +30,7 @@ void PlayerObject::updateViewMat() {
 	//}
 
 	//viewMat = glm::lookAt(pos, viewFocus, up);
-	viewMat = glm::lookAt(pos, pos + (viewDirection*viewZoom), up);
+	viewMat = glm::lookAt(pos, pos + (viewDirection*viewZoom), viewUp);
 
 }
 

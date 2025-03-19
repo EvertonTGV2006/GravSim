@@ -1,11 +1,15 @@
 #pragma once
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_LEFT_HANDED
+#include <glm/glm.hpp>
+#include <glm/gtc/constants.hpp>
+
 
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
 
-#define GLM_FORCE_RADIANS
-#include <glm/glm.hpp>
-#include <glm/gtc/constants.hpp>
+
 
 #include <map>
 #include <atomic>
@@ -37,17 +41,17 @@ public:
 	std::atomic_bool windowShouldClose;
 	bool validateParticles = false;
 
-	glm::vec3 pos = { 0,-0.3,-1.8 };
-	glm::vec3 viewDirection = {0, 0.3, 1.8 };
+	glm::vec3 pos = { 0.5,0.0,1.0 };
+	glm::vec3 viewDirection = {0, 0.5, -1.0 };
 	glm::vec3 viewFocus = { 0, 0, 0 };
-	glm::vec3 viewUp = { 0,0,1 };
+	glm::vec3 viewUp = { 0,0,-1 };
 	float viewZoom = 1.0f;
 	const float zoomMin = 0.01f;
 	const float zoomMax = 100.0f;
 
 	WindowManager* winmanager;
 
-	uint32_t playerOptions = PL_VIEW_LOCK_FOCUS | PL_VIEW_LOCK_UP;
+	uint32_t playerOptions = PL_VIEW_LOCK_FOCUS | PL_VIEW_INVERT_Y_AXIS;
 
 	glm::mat4 viewMat;
 

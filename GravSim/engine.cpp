@@ -17,7 +17,8 @@
 #include <array>
 #include <bitset>
 #define GLM_FORCE_RADIANS
-#define GLFM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_LEFT_HANDED
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -101,8 +102,15 @@ void VulkanEngine::initEngine() {
 
 
     if (!onlineGame) {
-        cardEngine.initStock();
-        cardEngine.setupGame();
+        if (dGame) {
+            durak.dealGame();
+            durak.locPlayer.playerID = 0;
+            durak.oppPlayer.playerID = 1;
+        }
+        else {
+            cardEngine.initStock();
+            cardEngine.setupGame();
+        }
     }
 
 
@@ -147,8 +155,8 @@ void VulkanEngine::initEngine() {
     for (uint16_t i = shaderCounts[shaderCursor]; i < shaderCounts[shaderCursor + 1]; i++) {
         cardInit.shaderCode.push_back(&shaderCode[i]);
     }
-    cardInit.gameTable = cardEngine.getTable();
-
+    //cardInit.gameTable = cardEngine.getTable();
+    
 
     std::thread uitA(&UIRasterizer::initUI_A, &uiRasterizer, ui);
     std::thread cardRA(&CardRasterizer::initCard_A, &cardRasterizer, cardInit);
@@ -161,8 +169,8 @@ void VulkanEngine::initEngine() {
 
 
 
-
-
+    cardRasterizer.durak = &durak;
+    cardRasterizer.params = &params;
 
 
     //particleRasterizer.initRast_A(rast);
@@ -506,9 +514,13 @@ void VulkanEngine::executeGraphics() {
 
     //particleRasterizer.drawObjects(drawCommandBuffers[frameIndex], frameIndex, ubo);
     //std::cout << "Draw";
-    
-    cardRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex, commandSubmitFrame, ubo.view, ubo.proj);
 
+    if (dGame) {
+        cardRasterizer.drawDurak(drawCommandBuffers[frameIndex], frameIndex, commandSubmitFrame, ubo.view, ubo.proj);
+    }
+    else {
+        //cardRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex, commandSubmitFrame, ubo.view, ubo.proj);
+    }
     uiRasterizer.drawElements(drawCommandBuffers[frameIndex], frameIndex);
 
     //ubo.view = glm::lookAt(glm::vec3(0.0f, -0.5f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f ), glm::vec3(0.0f, 0.0f, 1.0f));

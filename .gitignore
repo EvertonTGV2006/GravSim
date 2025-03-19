@@ -363,3 +363,6 @@ FodyWeavers.xsd
 /x64
 /GravSim/cmd_dmp.txt
 *.txt
+/GravSim/textures/cards/Playing Cards
+/GravSim/textures/cards/__MACOSX/Playing Cards
+/GravSim/textures/cards/Playing Cards.zip

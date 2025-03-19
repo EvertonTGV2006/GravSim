@@ -6,7 +6,7 @@ struct CardMat{
 	uint mod1;
 	uint mod2;
 	uint mod3;
-}
+};
 
 
 layout(binding = 0) uniform UniformBufferObject{
@@ -41,7 +41,7 @@ void main() {
 
     CardMat card = ubo.data[i];
     float suit = floor(card.card / 16.0f);
-    float rank = card.card - (suit * 16.0f);
+    float rank = card.card - (suit * 16.0f) - 1.0f;
 
     vec3 cardDimensions = vec3(1.0f, 1.0f * (95.0f / 71.0f), 0.0015f);
     vec2 texDimensions = vec2(1.0f / 13.0f, 1.0f / 4.0f);
@@ -54,31 +54,31 @@ void main() {
     vec4 cardNormal;
 
     if(inPosition.w == 0.0f){
-        cardNormal = vec4(0.0f, 0.0f, 1.0f, 0.0f);
+        cardNormal = vec4(0.0f, 0.0f, -1.0f, 0.0f);
 
         cardBaseCoord.x = (backCardLoc.x + inPosition.x+0.5f) * baseCardDim.x;
-        cardBaseCoord.y = (backCardLoc.y + inPosition.y+0.5f) * baseCardDim.y;
+        cardBaseCoord.y = (backCardLoc.y + -inPosition.y+0.5f) * baseCardDim.y;
         cardValCoord = vec2(0.0f,0.0f);
         mode = 0;
     }
     else{
-                cardNormal = vec4(0.0f, 0.0f, -1.0f, 0.0f);
+        cardNormal = vec4(0.0f, 0.0f, 1.0f, 0.0f);
 
         cardValCoord.x = (float(rank) + inPosition.x+0.5f) * texDimensions.x;
-        cardValCoord.y = (float(suit) + inPosition.y+0.5f) * texDimensions.y;
+        cardValCoord.y = (float(suit) + -inPosition.y+0.5f) * texDimensions.y;
         cardBaseCoord.x = (baseCardLoc.x + inPosition.x+0.5f) * baseCardDim.x;
-        cardBaseCoord.y = (baseCardLoc.y + inPosition.y+0.5f) * baseCardDim.y;
+        cardBaseCoord.y = (baseCardLoc.y + -inPosition.y+0.5f) * baseCardDim.y;
 
         cardBaseBlendCoord.x = (baseCardBlendLoc.x + inPosition.x+0.5f) * baseCardDim.x;
-        cardBaseBlendCoord.y = (baseCardBlendLoc.y + inPosition.y+0.5f) * baseCardDim.y;
+        cardBaseBlendCoord.y = (baseCardBlendLoc.y + -inPosition.y+0.5f) * baseCardDim.y;
 
-        outPosition = vec4((cardMat* vec4(cardDimensions.x * inPosition.x, cardDimensions.y * inPosition.y, cardDimensions.z * inPosition.z, 1.0f)).xyz, 1.0f);
-        
         mode = 1;
     }
-    inPosition.w = 1.0f;
-    outPosition = card.tr * inPosition;
+    vec4 posT = inPosition;
+    posT.w= 1.0f;
+    outPosition = card.tr * posT;
     fragPos = outPosition.xyz;
+    normal = (card.tr * cardNormal).xyz;
 
     gl_Position = viewProjMat * outPosition;
 }

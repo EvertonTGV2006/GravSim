@@ -37,9 +37,7 @@ struct CardPushConstants {
 	glm::vec4 colour;
 	glm::vec4 eyePos;
 };
-struct CardDataConstant {
-	glm::mat4 cardMat;
-};
+
 
 
 
@@ -57,23 +55,18 @@ public:
 
 	DurakEngine* durak;
 
-	GlobalParamaters* params;
-
+	GlobalParameters* params;
 	float cardSize = 0.08f;
 
 	uint32_t playerIndex = 0;
-	uint32_t gameType = 0;
 
-	static const uint32_t MAX_STRING_LENGTH = 4096;
-
-	void drawElements(VkCommandBuffer, uint32_t, bool, glm::mat4, glm::mat4);
-	void drawDurak(VkCommandBuffer, uint32_t, bool);
+	void drawDurak(VkCommandBuffer, uint32_t, bool, glm::mat4, glm::mat4);
 
 	static const uint32_t FRAMES_IN_FLIGHT = 3;
 
 	void initBufferData_A(MemoryDetails*);
 	void initBufferData_B(VkCommandBuffer, VkQueue, MemInit);
-	std::vector<std::string> shaderFiles = { "shaders/cardRasterizer/01.spv", "shaders/cardRasterizer/02.spv" };
+	std::vector<std::string> shaderFiles = { "shaders/cardRasterizer/03.spv", "shaders/cardRasterizer/04.spv" };
 
 
 private:
@@ -151,16 +144,6 @@ private:
 	float cardHeightZero;
 
 	PlayerObject* player;
-
-	std::array<CardDataConstant, CARD_COUNT> cardData;
-	std::array<glm::vec4, CARD_COUNT> currentCardData;
-	std::array<glm::vec4, CARD_COUNT> prevCardData;
-
-	std::chrono::time_point<std::chrono::high_resolution_clock> currentTime;
-	std::chrono::time_point<std::chrono::high_resolution_clock> commandSubmitTime = std::chrono::high_resolution_clock::now(); 
-
-	uint32_t frameCounter = 0;
-	uint32_t cardCounter = 0;
 	
 	std::array<std::vector<char>*, 2> shaderCode;
 
@@ -176,7 +159,6 @@ private:
 	void createBuffers();
 	void createImageView();
 	void createSampler();
-	void createRenderPass();
 
 
 

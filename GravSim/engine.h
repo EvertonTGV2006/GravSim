@@ -13,6 +13,9 @@
 #include <set>
 #include <optional>
 #include <cstdlib>
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_LEFT_HANDED
 #include <glm/glm.hpp>
 #include <atomic>
 #include <mutex>
@@ -42,6 +45,8 @@ public:
 	std::string playerTurnString;
 	std::string playerTurnStringEnd = "'s Turn";
 
+	GlobalParameters params{};
+	bool dGame = true;
 
 	void initNetworking();
 	
@@ -124,6 +129,7 @@ private:
 	UIRasterizer uiRasterizer;
 	CardRasterizer cardRasterizer;
 	CardEngine cardEngine;
+	DurakEngine durak;
 	bool swapDealers = false;
 
 	std::vector<MemInit> memoryContainers;

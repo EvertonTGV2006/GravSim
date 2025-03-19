@@ -12,7 +12,7 @@
 
 #include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
-
+#define GLM_FORCE_LEFT_HANDED
 
 #include "cardEngine.h"
 #include "engine.h"
@@ -118,7 +118,7 @@ int main() {
 	//cellPos.z = ((((cID - cellPos.x) / GRID_DIMENSIONS.x) - cellPos.y) / GRID_DIMENSIONS.y) % GRID_DIMENSIONS.z;
 	//std::cout << cellPos.x << " " << cellPos.y << " " << cellPos.z << std::endl;
 
-			CardEngine cards;
+			//CardEngine cards;
 			//cards.setupGame();
 			//cards.processTurns();
 
