@@ -41,6 +41,8 @@ public:
 	std::atomic_bool windowShouldClose;
 	bool validateParticles = false;
 
+	PlayerDetails localPlayerDetails;
+
 	glm::vec3 pos = { 0.5,0.0,1.0 };
 	glm::vec3 viewDirection = {0, 0.5, -1.0 };
 	glm::vec3 viewFocus = { 0, 0, 0 };

@@ -148,6 +148,7 @@ private:
 
 
 	bool firstFrame = true;
+	bool commandSubmitFrame = true;
 
 	void createInstance();
 	void createSurface();
@@ -173,6 +174,8 @@ private:
 	void runGraphics();
 	void executeCompute();
 	void executeGraphics();
+	void executeCardGame();
+	void executeNetTasks();
 
 	void recreateSwapChain();
 	void cleanupSwapChain();

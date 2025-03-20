@@ -528,14 +528,13 @@ void durakGameState::print() {
 		table[i].print();
 	}
 }
-
-void DurakEngine::dealGame() {
+void DurakEngine::shuffle() {
 	state.clear();
 	for (uint8_t suit = 0; suit < 4; suit++) {
 		playingCard card{};
-		card.setSuit(suit);
-		card.setRank(1);
-		state.stock.push_back(card);
+		//card.setSuit(suit);
+		//card.setRank(1);
+		//state.stock.push_back(card);
 		for (uint8_t rank = 6; rank < 14; rank++) {
 			playingCard card{};
 			card.setSuit(suit);
@@ -546,7 +545,8 @@ void DurakEngine::dealGame() {
 	std::random_device rd;
 	std::mt19937 gen{ rd() };
 	std::ranges::shuffle(state.stock, gen);
-	
+}
+void DurakEngine::dealGame() {	
 	for (uint32_t i = 0; i < 6; i++) {
 		for (uint32_t j = 0; j < state.hands.size(); j++) {
 			state.hands[j].push_back(state.stock[state.stock.size() - 1]);
@@ -556,31 +556,33 @@ void DurakEngine::dealGame() {
 	state.trumpSuit = state.stock[0].suit();
 	state.print();
 }
-void DurakEngine::cardCommand(std::string cmd) {
-	char cmdTurn = cmd[0];
+bool DurakEngine::cardCommand(std::string cmd) {
+	char cmdTurn = cmd[0]-42;
 	cmd.erase(0, 1);
 
 	uint32_t cmdReturn = 0;
-	uint32_t cardIndex;
+	uint32_t cardIndex = 0;
 
 	enum cmdReturnValues {
-		CMD_SUCCESS = 1,
-		CMD_INVALID = 2,
-		CMD_INDEX_OUT_OF_RANGE = 1 << 2,
-		CMD_CARD_NOT_ON_TABLE = 2 << 2,
-		CMD_ATTACK_COMPLETE = 3 << 2,
-		CMD_CARD_DOESNT_WIN = 4 << 2,
-		CMD_LAY_CARD = 5 << 2,
-		CMD_PICKUP_TABLE = 6 << 2,
-		CMD_REFILL_HANDS = 7 << 2,
-		CMD_TURN_COMPLETE = 8 << 2,
-		CMD_PASS_ATTACK = 9 << 2,
-		CMD_MASK = UINT32_MAX - 4
+		CMD_SUCCESS =				1 << 1,
+		CMD_INVALID =				1 << 2,
+		CMD_INDEX_OUT_OF_RANGE =	1 << 3,
+		CMD_CARD_NOT_ON_TABLE =		1 << 4,
+		CMD_ATTACK_COMPLETE =		1 << 5,
+		CMD_CARD_DOESNT_WIN =		1 << 6,
+		CMD_LAY_CARD =				1 << 7,
+		CMD_PICKUP_TABLE =			1 << 8,
+		CMD_REFILL_HANDS =			1 << 9,
+		CMD_TURN_COMPLETE =			1 << 10,
+		CMD_PASS_ATTACK =			1 << 11,
+		CMD_WRONG_TURN =			1 << 12,
+		CMD_MASK = UINT32_MAX,
+
 		
 
 	};
 
-	if (cmd[1] == '/') {
+	if (cmd[0] == '/') {
 		//special command
 		cmd.erase(0, 1); //erase / from cmd;
 	}
@@ -626,7 +628,7 @@ void DurakEngine::cardCommand(std::string cmd) {
 				cmdReturn = CMD_SUCCESS | CMD_TURN_COMPLETE | CMD_PICKUP_TABLE | CMD_REFILL_HANDS;
 			}
 			else {
-				uint32_t cardIndex = std::stoi(cmd);
+				cardIndex = std::stoi(cmd);
 				if (cardIndex >= state.hands[cmdTurn].size()) {
 					cmdReturn = CMD_INVALID | CMD_INDEX_OUT_OF_RANGE;
 				}
@@ -657,27 +659,28 @@ void DurakEngine::cardCommand(std::string cmd) {
 	}
 	else {
 		//action if not player turn
+		cmdReturn = CMD_INVALID | CMD_WRONG_TURN;
 	}
 
 
-	if ((cmdReturn & 3) == CMD_SUCCESS) {
-		if ((cmdReturn & CMD_MASK) == CMD_LAY_CARD) {
+	if (cmdReturn & CMD_SUCCESS) {
+		if (cmdReturn &  CMD_LAY_CARD) {
 			state.table.push_back(state.hands[cmdTurn][cardIndex]);
 			state.hands[cmdTurn].erase(state.hands[cmdTurn].begin() + cardIndex);
 		}
-		if ((cmdReturn & CMD_MASK) == CMD_PICKUP_TABLE) {
-			while(state.table.size() > 0) {
+		if (cmdReturn & CMD_PICKUP_TABLE) {
+			while (state.table.size() > 0) {
 				state.hands[cmdTurn].push_back(state.table[state.table.size() - 1]);
 				state.table.pop_back();
 			}
 		}
-		if ((cmdReturn & CMD_MASK) == CMD_PASS_ATTACK) {
+		if (cmdReturn & CMD_PASS_ATTACK) {
 			while (state.table.size() > 0) {
 				state.discard.push_back(state.table[state.table.size() - 1]);
 				state.table.pop_back();
 			}
 		}
-		if ((cmdReturn & CMD_MASK) == CMD_REFILL_HANDS) {
+		if (cmdReturn & CMD_REFILL_HANDS) {
 			while (state.hands[attacker].size() < 6) {
 				if (state.stock.size() == 0) {
 					break;
@@ -694,14 +697,14 @@ void DurakEngine::cardCommand(std::string cmd) {
 			}
 		}
 	}
-	
-	if ((cmdReturn & CMD_MASK) == CMD_TURN_COMPLETE) {
+
+	if (cmdReturn & CMD_TURN_COMPLETE) {
 		playerTurn = (playerTurn + 1) % 2;
 	}
-	if ((cmdReturn & CMD_MASK) == CMD_ATTACK_COMPLETE) {
+	if (cmdReturn & CMD_ATTACK_COMPLETE) {
 		attacker = (attacker + 1) % 2;
 	}
-	
+
 	for (char i = 0; i < 2; i++) {
 		if (state.hands[i].size() == 0) {
 			winnerID = i;
@@ -709,5 +712,10 @@ void DurakEngine::cardCommand(std::string cmd) {
 	}
 
 
-
+	if (cmdReturn & CMD_SUCCESS) {
+		return true;
+	}
+	else if (cmdReturn & CMD_INVALID){
+		return false;
+	}
 }

@@ -50,9 +50,6 @@ int main() {
 
 	StatusLogger stat{};
 
-	DurakEngine durak;
-	durak.dealGame(); 
-
 	try {
 		if (config["mode"] == "server") {
 

@@ -40,11 +40,11 @@ void VulkanEngine::initNetworking() {
 
     auto config = toml::parse_file(filename);
     std::optional<std::string> usrStr = config["usrn"].value<std::string>();
-    std::array<char, 8> usrn{};
+    std::array<char, 16> usrn{};
     for (size_t i = 0; i < usrStr.value().size(); i++) {
         usrn[i] = usrStr.value()[i];
     }
-    nc.usrn = usrn;
+    player->localPlayerDetails.name = usrn;
 
     std::optional<std::string> ipaddropt = config["server"].value<std::string>();
     std::optional<int> portaddropt = config["port"].value<int>();
@@ -54,13 +54,9 @@ void VulkanEngine::initNetworking() {
     }
     nc.ipaddr = ipaddropt.value();
     nc.portaddr = portaddropt.value();
-    nc.stockPtr = &cardEngine.stock;
     nc.stat = stat;
 
-    nc.initWinsock(); /*we have now connected to the server and have an opponent*/
-
-    player->usrn = nc.usrn;
-    player->oppn = nc.oppn;
+    nc.initWinsock(&player->localPlayerDetails); //we have now connected to the server
 
 }
 
@@ -103,9 +99,8 @@ void VulkanEngine::initEngine() {
 
     if (!onlineGame) {
         if (dGame) {
+            durak.shuffle();
             durak.dealGame();
-            durak.locPlayer.playerID = 0;
-            durak.oppPlayer.playerID = 1;
         }
         else {
             cardEngine.initStock();
@@ -152,6 +147,14 @@ void VulkanEngine::initEngine() {
     cardInit.player = player;
     cardInit.renderPass = renderPass;
     cardInit.msaaSamples = msaaSamples;
+    cardInit.durak = &durak;
+    cardInit.params = &params;
+    if (onlineGame) {
+        cardInit.locPlayerIndex = &nc.locPlayerIndex;
+    }
+    else {
+        cardInit.locPlayerIndex = &nc.locPlayerIndex;
+    }
     for (uint16_t i = shaderCounts[shaderCursor]; i < shaderCounts[shaderCursor + 1]; i++) {
         cardInit.shaderCode.push_back(&shaderCode[i]);
     }
@@ -162,15 +165,6 @@ void VulkanEngine::initEngine() {
     std::thread cardRA(&CardRasterizer::initCard_A, &cardRasterizer, cardInit);
     //uiRasterizer.initUI_A(ui);
 
-
-
-
-
-
-
-
-    cardRasterizer.durak = &durak;
-    cardRasterizer.params = &params;
 
 
     //particleRasterizer.initRast_A(rast);
@@ -243,11 +237,16 @@ void VulkanEngine::startDraw() {
 }
 void VulkanEngine::runGraphics() {
     while (!glfwWindowShouldClose(winmanager.window)) {
+        executeCardGame();
+        if (onlineGame) {
+            executeNetTasks();
+        }
         executeGraphics();
+        
     }
 }
 void VulkanEngine::executeGraphics() {
-    bool commandSubmitFrame = false;
+    
     //check player window should close state
     if (player->windowShouldClose == true) {
         glfwSetWindowShouldClose(winmanager.window, GLFW_TRUE);
@@ -258,198 +257,203 @@ void VulkanEngine::executeGraphics() {
         std::this_thread::sleep_until(nextFrameScheduled);
         nextFrameScheduled += std::chrono::microseconds(targetFrameTime_uS);
     }
-    //update stat boxes;
-    player->boxes[3].textCount = 0/*stat->currentMsgCount*/;
+    ////update stat boxes;
+    //player->boxes[3].textCount = 0/*stat->currentMsgCount*/;
 
 
-    if (onlineGame) {
-        //check if networking is still alive
-        if (nc.net.sendShutdown == true) {
-            player->windowShouldClose = true; //call for program exit if network disconnects
-            //std::cout << "Networking disconnected, exiting" << std::endl;
-            stat->addMessage(MSG_LEVEL_URGENT, "Networking disconnected, exiting");
-        }
+    //if (onlineGame) {
+    //    //check if networking is still alive
+    //    if (nc.net.sendShutdown == true) {
+    //        player->windowShouldClose = true; //call for program exit if network disconnects
+    //        //std::cout << "Networking disconnected, exiting" << std::endl;
+    //        stat->addMessage(MSG_LEVEL_URGENT, "Networking disconnected, exiting");
+    //    }
 
-        //check if any commands received over network;
-        if (nc.net.packetReady == true) {
-            //parse packet if so
-            HeaderData* hPtr = reinterpret_cast<HeaderData*>(&nc.net.packetData);
-            if (hPtr->packetType != CMD_PACKET) {
-                std::cout << "Received erroneous packet, ignoring" << std::endl;
-                nc.net.packetReady = false;
-                nc.net.packetFinished = true;
-            }
-            else {
-                CmdPacket* pkt = reinterpret_cast<CmdPacket*>(&nc.net.packetData);
-                char lastChar = 0;
-                for (char i = CMD_LENGTH - 1; i > 0; i--) {
-                    if (pkt->cmd[i] != 0) {
-                        lastChar = i;
-                        break;
-                    }
-                }
-                std::string cmdStr;
-                commandString.clear();
-                commandString.push_back(pkt->cmd[0]);
-                for (char i = 1; i <= lastChar; i++) { //ignore first char
-                    cmdStr.push_back(pkt->cmd[i]);
-                    commandString.push_back(pkt->cmd[i]);
-                }
-                nc.net.packetReady = false;
-                nc.net.packetFinished = true;
+    //    //check if any commands received over network;
+    //    if (nc.net.packetReady == true) {
+    //        //parse packet if so
+    //        HeaderData* hPtr = reinterpret_cast<HeaderData*>(&nc.net.packetData);
+    //        if (hPtr->packetType != CMD_PACKET) {
+    //            std::cout << "Received erroneous packet, ignoring" << std::endl;
+    //            nc.net.packetReady = false;
+    //            nc.net.packetFinished = true;
+    //        }
+    //        else {
+    //            CmdPacket* pkt = reinterpret_cast<CmdPacket*>(&nc.net.packetData);
+    //            char lastChar = 0;
+    //            for (char i = CMD_LENGTH - 1; i > 0; i--) {
+    //                if (pkt->cmd[i] != 0) {
+    //                    lastChar = i;
+    //                    break;
+    //                }
+    //            }
+    //            std::string cmdStr;
+    //            commandString.clear();
+    //            commandString.push_back(pkt->cmd[0]);
+    //            for (char i = 1; i <= lastChar; i++) { //ignore first char
+    //                cmdStr.push_back(pkt->cmd[i]);
+    //                commandString.push_back(pkt->cmd[i]);
+    //            }
+    //            nc.net.packetReady = false;
+    //            nc.net.packetFinished = true;
 
-                if (commandString[1] == '/') { //special command actions
-                    if (cmdStr == "/newgame0" || cmdStr == "/newgame1") {//player index is 0
-                        if (nc.isGameHost) {
-                            cardEngine.initStock();
-                        }
-                        nc.negotiateStock();
-                        cardEngine.setupGame();
-                        player->destroyScoreBoxes();
-                        if (cmdStr == "/newgame0") {
-                            cardRasterizer.playerIndex = 0;
-                        }
-                        else {
-                            cardRasterizer.playerIndex = 1;
-                        }
-                        commandSubmitFrame = true;
-                    }
-                }
-                else {
-                    uint32_t errCode = cardEngine.cardCommand(commandString);
-                    if (errCode != COMMAND_SUCCESS) {
-                        //std::cout << "Received invalid command from sever, ignoring... " << std::endl;
-                        stat->addMessage(MSG_LEVEL_DEBUG, "Received erroneous command from server, ignoring");
-                    }
-                    else {
-                        commandSubmitFrame = true;
-                    }
-                }
-            }
-        }
-        if (player->commandSubmit == true) {
-            player->commandSubmit = false;
-            if (cardRasterizer.playerIndex == cardEngine.handToPlay) {
-                commandString.clear();
-                commandString.push_back(cardRasterizer.playerIndex);
-                for (uint32_t i = 0; i < player->inputString.size(); i++) {
-                    commandString.push_back(player->inputString[i]);
-                }
-                uint32_t errCode = 0;
-                if (commandString[1] == '/') {
-                    errCode = COMMAND_SUCCESS;
-                }
-                else {
-                    errCode = cardEngine.cardCommand(commandString);
-                }
-                if (errCode == COMMAND_SUCCESS) {
-                    player->inputString.clear();
-                    commandSubmitFrame = true;
-                    CmdPacket pkt1{};
-                    pkt1.header.packetType = CMD_PACKET;
-                    memcpy(&pkt1.header.pName, nc.usrn.data(), nc.usrn.size());
-                    memcpy(&pkt1.cmd, commandString.data(), commandString.size());
-                    nc.net.sendPacket(reinterpret_cast<char*>(&pkt1));
-                    //send packet
-                }
-            }
-            else {
-                if (player->inputString[0] == '/') {
-                    //special command;
-                    commandString.push_back(cardRasterizer.playerIndex);
-                    for (uint32_t i = 0; i < player->inputString.size(); i++) {
-                        commandString.push_back(player->inputString[i]);
-                    }
-                    commandSubmitFrame = true;
-                    CmdPacket pkt1{};
-                    pkt1.header.packetType = CMD_PACKET;
-                    memcpy(&pkt1.header.pName, nc.usrn.data(), nc.usrn.size());
-                    memcpy(&pkt1.cmd, commandString.data(), commandString.size());
-                    nc.net.sendPacket(reinterpret_cast<char*>(&pkt1));
-                    //std::cout << "Sent packet to server" << std::endl;
-                    stat->addMessage(MSG_LEVEL_NETWORK_HIGH, "Sent packet to server");
-                }
-                else {
-                    //std::cout << "Not your turn!" << std::endl;
-                    stat->addMessage(MSG_LEVEL_USER, "Not your turn!");
-                }
-            }
-        }
-    }
-    else {
-        if (player->commandSubmit == true) {
-            player->commandSubmit = false;
-            commandString.clear();
-            commandString.push_back(cardRasterizer.playerIndex);
-            for (uint32_t i = 0; i < player->inputString.size(); i++) {
-                commandString.push_back(player->inputString[i]);
-            }
+    //            if (commandString[1] == '/') { //special command actions
+    //                if (cmdStr == "/newgame0" || cmdStr == "/newgame1") {//player index is 0
+    //                    if (nc.isGameHost) {
+    //                        cardEngine.initStock();
+    //                    }
+    //                    nc.negotiateStock();
+    //                    cardEngine.setupGame();
+    //                    player->destroyScoreBoxes();
+    //                    if (cmdStr == "/newgame0") {
+    //                        cardRasterizer.playerIndex = 0;
+    //                    }
+    //                    else {
+    //                        cardRasterizer.playerIndex = 1;
+    //                    }
+    //                    commandSubmitFrame = true;
+    //                }
+    //            }
+    //            else {
+    //                uint32_t errCode = cardEngine.cardCommand(commandString);
+    //                if (errCode != COMMAND_SUCCESS) {
+    //                    //std::cout << "Received invalid command from sever, ignoring... " << std::endl;
+    //                    stat->addMessage(MSG_LEVEL_DEBUG, "Received erroneous command from server, ignoring");
+    //                }
+    //                else {
+    //                    commandSubmitFrame = true;
+    //                }
+    //            }
+    //        }
+    //    }
+    //    if (player->commandSubmit == true) {
+    //        player->commandSubmit = false;
+    //        if (cardRasterizer.playerIndex == cardEngine.handToPlay) {
+    //            commandString.clear();
+    //            commandString.push_back(cardRasterizer.playerIndex);
+    //            for (uint32_t i = 0; i < player->inputString.size(); i++) {
+    //                commandString.push_back(player->inputString[i]);
+    //            }
+    //            uint32_t errCode = 0;
+    //            if (commandString[1] == '/') {
+    //                errCode = COMMAND_SUCCESS;
+    //            }
+    //            else {
+    //                errCode = cardEngine.cardCommand(commandString);
+    //            }
+    //            if (errCode == COMMAND_SUCCESS) {
+    //                player->inputString.clear();
+    //                commandSubmitFrame = true;
+    //                CmdPacket pkt1{};
+    //                pkt1.header.packetType = CMD_PACKET;
+    //                memcpy(&pkt1.header.pName, nc.usrn.data(), nc.usrn.size());
+    //                memcpy(&pkt1.cmd, commandString.data(), commandString.size());
+    //                nc.net.sendPacket(reinterpret_cast<char*>(&pkt1));
+    //                //send packet
+    //            }
+    //        }
+    //        else {
+    //            if (player->inputString[0] == '/') {
+    //                //special command;
+    //                commandString.push_back(cardRasterizer.playerIndex);
+    //                for (uint32_t i = 0; i < player->inputString.size(); i++) {
+    //                    commandString.push_back(player->inputString[i]);
+    //                }
+    //                commandSubmitFrame = true;
+    //                CmdPacket pkt1{};
+    //                pkt1.header.packetType = CMD_PACKET;
+    //                memcpy(&pkt1.header.pName, nc.usrn.data(), nc.usrn.size());
+    //                memcpy(&pkt1.cmd, commandString.data(), commandString.size());
+    //                nc.net.sendPacket(reinterpret_cast<char*>(&pkt1));
+    //                //std::cout << "Sent packet to server" << std::endl;
+    //                stat->addMessage(MSG_LEVEL_NETWORK_HIGH, "Sent packet to server");
+    //            }
+    //            else {
+    //                //std::cout << "Not your turn!" << std::endl;
+    //                stat->addMessage(MSG_LEVEL_USER, "Not your turn!");
+    //            }
+    //        }
+    //    }
+    //}
+    //else {
+    //    if (player->commandSubmit == true) {
+    //        player->commandSubmit = false;
+    //        commandString.clear();
+    //        commandString.push_back(cardRasterizer.playerIndex);
+    //        for (uint32_t i = 0; i < player->inputString.size(); i++) {
+    //            commandString.push_back(player->inputString[i]);
+    //        }
 
-            uint32_t errCode = cardEngine.cardCommand(commandString);
-            if (errCode == COMMAND_SUCCESS) {
-                player->inputString.clear();
-                cardRasterizer.playerIndex = (cardEngine.DHand.size() + cardEngine.NDHand.size() + cardEngine.stock.size()) % 2;
-                commandSubmitFrame = true;
-            }
-        }
-    }
+    //        uint32_t errCode = cardEngine.cardCommand(commandString);
+    //        if (errCode == COMMAND_SUCCESS) {
+    //            player->inputString.clear();
+    //            cardRasterizer.playerIndex = (cardEngine.DHand.size() + cardEngine.NDHand.size() + cardEngine.stock.size()) % 2;
+    //            commandSubmitFrame = true;
+    //        }
+    //    }
+    //}
 
 
+
+    //if (firstFrame) {
+    //    commandSubmitFrame = true;
+    //}
+    //if (commandSubmitFrame == true && cardEngine.gameFinished == true) {
+    //    std::vector<std::string> playerNames;
+    //    playerNames.resize(2);
+    //    if (isDealer) {
+    //        playerNames[0] = std::string(nc.usrn.begin(), nc.usrn.end());
+    //        playerNames[1] = std::string(nc.oppn.begin(), nc.oppn.end());
+    //    }
+    //    else {
+    //        playerNames[0] = std::string(nc.oppn.begin(), nc.oppn.end());
+    //        playerNames[1] = std::string(nc.usrn.begin(), nc.usrn.end());
+    //    }
+    //    //std::cout << *cardEngine.playerScores[0] << *cardEngine.playerScores[1] << std::endl;;
+    //    player->initScoreBoxes(&cardEngine.playerScoreReasons, &cardEngine.playerScores, playerNames);
+    //}
+    ////upadte playerturnstring
+    //if (commandSubmitFrame) {
+    //    //to-do
+    //    if (onlineGame) {
+    //        playerTurnString.clear();
+    //        if (cardRasterizer.playerIndex == cardEngine.handToPlay) {
+    //            
+    //            for (uint32_t i = 0; i < nc.usrn.size();i++) {
+    //                if (nc.usrn[i] == 0) {
+    //                    break;
+    //                }
+    //                playerTurnString.push_back(nc.usrn[i]);
+    //            }
+    //        }
+    //        else {
+    //            for (uint32_t i = 0; i < nc.oppn.size(); i++) {
+    //                if (nc.oppn[i] == 0) {
+    //                    break;
+    //                }
+    //                playerTurnString.push_back(nc.oppn[i]);
+    //            }
+    //        }
+    //    }
+    //    else {
+    //        if (cardRasterizer.playerIndex == 1) {
+    //            playerTurnString = "Player 1";
+    //        }
+    //        else {
+    //            playerTurnString = "Player 2";
+    //        }
+    //    }
+    //    for (uint32_t i = 0; i < playerTurnStringEnd.size(); i++) {
+    //        playerTurnString.push_back(playerTurnStringEnd[i]);
+    //    }
+    //}
 
     if (firstFrame) {
         commandSubmitFrame = true;
     }
-    if (commandSubmitFrame == true && cardEngine.gameFinished == true) {
-        std::vector<std::string> playerNames;
-        playerNames.resize(2);
-        if (isDealer) {
-            playerNames[0] = std::string(nc.usrn.begin(), nc.usrn.end());
-            playerNames[1] = std::string(nc.oppn.begin(), nc.oppn.end());
-        }
-        else {
-            playerNames[0] = std::string(nc.oppn.begin(), nc.oppn.end());
-            playerNames[1] = std::string(nc.usrn.begin(), nc.usrn.end());
-        }
-        //std::cout << *cardEngine.playerScores[0] << *cardEngine.playerScores[1] << std::endl;;
-        player->initScoreBoxes(&cardEngine.playerScoreReasons, &cardEngine.playerScores, playerNames);
-    }
-    //upadte playerturnstring
     if (commandSubmitFrame) {
-        //to-do
-        if (onlineGame) {
-            playerTurnString.clear();
-            if (cardRasterizer.playerIndex == cardEngine.handToPlay) {
-                
-                for (uint32_t i = 0; i < nc.usrn.size();i++) {
-                    if (nc.usrn[i] == 0) {
-                        break;
-                    }
-                    playerTurnString.push_back(nc.usrn[i]);
-                }
-            }
-            else {
-                for (uint32_t i = 0; i < nc.oppn.size(); i++) {
-                    if (nc.oppn[i] == 0) {
-                        break;
-                    }
-                    playerTurnString.push_back(nc.oppn[i]);
-                }
-            }
-        }
-        else {
-            if (cardRasterizer.playerIndex == 1) {
-                playerTurnString = "Player 1";
-            }
-            else {
-                playerTurnString = "Player 2";
-            }
-        }
-        for (uint32_t i = 0; i < playerTurnStringEnd.size(); i++) {
-            playerTurnString.push_back(playerTurnStringEnd[i]);
-        }
+        durak.state.print();
     }
-
-
 
     vkWaitForFences(device, 1, &flightFences[frameIndex], VK_TRUE, UINT64_MAX);
     vkResetFences(device, 1, &flightFences[frameIndex]);
@@ -631,8 +635,70 @@ void VulkanEngine::executeGraphics() {
     }
     fpsVal = uint32_t(10 / fpsSum);
 
+    commandSubmitFrame = false;
 
+}
+void VulkanEngine::executeCardGame() {
+    if (player->commandSubmit == true) {
+        std::string cmd{};
+        cmd.resize(player->inputString.size()+1);
+        cmd[0] = nc.locPlayerIndex+42;
+        memcpy(cmd.data()+1, player->inputString.data(), player->inputString.size() * sizeof(char));
+        if (durak.cardCommand(cmd)) {
+            CmdPacket pkt{};
+            pkt.header.packetType = CMD_PACKET;
+            memcpy(&pkt.cmd[0], player->inputString.data(), player->inputString.size() * sizeof(char));
+            if (onlineGame) {
+                nc.net.sendPacket(reinterpret_cast<char*>(&pkt));
+            }
+            else {
+                nc.locPlayerIndex = (nc.locPlayerIndex + 1) % 2;
+            }
+            player->inputString.clear();
+            stat->addMessage(MSG_LEVEL_USER, cmd);
+            commandSubmitFrame = true;
+        }
+        player->commandSubmit = false;
 
+    }
+}
+void VulkanEngine::executeNetTasks() {
+    //check if packet
+    if (nc.net.packetReady == true) {
+        HeaderData* hd = reinterpret_cast<HeaderData*>(&nc.net.packetData);
+        if (hd->packetType == CMD_PACKET) {
+            std::string cmd{};
+            CmdPacket* pkt = reinterpret_cast<CmdPacket*>(&nc.net.packetData);
+            for (uint32_t i = 0; i < 30; i++) {
+                if (pkt->cmd[i] == 0) {
+                    break;
+                }
+                cmd.push_back(pkt->cmd[i]);
+            }
+            durak.cardCommand(cmd);
+            commandSubmitFrame = true;
+        }
+        else if (hd->packetType == INIT_PACKET) {
+            if (nc.recvInitPacket()) {
+                //deal
+                durak.shuffle();
+                GamePacket pkt{};
+                pkt.header.packetType = GAME_PACKET;
+                memcpy(&pkt.cardData[0], durak.state.stock.data(), durak.state.stock.size() * sizeof(playingCard));
+                nc.net.sendPacket(reinterpret_cast<char*>(&pkt));
+                durak.dealGame();
+            }
+            else {
+                //recv
+                GamePacket* pkt = reinterpret_cast<GamePacket*>(&nc.net.packetData);
+                durak.shuffle();
+                memcpy(durak.state.stock.data(), &pkt->cardData[0], durak.state.stock.size() * sizeof(playingCard));
+                nc.net.packetReady = false;
+                nc.net.packetFinished = true;
+                durak.dealGame();
+            }
+        }
+    }
 }
 void VulkanEngine::runCompute() {
     while (!glfwWindowShouldClose(winmanager.window)) {

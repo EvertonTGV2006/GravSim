@@ -37,20 +37,19 @@ struct sockaddr_in2
 };
 struct HeaderData {
 	char packetType;
-	char pName[31];
+	char globalID;
 };
 struct CmdPacket {
 	HeaderData header;
-	char cmd[32];
+	char cmd[30];
 };
 struct GamePacket {
 	HeaderData header;
-	playingCard cardData[52];
+	playingCard cardData[36];
 };
 struct InitPacket {
 	HeaderData header;
-	char isHost;
-	char opName[31];
+	std::array<PlayerDetails, 2> dets;
 };
 enum packetTypes {
 	INIT_PACKET = 1,
@@ -92,10 +91,10 @@ private:
 
 struct NetworkServerPair {
 	std::array<NetworkUtil*, 2> net;
-	playingCard initialStock[52];
-	std::array<std::array<char, 8>, 2> playerNames;
-	uint32_t playerTurn;
-	bool hostDealer = false;
+	std::array<PlayerDetails, 2> dets;
+	uint32_t playerTurn = 0;
+	uint32_t gameNumber = 0;
+	bool sendInitPackets = false;
 	bool partComplete = false;
 	bool complete = false;
 	bool exitRequired = false;
@@ -107,18 +106,15 @@ public:
 	NetworkUtil net;
 
 	StatusLogger* stat;
-	void initWinsock();
-	void negotiateStock();
+	void initWinsock(PlayerDetails*);
+	bool recvInitPacket();
 
 	void cleanup();
 
-	bool isGameHost = false;
-	uint32_t playerIndex = 0;
+	std::array<PlayerDetails, 2> dets;
+	PlayerDetails locPlayerDetails;
+	uint32_t locPlayerIndex;
 
-	std::array<char, 8> usrn;
-	std::array<char, 8> oppn;
-
-	std::vector<playingCard>* stockPtr;
 
 	std::string ipaddr;
 	int portaddr;
@@ -167,5 +163,5 @@ private:
 
 	void workerListen();
 	void handleConnections();
-	void handleNewgame(NetworkServerPair*);
+	bool checkCommand(NetworkServerPair*, uint32_t);
 }; 

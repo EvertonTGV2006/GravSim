@@ -223,15 +223,14 @@ struct durakGameState {
 };
 class DurakEngine {
 public:
-	PlayerDetails locPlayer;
-	PlayerDetails oppPlayer;
 	durakGameState state;
 	char playerTurn;
 	char attacker;
 	char winnerID = CHAR_MAX;
 
+	void shuffle();
 	void dealGame();
-	void cardCommand(std::string);
+	bool cardCommand(std::string);
 
 };
 struct CardData {

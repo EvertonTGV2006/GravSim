@@ -31,6 +31,9 @@ void CardRasterizer::initCard_A(CardInit details) {
 	memcpy(shaderCode.data(), details.shaderCode.data(), shaderCode.size() * sizeof(shaderCode[0]));
 
 	player = details.player;
+	durak = details.durak;
+	params = details.params;
+	locPlayerIndex = details.locPlayerIndex;
 
 	//vertices = { glm::vec2(0, 0), glm::vec2(1, 0), glm::vec2(0, 1), glm::vec2(0, 1), glm::vec2(1, 0), glm::vec2(1, 1) };
 
@@ -676,8 +679,8 @@ void CardRasterizer::drawDurak(VkCommandBuffer commandBuffer, uint32_t frameInde
 	//cards2 is is current postions
 	//cards3 is desired positions;
 	animationCurrentTime = std::chrono::high_resolution_clock::now();
-	auto animationElapsedTime = animationCurrentTime - animationStartTime;
-	float animationTicks = animationElapsedTime.count();
+	auto animationElapsedTime = (animationCurrentTime - animationStartTime);
+	float animationTicks = animationElapsedTime.count() / 1e9f;
 
 	float targetDuration = 1.0f / params->animationSpeed;
 	if (animationTicks > targetDuration) {
@@ -687,7 +690,7 @@ void CardRasterizer::drawDurak(VkCommandBuffer commandBuffer, uint32_t frameInde
 	if (params->animationPlaying) {
 		float b = 4.5;
 		float a = 0.5;
-		float h = 0.3f;
+		float h = 0.1f;
 		float x = animationTicks / targetDuration;
 		float xyzFactor = smoothInterpolate(x, a, b);
 		float zLift = 0.0f;
@@ -695,16 +698,23 @@ void CardRasterizer::drawDurak(VkCommandBuffer commandBuffer, uint32_t frameInde
 			//lift
 			zLift = smoothInterpolate(4 * x, a, b);
 		}
-		else if (0.25f <= x && x <= 0.5f) {
+		else if (0.25f <= x && x <= 0.75f) {
 			zLift = 1.0f;
 		}
 		else {
-			zLift = smoothInterpolate((4 * x) - 3, a, b);
+			zLift = 1.0f-smoothInterpolate((4 * x) - 3, a, b);
 		} 
 		for (uint32_t i = 0; i < cards_1.size(); i++) {
 			cards_2[i] = cards_1[i];
 			cards_2[i].pos = (1.0f - xyzFactor) * cards_1[i].pos + xyzFactor * cards_3[i].pos;
-			cards_2[i].pos.z += zLift * h;
+			//only cards moving a large distance need to lift. 
+			float sep = glm::length(cards_3[i].pos - cards_1[i].pos);
+			if (sep > 0.1) {
+				cards_2[i].pos.z += zLift * h;
+			}
+			cards_2[i].xy = (1.0f - xyzFactor) * cards_1[i].xy + xyzFactor * cards_3[i].xy;
+			cards_2[i].xz = (1.0f - xyzFactor) * cards_1[i].xz + xyzFactor * cards_3[i].xz;
+			cards_2[i].yz = (1.0f - xyzFactor) * cards_1[i].yz + xyzFactor * cards_3[i].yz;
 		}
 	}
 	else {
@@ -758,7 +768,11 @@ void CardRasterizer::getCardData() {
 
 
 	//local player's hand
-	char locID = durak->locPlayer.playerID;
+	char locID = 0;
+	if (locPlayerIndex != nullptr) {
+		locID = *locPlayerIndex;
+	}
+
 	glm::vec2 locHandCent = glm::vec2(0.4f, -0.3f);
 	float locHandRadius = 0.5f;
 	constexpr float angleMax = 15.0f * glm::pi<float>() / 180.0f;
@@ -801,7 +815,7 @@ void CardRasterizer::getCardData() {
 
 
 	//opponent's hand
-	char oppID = durak->oppPlayer.playerID;
+	char oppID = (locID + 1) % 2;
 	glm::vec2 oppHandCent = glm::vec2(0.4f, 1.3f);
 	float oppHandRadius = 0.5f;
 
@@ -855,7 +869,7 @@ void CardRasterizer::getCardData() {
 	//table
 	glm::vec2 tableStart = glm::vec2(0.2f, 0.5f);
 	glm::vec2 tableStep = glm::vec2(0.09f, 0.5f);
-	glm::vec2 tableCover = glm::vec2(0.005f, 0.05f);
+	glm::vec2 tableCover = glm::vec2(0.0005f, -0.03f);
 	char stacks = (state.table.size() + (state.table.size() % 2)) / 2;
 	for (char i = 0; i < stacks; i++) {
 		card.pos = glm::vec3(tableStart + float(i) * tableStep, 0.0f);
@@ -864,8 +878,8 @@ void CardRasterizer::getCardData() {
 		card.xz = 0.0f;
 		card.yz = 0.0f;
 		cards_3[card.card.data] = card;
-		if ((2 * i) + 1 < state.table.size() - 1) {
-			card.pos = glm::vec3(tableStart + float(i) * tableStep, height);
+		if ((2 * i) + 1 < state.table.size()) {
+			card.pos = glm::vec3(tableStart + float(i) * tableStep + tableCover, height);
 			card.card = state.table[2 * i + 1];
 			card.xy = 0.0f;
 			card.xz = 0.0f;

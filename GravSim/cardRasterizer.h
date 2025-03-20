@@ -24,8 +24,10 @@ struct CardInit {
 	std::vector<std::vector<char>*> shaderCode;
 
 	PlayerObject* player;
+	DurakEngine* durak;
+	uint32_t* locPlayerIndex;
 
-	GameTablePtr gameTable;
+	GlobalParameters* params;
 	
 };
 
@@ -54,6 +56,7 @@ public:
 	void cleanup();
 
 	DurakEngine* durak;
+	uint32_t* locPlayerIndex = nullptr;
 
 	GlobalParameters* params;
 	float cardSize = 0.08f;
