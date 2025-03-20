@@ -868,7 +868,7 @@ void CardRasterizer::getCardData() {
 
 	//table
 	glm::vec2 tableStart = glm::vec2(0.2f, 0.5f);
-	glm::vec2 tableStep = glm::vec2(0.09f, 0.5f);
+	glm::vec2 tableStep = glm::vec2(0.09f, 0.0f);
 	glm::vec2 tableCover = glm::vec2(0.0005f, -0.03f);
 	char stacks = (state.table.size() + (state.table.size() % 2)) / 2;
 	for (char i = 0; i < stacks; i++) {

@@ -452,7 +452,7 @@ void VulkanEngine::executeGraphics() {
         commandSubmitFrame = true;
     }
     if (commandSubmitFrame) {
-        durak.state.print();
+        //durak.state.print();
     }
 
     vkWaitForFences(device, 1, &flightFences[frameIndex], VK_TRUE, UINT64_MAX);

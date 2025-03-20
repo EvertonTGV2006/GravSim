@@ -62,6 +62,12 @@ public:
 	double xpos = 0;
 	double ypos = 0;
 
+	int windowxpos = 200;
+	int windowypos = 100;
+	int windowxdim = 800;
+	int windowydim = 600;
+
+
 	glm::vec2 screenDim = { 800, 600 };
 
 	float anglez = glm::atan(viewDirection.z / sqrt(viewDirection.x * viewDirection.x + viewDirection.y * viewDirection.y));
@@ -92,9 +98,6 @@ public:
 
 
 	std::map<int, uint64_t> keyBindings = { {GLFW_KEY_UP, PL_MOVE_FORWARD}, {GLFW_KEY_DOWN, PL_MOVE_BACKWARD}, {GLFW_KEY_LEFT, PL_MOVE_LEFT}, {GLFW_KEY_RIGHT, PL_MOVE_RIGHT} };
-
-	int windowxpos = 0;
-	int windowypos = 0;
 
 	void* playerTurnStr;
 	
@@ -128,6 +131,8 @@ public:
 
 	void initScoreBoxes(std::vector<std::vector<std::string>*>*, std::vector<uint32_t*>*, std::vector<std::string>);
 	void destroyScoreBoxes();
+	void toggleFullscreen();
+	bool fullscreen = true;
 
 	std::vector<std::string> playerNames;
 	std::array<char, 8> usrn;

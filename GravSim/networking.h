@@ -16,8 +16,8 @@
 
 
 #define DEFAULT_BUFLEN 512
-#define INITIAL_PKTLEN 16
-#define STOCK_PKTLEN 52
+#define INITIAL_PKTLEN 42
+#define STOCK_PKTLEN 38
 #define CMD_PKTLEN 32
 #define CMD_LENGTH 31
 

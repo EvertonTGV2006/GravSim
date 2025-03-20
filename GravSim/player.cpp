@@ -246,6 +246,9 @@ void PlayerObject::keyCallback(GLFWwindow* window, int key, int scancode, int ac
 		glfwSetWindowShouldClose(window, GLFW_TRUE);
 		//std::cout << "Close Window!" << std::endl;
 	}
+	else if (key == GLFW_KEY_TAB && action == GLFW_PRESS) {
+		app->toggleFullscreen();
+	}
 	//else if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
 	//	if (app->timePause == false) { app->timePause = true; }
 	//	else if (app->timePause == true) { app->timePause = false; }
@@ -379,4 +382,18 @@ void PlayerObject::windowCloseCallback(GLFWwindow* window) {
 	//std::cout << "Window close callback";
 	app->stat->addMessage(MSG_LEVEL_DEBUG, "Window Closing");
 	app->windowShouldClose = true;
+}
+void PlayerObject::toggleFullscreen() {
+	if (fullscreen) {
+		glfwSetWindowMonitor(winmanager->window, NULL, windowxpos, windowypos, windowxdim, windowydim, GLFW_DONT_CARE);
+		fullscreen = false;
+	}
+	else {
+		glfwGetWindowPos(winmanager->window, &windowxpos, &windowypos);
+		glfwGetWindowSize(winmanager->window, &windowxdim, &windowydim);
+		GLFWmonitor* primary = glfwGetPrimaryMonitor();
+		const GLFWvidmode* mode = glfwGetVideoMode(primary);
+		glfwSetWindowMonitor(winmanager->window, primary, 0, 0, mode->width, mode->height, GLFW_DONT_CARE);
+		fullscreen = true;
+	}
 }

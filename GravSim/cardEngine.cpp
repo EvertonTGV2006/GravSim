@@ -554,7 +554,7 @@ void DurakEngine::dealGame() {
 		}
 	}
 	state.trumpSuit = state.stock[0].suit();
-	state.print();
+	//state.print();
 }
 bool DurakEngine::cardCommand(std::string cmd) {
 	char cmdTurn = cmd[0]-42;

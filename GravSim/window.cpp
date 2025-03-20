@@ -13,7 +13,11 @@ void WindowManager::initWindow() {
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	//glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-	window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+	GLFWmonitor* primary = glfwGetPrimaryMonitor();
+	const GLFWvidmode* mode = glfwGetVideoMode(primary);
+
+
+	window = glfwCreateWindow(mode->width, mode->height, "Durak", primary, nullptr);
 
 	GLFWimage image[1];
 	image[0].pixels = stbi_load("textures/icon.png", &image[0].width, &image[0].height, 0, 4);
