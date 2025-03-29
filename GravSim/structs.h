@@ -64,7 +64,7 @@ enum UIOptions {
 };
 
 
-static const int FRAMES_IN_FLIGHT = 3;
+static const int FRAMES_IN_FLIGHT = 1;
 static const int COMPUTE_STEPS = 3;
 
 
@@ -163,7 +163,9 @@ struct PlayerDetails {
 struct GlobalParameters {
     std::array<char, 16> playerName;
     float animationSpeed = 2.0f;
-    bool animationPlaying = false;
+    bool transitionAnimationPlaying = false;
+    bool mouseAnimationPlaying = false;
+    bool commandAnimationQueued = false;
     bool multisampling = false;
     int windowWidth = 800;
     int windowHeight = 600;

@@ -411,9 +411,15 @@ char PlayerObject::sampleMousePick(uint32_t frameIndex, uint32_t mode) {
 	int y = ypos;
 	int pixel = 0;
 	if (fullscreen) {
+		if (x > fullscreenxdim || x < 0 || y > fullscreenydim || y < 0) {
+			return 0;
+		}
 		pixel = y * fullscreenxdim + x;
 	}
 	else {
+		if (x > windowxdim || x < 0 || y > windowydim || y < 0) {
+			return 0;
+		}
 		pixel = y * windowxdim + x;
 	}
 	int cursor = pixel * 4;

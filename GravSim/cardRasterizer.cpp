@@ -669,31 +669,43 @@ void CardRasterizer::getMemoryRequirements(std::vector<MemoryDetails>* details, 
 
 
 void CardRasterizer::drawDurak(VkCommandBuffer commandBuffer, uint32_t frameIndex, bool cmdFrame, glm::mat4 viewMat, glm::mat4 projMat) {
+	
 	if (cmdFrame) {
-		cards_0 = cards_1;
+		params->commandAnimationQueued = true;
+	}
+	if (params->commandAnimationQueued && !params->transitionAnimationPlaying && !params->mouseAnimationPlaying) {
 		cards_1 = cards_2;
 		getCardData();
-		animationStartTime = std::chrono::high_resolution_clock::now();
-		params->animationPlaying = true;
+		transitionAnimationStartTime = std::chrono::high_resolution_clock::now();
+		params->transitionAnimationPlaying = true;
+		params->commandAnimationQueued = false;
 	}
 	//cards0 is 2nd previous positions
 	//cards1 is previous positions
 	//cards2 is is current postions
 	//cards3 is desired positions;
 	animationCurrentTime = std::chrono::high_resolution_clock::now();
-	auto animationElapsedTime = (animationCurrentTime - animationStartTime);
-	float animationTicks = animationElapsedTime.count() / 1e9f;
+	auto transitionElapsedTime = (animationCurrentTime - transitionAnimationStartTime);
+	float transitionAnimationTicks = transitionElapsedTime.count() / 1e9f;
+	auto mouseElapsedTime = (animationCurrentTime - mouseAnimationStartTime);
+	float mouseAnimationTicks = mouseElapsedTime.count() / 1e9f;
 
-	float targetDuration = 1.0f / params->animationSpeed;
-	if (animationTicks > targetDuration) {
-		cards_2 = cards_3;
-		params->animationPlaying = false;
+	currentMouseCard.data = player->sampleMousePick(frameIndex, 0);
+	if (currentMouseCard.data > 64) {
+		currentMouseCard.data = 0;
 	}
-	if (params->animationPlaying) {
+
+	float transitionTargetDuration = 1.0f / params->animationSpeed;
+	float mouseTargetDuration = 0.4f / params->animationSpeed;
+	if (transitionAnimationTicks > transitionTargetDuration) {
+		cards_2 = cards_3;
+		params->transitionAnimationPlaying = false;
+	}
+	if (params->transitionAnimationPlaying) {
 		float b = 4.5;
 		float a = 0.5;
 		float h = 0.1f;
-		float x = animationTicks / targetDuration;
+		float x = transitionAnimationTicks / transitionTargetDuration;
 		float xyzFactor = smoothInterpolate(x, a, b);
 		float zLift = 0.0f;
 		float modsFactor = 0.0f;
@@ -728,7 +740,59 @@ void CardRasterizer::drawDurak(VkCommandBuffer commandBuffer, uint32_t frameInde
 		}
 	}
 	else {
-		//for card in player hand
+		if (mouseAnimationTicks > mouseTargetDuration && params->mouseAnimationPlaying) {
+			cards_2 = cards_4;
+			params->mouseAnimationPlaying = false;
+		}
+		if (params->mouseAnimationPlaying) {
+
+			float b = 1.0;
+			float a = 0.5;
+			float h = 0.1f;
+			float x = mouseAnimationTicks / mouseTargetDuration;
+			float posFactor = smoothInterpolate(x, a, b);
+			float xzFactor = 0.0f;
+			constexpr float r = glm::pi<float>() / 20;
+			float modsFactor = 0.0f;
+			if (x < 0.25f) {
+				//lift
+				xzFactor = smoothInterpolate(4 * x, a, b);
+			}
+			else if (0.25f <= x && x <= 0.75f) {
+				xzFactor = 1.0f;
+			}
+			else {
+				xzFactor = 1.0f - smoothInterpolate((4 * x) - 3, a, b);
+			}
+			if (x < 0.2f) {
+				modsFactor = smoothInterpolate(5 * x, a, b);
+			}
+			else {
+				modsFactor = 1.0f;
+			}
+			for (uint32_t i = 0; i < cards_2.size(); i++) {
+				cards_2[i] = cards_1[i];
+				float sep = glm::length(cards_4[i].pos - cards_2[i].pos);
+				cards_2[i].pos = (1.0f - posFactor) * cards_1[i].pos + posFactor * cards_2[i].pos;
+				cards_2[i].xy = (1.0f - posFactor) * cards_1[i].xy + posFactor * cards_4[i].xy;
+				cards_2[i].xz = (1.0f - posFactor) * cards_1[i].xz + posFactor * cards_4[i].xz;
+				cards_2[i].yz = (1.0f - posFactor) * cards_1[i].yz + posFactor * cards_4[i].yz;
+				cards_2[i].xz += (sep > 0.02f) ? xzFactor * r : 0.0f;
+				cards_2[i].mods = (1.0f - modsFactor) * cards_1[i].mods + modsFactor * cards_4[i].mods;
+			}
+
+		}
+		else {
+			if (previousMouseCard.data != currentMouseCard.data) {
+				//currentMouseCard.print();
+				mouseAnimationStartTime = animationCurrentTime;
+				cards_1 = cards_2;
+				cards_4 = cards_3;
+				cards_4[currentMouseCard.data].pos.y += 0.02f;
+				cards_4[currentMouseCard.data].pos.z += 0.004f;
+				params->mouseAnimationPlaying = true;
+			}
+		}
 	}
 	uint32_t drawCount = getCardMats();
 
@@ -749,11 +813,8 @@ void CardRasterizer::drawDurak(VkCommandBuffer commandBuffer, uint32_t frameInde
 	vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(CardPushConstants), &pc);
 	vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 36, 0, 0);
 
-	playingCard mouseCard;
-	mouseCard.data = player->sampleMousePick(frameIndex, 0);
-	if (mouseCard.data != 0) {
-		mouseCard.print();
-		std::cout << " "<<std::endl;
+	if (!params->mouseAnimationPlaying) {
+		previousMouseCard = currentMouseCard;
 	}
 }
 float CardRasterizer::smoothInterpolate(float x, float a, float b){

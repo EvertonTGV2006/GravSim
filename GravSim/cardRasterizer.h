@@ -170,15 +170,20 @@ private:
 
 	std::vector<glm::vec4> vertices;
 
-	std::array<CardData, 64> cards_0;
+	
 	std::array<CardData, 64> cards_1;
 	std::array<CardData, 64> cards_2;
 	std::array<CardData, 64> cards_3;
+	std::array<CardData, 64> cards_4;
 	std::array<CardBuf, 64> cardMats;
 
+	playingCard previousMouseCard{};
+	playingCard currentMouseCard{};
+
 	//animation data;
-	std::chrono::time_point<std::chrono::high_resolution_clock> animationStartTime = std::chrono::high_resolution_clock::now();
+	std::chrono::time_point<std::chrono::high_resolution_clock> transitionAnimationStartTime = std::chrono::high_resolution_clock::now();
 	std::chrono::time_point<std::chrono::high_resolution_clock> animationCurrentTime = std::chrono::high_resolution_clock::now();
+	std::chrono::time_point<std::chrono::high_resolution_clock> mouseAnimationStartTime = std::chrono::high_resolution_clock::now();
 
 	float smoothInterpolate(float, float, float);
 };

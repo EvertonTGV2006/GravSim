@@ -31,8 +31,6 @@ void CardEngine::initStock() {
 	std::ranges::shuffle(stock, gen);
 
 }
-
-
 void CardEngine::setupGame() {
 
 	playerHands.clear();
@@ -75,7 +73,6 @@ void CardEngine::setupGame() {
 	playerScoreReasons.push_back(&NDScoreReasons);
 	playerScoreReasons.push_back(&DScoreReasons);
 }
-
 void CardEngine::firstDeal() {
 	std::vector<playingCard> newStack = {};
 	for (uint8_t i = 0; i < 2; i++) {
@@ -96,7 +93,6 @@ void CardEngine::firstDeal() {
 
 	}
 }
-
 void CardEngine::normalDeal() {
 	for (uint8_t i = 0; i < 2; i++) {
 		NDHand.push_back(stock.back());
@@ -109,7 +105,6 @@ void CardEngine::normalDeal() {
 		stock.pop_back();
 	}
 }
-
 void CardEngine::printCards(uint8_t opt) {
 	if (opt == 1) {
 		std::cout << "Stock: " << stock.size() << std::endl;
@@ -149,7 +144,6 @@ void CardEngine::printCards(uint8_t opt) {
 		}
 	}
 }
-
 uint32_t CardEngine::cardCommand(std::vector<char> command) {
 	printCards(0);
 
@@ -327,7 +321,6 @@ uint32_t CardEngine::cardCommand(std::vector<char> command) {
 
 
 }
-
 void CardEngine::processTurns() {
 	uint32_t player = 0;
 	while (
@@ -368,7 +361,6 @@ void CardEngine::processTurns() {
 		std::cout << NDScoreReasons[i] << std::endl;
 	}
 }
-
 void CardEngine::countScore(uint8_t handIndex, uint8_t scoreIndex){
 	
 	std::vector<std::string>* localScoreReasons = playerScoreReasons[handIndex];
@@ -413,7 +405,6 @@ void CardEngine::countScore(uint8_t handIndex, uint8_t scoreIndex){
 
 	std::cout << handIndex << ": " << uint32_t(*playerScores[handIndex]) << std::endl;
 }
-
 GameTablePtr CardEngine::getTable() {
 	GameTablePtr gt{};
 	gt.table = &table;
@@ -423,7 +414,6 @@ GameTablePtr CardEngine::getTable() {
 
 	return gt;
 }
-
 void CardEngine::populateGameTableData(GameTableData* gt) {
 	gt->hands.clear();
 	gt->wins.clear();
@@ -554,6 +544,22 @@ void DurakEngine::dealGame() {
 		}
 	}
 	state.trumpSuit = state.stock[0].suit();
+	trumpSuit = state.trumpSuit;
+
+	//std::cout << uint32_t(trumpSuit);	
+	//playingCard a{}; a.setSuit(trumpSuit); a.setRank(CARD_RANK_ACE);
+	//playingCard b{}; b.setSuit(trumpSuit); b.setRank(CARD_RANK_10);
+	//a.print(); b.print(); std::cout << playingCard::sortSuit(a, b) << std::endl;
+	//a.setRank(CARD_RANK_6);
+	//a.print(); b.print(); std::cout << playingCard::sortSuit(a, b) << std::endl;
+	//a.setSuit(CARD_SUIT_HEARTS);
+	//a.print(); b.print(); std::cout << playingCard::sortSuit(a, b) << std::endl;
+	//a.setSuit(CARD_SUIT_SPADES);
+	//a.print(); b.print(); std::cout << playingCard::sortSuit(a, b) << std::endl;
+	//b.setSuit(CARD_SUIT_CLUBS);
+	//a.print(); b.print(); std::cout << playingCard::sortSuit(a, b) << std::endl;
+
+	sortHands();
 	//state.print();
 }
 bool DurakEngine::cardCommand(std::string cmd) {
@@ -714,11 +720,20 @@ bool DurakEngine::cardCommand(std::string cmd) {
 		}
 	}
 
+	playingCard* ptr = &state.hands[0][0];
 
 	if (cmdReturn & CMD_SUCCESS) {
+		sortHands();
 		return true;
 	}
 	else if (cmdReturn & CMD_INVALID){
 		return false;
 	}
+}
+void DurakEngine::sortHands() {
+	//sort by suit;
+	//std::cout << state.hands[0].data() << "\t" << state.hands[0].data() + state.hands[0].size();
+
+	std::sort(state.hands[0].begin(), state.hands[0].end(), playingCard::sortSuit);
+	std::sort(state.hands[1].data(), state.hands[1].data() + state.hands[1].size(), playingCard::sortSuit);
 }

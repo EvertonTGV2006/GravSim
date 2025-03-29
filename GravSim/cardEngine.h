@@ -67,12 +67,14 @@ enum commandIDBits {
 	COMMAND_BIT_TABLE_INDEX_START = 3
 };
 
+static uint8_t trumpSuit;
+
 struct playingCard {
 	uint8_t data;
-	uint8_t suit() {
+	uint8_t suit() const {
 		return 3 & (data >> 4);
 	}
-	uint8_t rank() {
+	uint8_t rank() const {
 		return data & 15; // aces are low
 	}
 	void setSuit(uint8_t suit) {
@@ -142,6 +144,46 @@ struct playingCard {
 	uint8_t value() {
 
 		return (rank() == 1) ? suit() * 13 + 12 : suit() * 13 + rank() - 2; //aces are high on the texture
+	}
+	static bool sortRank(const playingCard &a, const playingCard &b) {
+		if (a.rank() == b.rank()) {
+			if (a.suit() == trumpSuit) {
+				return true;
+			}
+			else if (b.suit() == trumpSuit) { return false; }
+			else { return (a.suit() < b.suit()); }
+		}
+		else if (a.rank() == CARD_RANK_ACE) {
+			return false;
+		}
+		else if (b.rank() == CARD_RANK_ACE) {
+			return true;
+		}
+		else {
+			return(a.rank() < b.rank());
+		}
+	}
+	static bool sortSuit(const playingCard& a, const playingCard& b) {
+		bool returnVal = false;
+		if (a.suit() == b.suit()) {
+			if (a.rank() == CARD_RANK_ACE) {
+				returnVal =  false;
+			}
+			else if (b.rank() == CARD_RANK_ACE) {
+				returnVal = true;
+			}
+			else { returnVal = (a.rank() < b.rank()); }
+		}
+		else if (a.suit() == trumpSuit) {
+			returnVal = false;
+		}
+		else if (b.suit() == trumpSuit) {
+			returnVal = true;
+		}
+		else {
+			returnVal = (a.suit() < b.suit());
+		}
+		return returnVal;
 	}
 };
 
@@ -231,6 +273,7 @@ public:
 	void shuffle();
 	void dealGame();
 	bool cardCommand(std::string);
+	void sortHands();
 
 };
 struct CardData {
