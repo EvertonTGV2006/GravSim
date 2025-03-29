@@ -54,7 +54,8 @@ struct InitPacket {
 enum packetTypes {
 	INIT_PACKET = 1,
 	GAME_PACKET = 2,
-	CMD_PACKET = 3
+	CMD_PACKET = 3,
+	KILL_PACKET = 4
 };
 
 const uint32_t MAX_PKT_SIZE = 256;
@@ -119,6 +120,7 @@ public:
 	std::string ipaddr;
 	int portaddr;
 
+	bool disconnected = false;
 
 private:
 	WSADATA wsaData;

@@ -33,6 +33,7 @@ layout(location = 3) out float blendConstant;
 layout(location = 4) flat out uint mode;
 layout(location = 5) out vec3 normal;
 layout(location = 6) out vec3 fragPos;
+layout(location = 7) flat out uint cardID;
 
 int characters[11] = int[](72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100);
 
@@ -41,7 +42,11 @@ void main() {
 
     CardMat card = ubo.data[i];
     float suit = floor(card.card / 16.0f);
-    float rank = card.card - (suit * 16.0f) - 1.0f;
+    float rank = card.card - (suit * 16.0f) - 2.0f;
+    if(rank == -1.0f){
+        rank = 12.0f;
+    }
+    cardID = card.card;
 
     vec3 cardDimensions = vec3(1.0f, 1.0f * (95.0f / 71.0f), 0.0015f);
     vec2 texDimensions = vec2(1.0f / 13.0f, 1.0f / 4.0f);
@@ -52,6 +57,7 @@ void main() {
     vec2 baseCardDim = vec2(1.0f / 7.0f, 1.0f / 5.0f);
     vec4 outPosition;
     vec4 cardNormal;
+    blendConstant = card.mod1;
 
     if(inPosition.w == 0.0f){
         cardNormal = vec4(0.0f, 0.0f, -1.0f, 0.0f);

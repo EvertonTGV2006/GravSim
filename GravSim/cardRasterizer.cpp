@@ -574,7 +574,7 @@ void CardRasterizer::createPipeline() {
 	VkPipelineMultisampleStateCreateInfo multisampling{};
 	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	multisampling.sampleShadingEnable = VK_FALSE;
-	multisampling.rasterizationSamples = msaaSamples;
+	multisampling.rasterizationSamples = (params->multisampling) ? msaaSamples : VK_SAMPLE_COUNT_1_BIT;
 
 	VkPipelineColorBlendAttachmentState colorBlendAttachment{};
 	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -587,12 +587,14 @@ void CardRasterizer::createPipeline() {
 	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 
 
+	std::array<VkPipelineColorBlendAttachmentState, 2> colorBlendAttachments = { colorBlendAttachment, colorBlendAttachment };
+
 	VkPipelineColorBlendStateCreateInfo colorBlending{};
 	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	colorBlending.logicOpEnable = VK_FALSE;
 	colorBlending.logicOp = VK_LOGIC_OP_COPY;
-	colorBlending.attachmentCount = 1;
-	colorBlending.pAttachments = &colorBlendAttachment;
+	colorBlending.attachmentCount = static_cast<uint32_t>(colorBlendAttachments.size());
+	colorBlending.pAttachments = colorBlendAttachments.data();;
 	colorBlending.blendConstants[0] = 0.0f;
 	colorBlending.blendConstants[1] = 0.0f;
 	colorBlending.blendConstants[2] = 0.0f;
@@ -694,6 +696,7 @@ void CardRasterizer::drawDurak(VkCommandBuffer commandBuffer, uint32_t frameInde
 		float x = animationTicks / targetDuration;
 		float xyzFactor = smoothInterpolate(x, a, b);
 		float zLift = 0.0f;
+		float modsFactor = 0.0f;
 		if (x < 0.25f) {
 			//lift
 			zLift = smoothInterpolate(4 * x, a, b);
@@ -702,8 +705,14 @@ void CardRasterizer::drawDurak(VkCommandBuffer commandBuffer, uint32_t frameInde
 			zLift = 1.0f;
 		}
 		else {
-			zLift = 1.0f-smoothInterpolate((4 * x) - 3, a, b);
-		} 
+			zLift = 1.0f - smoothInterpolate((4 * x) - 3, a, b);
+		}
+		if (x < 0.2f) {
+			modsFactor = smoothInterpolate(5 * x, a, b);
+		}
+		else {
+			modsFactor = 1.0f;
+		}
 		for (uint32_t i = 0; i < cards_1.size(); i++) {
 			cards_2[i] = cards_1[i];
 			cards_2[i].pos = (1.0f - xyzFactor) * cards_1[i].pos + xyzFactor * cards_3[i].pos;
@@ -715,6 +724,7 @@ void CardRasterizer::drawDurak(VkCommandBuffer commandBuffer, uint32_t frameInde
 			cards_2[i].xy = (1.0f - xyzFactor) * cards_1[i].xy + xyzFactor * cards_3[i].xy;
 			cards_2[i].xz = (1.0f - xyzFactor) * cards_1[i].xz + xyzFactor * cards_3[i].xz;
 			cards_2[i].yz = (1.0f - xyzFactor) * cards_1[i].yz + xyzFactor * cards_3[i].yz;
+			cards_2[i].mods = (1.0f - modsFactor) * cards_1[i].mods + modsFactor * cards_3[i].mods;
 		}
 	}
 	else {
@@ -739,13 +749,19 @@ void CardRasterizer::drawDurak(VkCommandBuffer commandBuffer, uint32_t frameInde
 	vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(CardPushConstants), &pc);
 	vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 36, 0, 0);
 
-
+	playingCard mouseCard;
+	mouseCard.data = player->sampleMousePick(frameIndex, 0);
+	if (mouseCard.data != 0) {
+		mouseCard.print();
+		std::cout << " "<<std::endl;
+	}
 }
 float CardRasterizer::smoothInterpolate(float x, float a, float b){
 	return (glm::tanh(b * (x - a)) + glm::tanh(b * a)) / (glm::tanh(b * (1 - a)) + glm::tanh(b * a));
 }
 void CardRasterizer::getCardData() {
 	CardData card{};
+	card.mods = 0;
 	durakGameState& state = durak->state;
 
 	float height = 0.003f;
@@ -758,6 +774,7 @@ void CardRasterizer::getCardData() {
 		card.xy = 0;
 		card.yz = 0;
 		card.xz = glm::pi<float>();
+		card.mods = 0.0f;
 		if (i == 0) {
 			card.xz = 0.0f;
 			card.xy = glm::half_pi<float>(); 
@@ -778,6 +795,15 @@ void CardRasterizer::getCardData() {
 	constexpr float angleMax = 15.0f * glm::pi<float>() / 180.0f;
 	float angleStep = 0.0f;
 	float angleStart = 0.0f;
+	char selectCard = 127;
+	if (player->inputString.size() > 0) {
+		try {
+			selectCard = std::stoi(reinterpret_cast<char*>(player->inputString.data()));
+		}
+		catch (std::invalid_argument const& e) {
+			selectCard = 126;
+		}
+	}
 
 	if (state.hands[locID].size() == 1) {
 		angleStart = 0.0f;
@@ -810,6 +836,7 @@ void CardRasterizer::getCardData() {
 		card.xy = -angle * 0.3f;
 		card.yz = 0.0f;
 		card.xz = 0.1f;
+		card.mods = (i == selectCard) ? 1 : 0;
 		cards_3[card.card.data] = card;
 	}
 
@@ -851,6 +878,7 @@ void CardRasterizer::getCardData() {
 		card.xy = -angle * 0.3f;
 		card.yz = glm::pi<float>();
 		card.xz = 0.1f;
+		card.mods = 0.0f;
 		cards_3[card.card.data] = card;
 	}
 
@@ -863,6 +891,7 @@ void CardRasterizer::getCardData() {
 		card.xy = 0.0f;
 		card.xz = glm::pi<float>();
 		card.yz = 0.0f;
+		card.mods = 0.0f;
 		cards_3[card.card.data] = card;
 	}
 
@@ -877,6 +906,7 @@ void CardRasterizer::getCardData() {
 		card.xy = 0.0f;
 		card.xz = 0.0f;
 		card.yz = 0.0f;
+		card.mods = 0.0f;
 		cards_3[card.card.data] = card;
 		if ((2 * i) + 1 < state.table.size()) {
 			card.pos = glm::vec3(tableStart + float(i) * tableStep + tableCover, height);
@@ -884,6 +914,7 @@ void CardRasterizer::getCardData() {
 			card.xy = 0.0f;
 			card.xz = 0.0f;
 			card.yz = 0.0f;
+			card.mods = 0.0f;
 			cards_3[card.card.data] = card;
 		}
 	}
@@ -905,6 +936,7 @@ uint32_t CardRasterizer::getCardMats() {
 		//cardMats[index].mat = sc * xy * yz * xz * tr;
 		cardMats[index].mat = tr * (yz * (xy * (xz * sc)));
 		cardMats[index].card = card.card.data;
+		cardMats[index].mod1 = card.mods;
 		index++;
 	}
 	return index;

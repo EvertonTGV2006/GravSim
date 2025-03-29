@@ -532,9 +532,9 @@ void DurakEngine::shuffle() {
 	state.clear();
 	for (uint8_t suit = 0; suit < 4; suit++) {
 		playingCard card{};
-		//card.setSuit(suit);
-		//card.setRank(1);
-		//state.stock.push_back(card);
+		card.setSuit(suit);
+		card.setRank(1);
+		state.stock.push_back(card);
 		for (uint8_t rank = 6; rank < 14; rank++) {
 			playingCard card{};
 			card.setSuit(suit);
@@ -581,6 +581,9 @@ bool DurakEngine::cardCommand(std::string cmd) {
 		
 
 	};
+	if (cmd.size() == 0) {
+		return false;
+	}
 
 	if (cmd[0] == '/') {
 		//special command

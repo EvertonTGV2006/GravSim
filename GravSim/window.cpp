@@ -17,7 +17,8 @@ void WindowManager::initWindow() {
 	const GLFWvidmode* mode = glfwGetVideoMode(primary);
 
 
-	window = glfwCreateWindow(mode->width, mode->height, "Durak", primary, nullptr);
+	//window = glfwCreateWindow(mode->width, mode->height, "Durak", primary, nullptr); //fullscreen
+	window = glfwCreateWindow(800, 600, "Durak", nullptr, nullptr); //windowed
 
 	GLFWimage image[1];
 	image[0].pixels = stbi_load("textures/icon.png", &image[0].width, &image[0].height, 0, 4);

@@ -9,8 +9,10 @@ layout(location = 3) in float blendConstant;
 layout(location = 4) flat in uint mode;
 layout(location = 5) in vec3 normal;
 layout(location = 6) in vec3 fragPos;
+layout(location = 7) in flat uint cardID;
 
 layout(location = 0) out vec4 finalColour;
+layout(location = 1) out vec4 idColour;
 
 layout(push_constant) uniform pc{
     mat4 viewMat;
@@ -57,6 +59,8 @@ void main(){
     if(outColour.a == 0.0f){
         discard;
     }
+    idColour = vec4(cardID / 255.0f, 0.0f, 0.0f, 1.0f);
+
     //now we do lighting calculations;
     vec3 fragEye = eyePos.xyz - fragPos.xyz;
     vec3 lightFrag = fragPos.xyz - pos.xyz;

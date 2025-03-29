@@ -26,6 +26,7 @@ struct UIInit {
 	glm::vec2* screenDim;
 
 	PlayerObject* player;
+	GlobalParameters* params;
 
 };
 
@@ -98,6 +99,7 @@ private:
 	FT_Face face;
 
 	PlayerObject* player;
+	GlobalParameters* params;
 
 
 	std::vector<char*> bitmapData;

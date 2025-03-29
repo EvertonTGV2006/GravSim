@@ -89,6 +89,7 @@ void VulkanEngine::initEngine() {
     createCommandPools();
     createColourResources();
     createDepthResources();
+    createPickingResources();
     createFramebuffers();
     createSyncObjects();
     createCommandBuffers();
@@ -114,11 +115,11 @@ void VulkanEngine::initEngine() {
     std::vector<std::string> shaderFiles;
     std::vector<uint16_t> shaderCounts;
 
-    shaderCounts.push_back(shaderFiles.size());
+    shaderCounts.push_back(static_cast<char>(shaderFiles.size()));
     shaderFiles.insert(std::end(shaderFiles), std::begin(uiRasterizer.shaderFiles), std::end(uiRasterizer.shaderFiles));
-    shaderCounts.push_back(shaderFiles.size());
+    shaderCounts.push_back(static_cast<char>(shaderFiles.size()));
     shaderFiles.insert(std::end(shaderFiles), std::begin(cardRasterizer.shaderFiles), std::end(cardRasterizer.shaderFiles));
-    shaderCounts.push_back(shaderFiles.size());
+    shaderCounts.push_back(static_cast<char>(shaderFiles.size()));
     uint16_t shaderCursor = 0;
 
 
@@ -135,6 +136,7 @@ void VulkanEngine::initEngine() {
     ui.renderPass = renderPass;
     ui.msaaSamples = msaaSamples;
     ui.screenDim = &player->screenDim;
+    ui.params = &params;
     for (uint16_t i = shaderCounts[shaderCursor]; i < shaderCounts[shaderCursor + 1]; i++) {
         ui.shaderCode.push_back(&shaderCode[i]);
     }
@@ -454,10 +456,16 @@ void VulkanEngine::executeGraphics() {
     if (commandSubmitFrame) {
         //durak.state.print();
     }
+    if (player->keyAction) {
+        commandSubmitFrame = true;
+        player->keyAction = false;
+    }
 
     vkWaitForFences(device, 1, &flightFences[frameIndex], VK_TRUE, UINT64_MAX);
     vkResetFences(device, 1, &flightFences[frameIndex]);
     vkResetCommandBuffer(drawCommandBuffers[frameIndex], 0);
+
+    
     
     uint32_t imageIndex;
     VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageSemaphores[frameIndex], VK_NULL_HANDLE, &imageIndex);
@@ -474,16 +482,18 @@ void VulkanEngine::executeGraphics() {
     beginInfo.flags = 0;
     if (vkBeginCommandBuffer(drawCommandBuffers[frameIndex], &beginInfo) != VK_SUCCESS) { throw std::runtime_error("Failed to start draw recording"); }
 
+
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassInfo.renderPass = renderPass;
     renderPassInfo.framebuffer = swapChainFramebuffers[imageIndex];
     renderPassInfo.renderArea.offset = { 0, 0 };
     renderPassInfo.renderArea.extent = swapChainExtent;
-    std::array<VkClearValue, 2> clearValues{};
+    std::array<VkClearValue, 3> clearValues{};
     //clearValues[0].color = { {0.2f, 0.3f, 1.0f, 1.0f} };
     clearValues[0].color = { 0.0f, 0.0f, 0.0f, 0.0f };
-    clearValues[1].depthStencil = { 1.0f, 0 };
+    clearValues[1].color = { 0.0f, 0.0f, 0.0f, 0.0f };
+    clearValues[2].depthStencil = { 1.0f, 0 };
     renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
     renderPassInfo.pClearValues = clearValues.data();
     vkCmdBeginRenderPass(drawCommandBuffers[frameIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
@@ -533,6 +543,24 @@ void VulkanEngine::executeGraphics() {
 
 
     vkCmdEndRenderPass(drawCommandBuffers[frameIndex]);
+
+    
+    VkBufferImageCopy cpy{};
+    cpy.imageExtent.width = swapChainExtent.width;
+    cpy.imageExtent.height = swapChainExtent.height;
+    cpy.imageExtent.depth = 1;
+    cpy.bufferOffset = frameIndex * swapChainExtent.width * swapChainExtent.height * sizeof(uint32_t);
+    cpy.bufferRowLength = cpy.imageExtent.width;
+    cpy.bufferImageHeight = cpy.imageExtent.height;
+    cpy.imageOffset.x = 0;
+    cpy.imageOffset.y = 0;
+    cpy.imageOffset.z = 0;
+    cpy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    cpy.imageSubresource.baseArrayLayer = 0;
+    cpy.imageSubresource.layerCount = 1;
+    cpy.imageSubresource.mipLevel = 0;
+
+    vkCmdCopyImageToBuffer(drawCommandBuffers[frameIndex], pickingImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pickingBuffer, 1, &cpy);
 
     if (vkEndCommandBuffer(drawCommandBuffers[frameIndex]) != VK_SUCCESS) { throw std::runtime_error("Failed to record draw"); }
 
@@ -647,7 +675,7 @@ void VulkanEngine::executeCardGame() {
         if (durak.cardCommand(cmd)) {
             CmdPacket pkt{};
             pkt.header.packetType = CMD_PACKET;
-            memcpy(&pkt.cmd[0], player->inputString.data(), player->inputString.size() * sizeof(char));
+            memcpy(&pkt.cmd[0], cmd.data(), cmd.size() * sizeof(char));
             if (onlineGame) {
                 nc.net.sendPacket(reinterpret_cast<char*>(&pkt));
             }
@@ -669,7 +697,8 @@ void VulkanEngine::executeNetTasks() {
         if (hd->packetType == CMD_PACKET) {
             std::string cmd{};
             CmdPacket* pkt = reinterpret_cast<CmdPacket*>(&nc.net.packetData);
-            for (uint32_t i = 0; i < 30; i++) {
+            cmd.push_back(pkt->cmd[0]);
+            for (uint32_t i = 1; i < sizeof(CmdPacket) - sizeof(HeaderData); i++) {
                 if (pkt->cmd[i] == 0) {
                     break;
                 }
@@ -677,10 +706,13 @@ void VulkanEngine::executeNetTasks() {
             }
             durak.cardCommand(cmd);
             commandSubmitFrame = true;
+            nc.net.packetReady = false;
+            nc.net.packetFinished = true;
         }
         else if (hd->packetType == INIT_PACKET) {
             if (nc.recvInitPacket()) {
                 //deal
+                std::cout << "DEAL" << std::endl;
                 durak.shuffle();
                 GamePacket pkt{};
                 pkt.header.packetType = GAME_PACKET;
@@ -689,7 +721,11 @@ void VulkanEngine::executeNetTasks() {
                 durak.dealGame();
             }
             else {
+                std::cout << "WAIT" << std::endl;
                 //recv
+                for (uint32_t i = 0; i < 256; i++) {
+                    std::cout << nc.net.packetData[i];
+                }
                 GamePacket* pkt = reinterpret_cast<GamePacket*>(&nc.net.packetData);
                 durak.shuffle();
                 memcpy(durak.state.stock.data(), &pkt->cardData[0], durak.state.stock.size() * sizeof(playingCard));
@@ -697,7 +733,11 @@ void VulkanEngine::executeNetTasks() {
                 nc.net.packetFinished = true;
                 durak.dealGame();
             }
+            commandSubmitFrame = true;
         }
+    }
+    if (nc.net.sendShutdown == true) {
+        player->windowShouldClose = true;
     }
 }
 void VulkanEngine::runCompute() {
@@ -951,13 +991,13 @@ void VulkanEngine::createImageViews() {
 void VulkanEngine::createRenderPass() {
     VkAttachmentDescription colorAttachment{};
     colorAttachment.format = swapChainImageFormat;
-    colorAttachment.samples = msaaSamples;
+    colorAttachment.samples = (params.multisampling) ? msaaSamples : VK_SAMPLE_COUNT_1_BIT;
     colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    colorAttachment.finalLayout = (params.multisampling) ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
     VkAttachmentReference colorAttachmentRef{};
     colorAttachmentRef.attachment = 0;
@@ -974,12 +1014,28 @@ void VulkanEngine::createRenderPass() {
     colorAttachmentResolve.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
     VkAttachmentReference colorAttachmentResolveRef{};
-    colorAttachmentResolveRef.attachment = 2;
+    colorAttachmentResolveRef.attachment = 3;
     colorAttachmentResolveRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentDescription pickingAttachment{};
+    pickingAttachment.format = pickingFormat;
+    pickingAttachment.samples = (params.multisampling) ? msaaSamples : VK_SAMPLE_COUNT_1_BIT;
+    pickingAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    pickingAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    pickingAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    pickingAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    pickingAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    pickingAttachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+
+    VkAttachmentReference pickingAttachmentRef{};
+    pickingAttachmentRef.attachment = 1;
+    pickingAttachmentRef.layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+
+
 
     VkAttachmentDescription depthAttachment{};
     depthAttachment.format = findSupportedFormat({ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT }, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-    depthAttachment.samples = msaaSamples;
+    depthAttachment.samples = (params.multisampling) ? msaaSamples : VK_SAMPLE_COUNT_1_BIT;
     depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -987,18 +1043,18 @@ void VulkanEngine::createRenderPass() {
     depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-
-
     VkAttachmentReference depthAttachmentRef{};
-    depthAttachmentRef.attachment = 1;
+    depthAttachmentRef.attachment = 2;
     depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+    std::array<VkAttachmentReference, 2> colorAttachmentRefs = { colorAttachmentRef, pickingAttachmentRef };
+    std::array<VkAttachmentReference, 2> colorAttachmentResolveRefs = { colorAttachmentResolveRef, VK_ATTACHMENT_UNUSED };
     VkSubpassDescription subpass{};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.colorAttachmentCount = 1;
-    subpass.pColorAttachments = &colorAttachmentRef;
+    subpass.colorAttachmentCount = static_cast<uint32_t>(colorAttachmentRefs.size());
+    subpass.pColorAttachments = colorAttachmentRefs.data();;
     subpass.pDepthStencilAttachment = &depthAttachmentRef;
-    subpass.pResolveAttachments = &colorAttachmentResolveRef;
+    subpass.pResolveAttachments = (params.multisampling) ? colorAttachmentResolveRefs.data() : nullptr;// colorAttachmentResolveRefs.data();;
 
     VkSubpassDependency dependency{};
     dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -1008,11 +1064,12 @@ void VulkanEngine::createRenderPass() {
     dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-    std::array<VkAttachmentDescription, 3> attachments = { colorAttachment, depthAttachment, colorAttachmentResolve};
+    std::array<VkAttachmentDescription, 4> attachmentsMS = { colorAttachment, pickingAttachment, depthAttachment, colorAttachmentResolve};
+    std::array<VkAttachmentDescription, 3> attachmentsNS = { colorAttachment, pickingAttachment, depthAttachment };
     VkRenderPassCreateInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-    renderPassInfo.pAttachments = attachments.data();
+    renderPassInfo.attachmentCount = static_cast<uint32_t>((params.multisampling) ? attachmentsMS.size() : attachmentsNS.size());
+    renderPassInfo.pAttachments = (params.multisampling) ? attachmentsMS.data() : attachmentsNS.data();
     renderPassInfo.subpassCount = 1;
     renderPassInfo.pSubpasses = &subpass;
     renderPassInfo.dependencyCount = 1;
@@ -1021,6 +1078,9 @@ void VulkanEngine::createRenderPass() {
     if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
         throw std::runtime_error("failed to create render pass!");
     }
+
+    //now mouse picking render pass
+
 }
 void VulkanEngine::createCommandPools() {
     QueueFamilyIndices indices = findGraphicsQueueFamilies(physicalDevice);
@@ -1055,32 +1115,57 @@ void VulkanEngine::createCommandPools() {
 }
 void VulkanEngine::createColourResources() {
     VkFormat colourFormat = swapChainImageFormat;
-    createImage(swapChainExtent.width, swapChainExtent.height, msaaSamples, colourFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, colourImage, colourImageMemory);
+    createImage(swapChainExtent.width, swapChainExtent.height, (params.multisampling) ? msaaSamples : VK_SAMPLE_COUNT_1_BIT, colourFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, colourImage, colourImageMemory);
     colourImageView = createImageView(colourImage, colourFormat, VK_IMAGE_ASPECT_COLOR_BIT);
     //transitionImageLayout(colourImage, colourFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    createImage(swapChainExtent.width, swapChainExtent.height, (params.multisampling) ? msaaSamples : VK_SAMPLE_COUNT_1_BIT, pickingFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, pickingImage, pickingImageMemory);
+    pickingImageView = createImageView(pickingImage, pickingFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+
 }
 void VulkanEngine::createDepthResources() {
     VkFormat depthFormat = findSupportedFormat({ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT }, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-    createImage(swapChainExtent.width, swapChainExtent.height, msaaSamples, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
+    createImage(swapChainExtent.width, swapChainExtent.height, (params.multisampling) ? msaaSamples : VK_SAMPLE_COUNT_1_BIT, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
     depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
     transitionImageLayout(depthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+}
+void VulkanEngine::createPickingResources() {
+    VkBufferCreateInfo bufferInfo{};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = swapChainExtent.width * swapChainExtent.height * sizeof(uint32_t) * FRAMES_IN_FLIGHT;
+    bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    if (vkCreateBuffer(device, &bufferInfo, nullptr, &pickingBuffer) != VK_SUCCESS) { throw std::runtime_error("Failed to create picking buffer"); }
+    MemoryDetails bufRequirements{};
+    vkGetBufferMemoryRequirements(device, pickingBuffer, &bufRequirements.requirements);
+    bufRequirements.flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    VkMemoryAllocateInfo memInfo{};
+    memInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    memInfo.allocationSize = bufRequirements.requirements.size;
+    memInfo.memoryTypeIndex = findMemoryType(bufRequirements);
+    vkAllocateMemory(device, &memInfo, nullptr, &pickingBufferMemory);
+    vkBindBufferMemory(device, pickingBuffer, pickingBufferMemory, 0);
+    void* data;
+    vkMapMemory(device, pickingBufferMemory, 0, bufRequirements.requirements.size, 0, &data);
+    char* dataCast = reinterpret_cast<char*>(data);
+    uint32_t dataSize = bufferInfo.size / FRAMES_IN_FLIGHT;
+    for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++) {
+        pickingBuffersMapped[i] = dataCast + i * dataSize;
+        player->pickingBuffersMapped[i] = dataCast + ((i + FRAMES_IN_FLIGHT - 1) % FRAMES_IN_FLIGHT) * dataSize;
+    }
+    
 }
 void VulkanEngine::createFramebuffers() {
     swapChainFramebuffers.resize(swapChainImageViews.size());
     for (size_t i = 0; i < swapChainImageViews.size(); i++) {
-        std::array<VkImageView, 3> attachments = {
-            colourImageView,
-            depthImageView,
-            swapChainImageViews[i]
-            
-            
-        };
+        std::array<VkImageView, 4> attachmentsMS = { colourImageView, pickingImageView,  depthImageView, swapChainImageViews[i] };
+        std::array<VkImageView, 3> attachmentsNS = { swapChainImageViews[i], pickingImageView, depthImageView };
 
         VkFramebufferCreateInfo framebufferInfo{};
         framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         framebufferInfo.renderPass = renderPass;
-        framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-        framebufferInfo.pAttachments = attachments.data();
+        framebufferInfo.attachmentCount = static_cast<uint32_t>((params.multisampling) ? attachmentsMS.size() : attachmentsNS.size());
+        framebufferInfo.pAttachments = (params.multisampling) ? attachmentsMS.data() : attachmentsNS.data();
         framebufferInfo.width = swapChainExtent.width;
         framebufferInfo.height = swapChainExtent.height;
         framebufferInfo.layers = 1;
@@ -1833,6 +1918,7 @@ void VulkanEngine::recreateSwapChain() {
     createSwapChain();
     createImageViews();
     createColourResources();
+    createPickingResources();
     createDepthResources();
     createFramebuffers();
 }
@@ -1854,6 +1940,7 @@ void VulkanEngine::writeOutSampleData() {
 
 //cleanup
 void VulkanEngine::cleanupSwapChain() {
+    vkUnmapMemory(device, pickingBufferMemory);
     for (auto framebuffer : swapChainFramebuffers) {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
     }
@@ -1861,12 +1948,21 @@ void VulkanEngine::cleanupSwapChain() {
         vkDestroyImageView(device, imageView, nullptr);
     }
     vkDestroyImageView(device, colourImageView, nullptr);
+    vkDestroyImageView(device, pickingImageView, nullptr);
     vkDestroyImageView(device, depthImageView, nullptr);
     vkDestroyImage(device, colourImage, nullptr);
+    vkDestroyImage(device, pickingImage, nullptr);
     vkDestroyImage(device, depthImage, nullptr);
     vkFreeMemory(device, colourImageMemory, nullptr);
+    vkFreeMemory(device, pickingImageMemory, nullptr);
     vkFreeMemory(device, depthImageMemory, nullptr);
+
+    vkDestroyBuffer(device, pickingBuffer, nullptr);
+    vkFreeMemory(device, pickingBufferMemory, nullptr);
+
     vkDestroySwapchainKHR(device, swapChain, nullptr);
+
+
 }
 void VulkanEngine::cleanup() {
     vkDeviceWaitIdle(device);

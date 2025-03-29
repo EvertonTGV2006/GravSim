@@ -133,6 +133,10 @@
       <Command>CD %(SolutionDir)shaders\
 CALL compile.bat</Command>
     </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>CD %(SolutionDir)scripts\
+CALL post-build.bat</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>

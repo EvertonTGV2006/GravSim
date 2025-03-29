@@ -66,6 +66,8 @@ public:
 	int windowypos = 100;
 	int windowxdim = 800;
 	int windowydim = 600;
+	int fullscreenxdim = 0;
+	int fullscreenydim = 0;
 
 
 	glm::vec2 screenDim = { 800, 600 };
@@ -96,6 +98,7 @@ public:
 	std::atomic_bool timePause = true;
 	std::atomic_bool triggerStep = false;
 
+	std::array<char*, FRAMES_IN_FLIGHT> pickingBuffersMapped;
 
 	std::map<int, uint64_t> keyBindings = { {GLFW_KEY_UP, PL_MOVE_FORWARD}, {GLFW_KEY_DOWN, PL_MOVE_BACKWARD}, {GLFW_KEY_LEFT, PL_MOVE_LEFT}, {GLFW_KEY_RIGHT, PL_MOVE_RIGHT} };
 
@@ -127,12 +130,14 @@ public:
 
 	std::vector<char> inputString;
 	std::atomic_bool commandSubmit;
+	std::atomic_bool keyAction = false;;
 	bool shiftModifier;
 
 	void initScoreBoxes(std::vector<std::vector<std::string>*>*, std::vector<uint32_t*>*, std::vector<std::string>);
 	void destroyScoreBoxes();
 	void toggleFullscreen();
-	bool fullscreen = true;
+	char sampleMousePick(uint32_t, uint32_t);
+	bool fullscreen = false;
 
 	std::vector<std::string> playerNames;
 	std::array<char, 8> usrn;

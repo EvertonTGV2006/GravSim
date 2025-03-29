@@ -61,9 +61,6 @@ public:
 
 	OptionalSettings settings{ true };
 
-	static const int FRAMES_IN_FLIGHT = 3;
-	static const int COMPUTE_STEPS = 3;
-
 	uint32_t runNumber;
 	uint32_t frameCounter = 0;
 	uint32_t fpsVal = 0;
@@ -120,7 +117,13 @@ private:
 	VkDeviceMemory colourImageMemory;
 	VkImageView colourImageView;
 
-	
+	VkImage pickingImage;
+	VkDeviceMemory pickingImageMemory;
+	VkImageView pickingImageView;
+	VkBuffer pickingBuffer;
+	VkDeviceMemory pickingBufferMemory;
+	VkFormat pickingFormat = VK_FORMAT_R8G8B8A8_UNORM;
+	std::array<char*, FRAMES_IN_FLIGHT> pickingBuffersMapped;
 
 	VkImage depthImage;
 	VkDeviceMemory depthImageMemory;
@@ -162,6 +165,7 @@ private:
 	void createCommandPools();
 	void createColourResources();
 	void createDepthResources();
+	void createPickingResources();
 	void createFramebuffers();
 	void createDescriptorPool();
 	void createSyncObjects();

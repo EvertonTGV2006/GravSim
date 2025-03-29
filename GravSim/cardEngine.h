@@ -239,6 +239,7 @@ struct CardData {
 	float xy;
 	float yz;
 	float xz;
+	float mods;
 };
 struct CardBuf {
 	glm::mat4 mat;

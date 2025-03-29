@@ -39,10 +39,10 @@ void PlayerObject::updateGLFWcallbacks() {
 	int x, y;
 	glfwGetFramebufferSize(winmanager->window, &x, &y);
 	xpos = x/2; ypos = y/2;
-	glfwSetInputMode(winmanager->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	glfwSetInputMode(winmanager->window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+	//glfwSetInputMode(winmanager->window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	//glfwSetInputMode(winmanager->window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
 	glfwSetFramebufferSizeCallback(winmanager->window, framebufferResizeCallback);
-	glfwSetCursorPosCallback(winmanager->window, mouseMotionCallback);
+	//glfwSetCursorPosCallback(winmanager->window, mouseMotionCallback);
 	glfwSetCursorPos(winmanager->window, xpos, ypos);
 	//std::cout << "Setting Callbacks";
 	stat->addMessage(MSG_LEVEL_STARTUP_LOW, "Setting GLFW callbacks");
@@ -294,6 +294,7 @@ void PlayerObject::keyCallback(GLFWwindow* window, int key, int scancode, int ac
 		else if (key == GLFW_KEY_BACKSPACE) {
 			if (app->inputString.size() > 0) {
 				app->inputString.pop_back();
+				app->keyAction = true;
 			}
 		}
 	}
@@ -314,6 +315,7 @@ void PlayerObject::scrollCallback(GLFWwindow* window, double xoffset, double yof
 void PlayerObject::charCallback(GLFWwindow* window, uint32_t code) {
 	auto app = reinterpret_cast<PlayerObject*>(glfwGetWindowUserPointer(window));
 	app->inputString.push_back(code);
+	app->keyAction = true;
 }
 void PlayerObject::updatePlayerMovement() {
 	
@@ -393,7 +395,36 @@ void PlayerObject::toggleFullscreen() {
 		glfwGetWindowSize(winmanager->window, &windowxdim, &windowydim);
 		GLFWmonitor* primary = glfwGetPrimaryMonitor();
 		const GLFWvidmode* mode = glfwGetVideoMode(primary);
+		fullscreenxdim = mode->width;
+		fullscreenydim = mode->height;
 		glfwSetWindowMonitor(winmanager->window, primary, 0, 0, mode->width, mode->height, GLFW_DONT_CARE);
 		fullscreen = true;
 	}
+}
+
+char PlayerObject::sampleMousePick(uint32_t frameIndex, uint32_t mode) {
+	double xpos = 0;
+	double ypos = 0;
+	glfwGetCursorPos(winmanager->window, &xpos, &ypos);
+	
+	int x = xpos;
+	int y = ypos;
+	int pixel = 0;
+	if (fullscreen) {
+		pixel = y * fullscreenxdim + x;
+	}
+	else {
+		pixel = y * windowxdim + x;
+	}
+	int cursor = pixel * 4;
+
+	if (mode < 4) {
+		return *(pickingBuffersMapped[frameIndex] + cursor + mode);
+	}
+	else {
+		return 0;
+	}
+
+
+
 }

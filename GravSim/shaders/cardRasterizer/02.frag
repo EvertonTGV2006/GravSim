@@ -12,6 +12,7 @@ layout(location = 6) in vec3 fragPos;
 
 layout(location = 0) out vec4 finalColour;
 
+
 layout(push_constant) uniform pc{
     mat4 viewMat;
     mat4 viewProjMat;

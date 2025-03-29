@@ -59,7 +59,7 @@ public:
 	uint32_t* locPlayerIndex = nullptr;
 
 	GlobalParameters* params;
-	float cardSize = 0.08f;
+	float cardSize = 0.12f;
 
 	uint32_t playerIndex = 0;
 
