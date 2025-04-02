@@ -16,7 +16,6 @@
 
 struct CardInit {
 	VkDevice device;
-	VkDescriptorPool descriptorPool;
 	VkRenderPass  renderPass;
 	VkSampleCountFlagBits msaaSamples;
 
@@ -65,11 +64,12 @@ public:
 
 	void drawDurak(VkCommandBuffer, uint32_t, bool, glm::mat4, glm::mat4);
 
-	static const uint32_t FRAMES_IN_FLIGHT = 3;
-
 	void initBufferData_A(MemoryDetails*);
 	void initBufferData_B(VkCommandBuffer, VkQueue, MemInit);
 	std::vector<std::string> shaderFiles = { "shaders/cardRasterizer/03.spv", "shaders/cardRasterizer/04.spv" };
+
+	void initDescriptors_A(std::vector<VkDescriptorPoolSize>*);
+	void initDescriptors_B(VkDescriptorPool);
 
 
 private:

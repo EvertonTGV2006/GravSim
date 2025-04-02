@@ -67,7 +67,7 @@ public:
 	std::array<double, 10> fpsAverage;
 	uint32_t fpsIndex;
 
-	bool lowPerformanceSetting;
+	bool lowPerformanceSetting = true;
 	bool onlineGame;
 	bool unlimitedFPS;
 

@@ -16,7 +16,6 @@
 
 struct UIInit {
 	VkDevice device;
-	VkDescriptorPool descriptorPool;
 	VkRenderPass  renderPass;
 	VkSampleCountFlagBits msaaSamples;
 
@@ -58,10 +57,12 @@ public:
 
 	void drawElements(VkCommandBuffer, uint32_t);
 
-	static const uint32_t FRAMES_IN_FLIGHT = 3;
-
 	void initBufferData_A(MemoryDetails*);
 	void initBufferData_B(VkCommandBuffer, VkQueue, MemInit);
+
+	void initDescriptors_A(std::vector<VkDescriptorPoolSize>*);
+	void initDescriptors_B(VkDescriptorPool);
+
 	std::vector<std::string> shaderFiles = { "shaders/uiRasterizer/01.spv", "shaders/uiRasterizer/02.spv" };
 
 	StatusLogger* stat;

@@ -17,7 +17,6 @@
 
 void UIRasterizer::initUI_A(UIInit details) {
 	device = details.device;
-	descriptorPool = details.descriptorPool;
 	renderPass = details.renderPass;
 
 	msaaSamples = details.msaaSamples;
@@ -226,6 +225,23 @@ void UIRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer, VkQue
 
 	FT_Done_FreeType(library);
 }
+void UIRasterizer::initDescriptors_A(std::vector<VkDescriptorPoolSize>* details) {
+	VkDescriptorPoolSize info{};
+	info.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	info.descriptorCount = 1 * FRAMES_IN_FLIGHT;
+	details->push_back(info);
+
+	info.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	info.descriptorCount = 128 * FRAMES_IN_FLIGHT;
+	details->push_back(info);
+
+	info.type = VK_DESCRIPTOR_TYPE_SAMPLER;
+	info.descriptorCount = 1 * FRAMES_IN_FLIGHT;
+	details->push_back(info);
+}
+void UIRasterizer::initDescriptors_B(VkDescriptorPool pool) {
+	descriptorPool = pool;
+}
 
 void UIRasterizer::createBuffers() {
 	//create texture atlas
@@ -347,7 +363,7 @@ void UIRasterizer::createDescriptorSets() {
 	createInfo.pBindings = bindings.data();
 	if (vkCreateDescriptorSetLayout(device, &createInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) { throw std::runtime_error("Failed to create UI descriptor set layout"); }
 
-	std::array<VkDescriptorSetLayout, FRAMES_IN_FLIGHT> layouts = { descriptorSetLayout, descriptorSetLayout, descriptorSetLayout };
+	std::array<VkDescriptorSetLayout, FRAMES_IN_FLIGHT> layouts = { descriptorSetLayout};
 
 	VkDescriptorSetAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;

@@ -22,7 +22,6 @@
 
 void CardRasterizer::initCard_A(CardInit details) {
 	device = details.device;
-	descriptorPool = details.descriptorPool;
 	renderPass = details.renderPass;
 
 	msaaSamples = details.msaaSamples;
@@ -208,6 +207,20 @@ void CardRasterizer::initBufferData_B(VkCommandBuffer transferCommandBuffer, VkQ
 	vkDestroyFence(device, transferFence, nullptr);
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
+}
+
+void CardRasterizer::initDescriptors_A(std::vector<VkDescriptorPoolSize>* details) {
+	VkDescriptorPoolSize info{};
+	info.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	info.descriptorCount = 1 * FRAMES_IN_FLIGHT;
+	details->push_back(info);
+	
+	info.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	info.descriptorCount = static_cast<uint32_t>(texImage.size()) * FRAMES_IN_FLIGHT;
+	details->push_back(info);
+}
+void CardRasterizer::initDescriptors_B(VkDescriptorPool pool) {
+	descriptorPool = pool;
 }
 
 void CardRasterizer::createBuffers() {
@@ -432,7 +445,7 @@ void CardRasterizer::createDescriptorSets() {
 	createInfo.pBindings = bindings.data();
 	if (vkCreateDescriptorSetLayout(device, &createInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) { throw std::runtime_error("Failed to create Card descriptor set layout"); }
 
-	std::array<VkDescriptorSetLayout, FRAMES_IN_FLIGHT> layouts = { descriptorSetLayout, descriptorSetLayout, descriptorSetLayout };
+	std::array<VkDescriptorSetLayout, FRAMES_IN_FLIGHT> layouts = { descriptorSetLayout};
 
 	VkDescriptorSetAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;

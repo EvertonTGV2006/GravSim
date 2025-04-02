@@ -85,7 +85,7 @@ void VulkanEngine::initEngine() {
     createSwapChain();
     createImageViews();
     createRenderPass();
-    createDescriptorPool();
+    //createDescriptorPool();
     createCommandPools();
     createColourResources();
     createDepthResources();
@@ -129,7 +129,6 @@ void VulkanEngine::initEngine() {
 
     shaderCursor = 0;
     UIInit ui{};
-    ui.descriptorPool = descriptorPool;
     ui.device = device;
     ui.memProperties = memProperties;
     ui.player = player;
@@ -143,7 +142,6 @@ void VulkanEngine::initEngine() {
 
     shaderCursor = 1;
     CardInit cardInit{};
-    cardInit.descriptorPool = descriptorPool;
     cardInit.device = device;
     cardInit.memProperties = memProperties;
     cardInit.player = player;
@@ -176,7 +174,7 @@ void VulkanEngine::initEngine() {
     cardRA.join();
 
  
-
+    createDescriptorPool();
     allocateMemory();
 
     cardRasterizer.initCard_B();
@@ -839,7 +837,7 @@ void VulkanEngine::createLogicalDevice() {
         }
     }
     lowPerformanceSetting = (queueFamilyCount > 1) ? false : true;
-
+    lowPerformanceSetting = true;
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
     std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
@@ -1187,24 +1185,44 @@ void VulkanEngine::createFramebuffers() {
 }
 void VulkanEngine::createDescriptorPool() {
 
-    std::array<VkDescriptorPoolSize, 3> poolSizes{};
-    poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    poolSizes[0].descriptorCount = static_cast<uint32_t>(FRAMES_IN_FLIGHT*2);
-    poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSizes[1].descriptorCount = static_cast<uint32_t>(FRAMES_IN_FLIGHT*3);
-    poolSizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    poolSizes[2].descriptorCount = static_cast<uint32_t>(FRAMES_IN_FLIGHT + 6*COMPUTE_STEPS);
+    std::vector<VkDescriptorPoolSize> unorderdSizes;
+    cardRasterizer.initDescriptors_A(&unorderdSizes);
+    uiRasterizer.initDescriptors_A(&unorderdSizes);
+
+    std::vector<VkDescriptorPoolSize> poolSizes;
+    bool foundInPool = false;
+    for (uint32_t i = 0; i < unorderdSizes.size(); i++) {
+        foundInPool = false;
+        for (uint32_t j = 0; j < poolSizes.size(); j++) {
+            if (unorderdSizes[i].type == poolSizes[j].type) {
+                poolSizes[j].descriptorCount += unorderdSizes[i].descriptorCount;
+                foundInPool = true;
+                break;
+            }
+        }
+        if (!foundInPool) {
+            poolSizes.push_back(unorderdSizes[i]);
+        }
+    }
+    for (uint32_t i = 0; i < poolSizes.size(); i++) {
+        if (poolSizes[i].type == VK_DESCRIPTOR_TYPE_SAMPLER) {
+            poolSizes[i].descriptorCount = 9;
+        }
+    }
 
 
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
     poolInfo.pPoolSizes = poolSizes.data();
-    poolInfo.maxSets = static_cast<uint32_t>(FRAMES_IN_FLIGHT +3 * COMPUTE_STEPS);
+    poolInfo.maxSets = static_cast<uint32_t>(FRAMES_IN_FLIGHT * 2);
 
     if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool!");
     }
+
+    cardRasterizer.initDescriptors_B(descriptorPool);
+    uiRasterizer.initDescriptors_B(descriptorPool);
 }
 void VulkanEngine::createSyncObjects() {
     VkSemaphoreCreateInfo semInfo{};
