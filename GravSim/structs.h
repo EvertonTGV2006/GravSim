@@ -167,6 +167,8 @@ struct GlobalParameters {
     bool mouseAnimationPlaying = false;
     bool commandAnimationQueued = false;
     bool multisampling = false;
+    bool vulkan_1_3 = false;
     int windowWidth = 800;
     int windowHeight = 600;
+    
 };

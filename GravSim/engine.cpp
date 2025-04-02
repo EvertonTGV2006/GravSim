@@ -609,8 +609,23 @@ void VulkanEngine::executeGraphics() {
         firstFrame = false;
     }
 
-    if (vkQueueSubmit2(graphicsQueue, 1, &submitInfo2, flightFences[frameIndex]) != VK_SUCCESS) { throw std::runtime_error("Failed to submit draw command buffer"); }
+
     
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &drawCommandBuffers[frameIndex];
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &renderSemaphores[frameIndex];
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = &imageSemaphores[frameIndex];
+    submitInfo.pWaitDstStageMask = &waitStage;
+
+    if (params.vulkan_1_3) { if (vkQueueSubmit2(graphicsQueue, 1, &submitInfo2, flightFences[frameIndex]) != VK_SUCCESS) { throw std::runtime_error("Failed to submit draw command buffer"); } }
+    else { if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, flightFences[frameIndex]) != VK_SUCCESS) { throw std::runtime_error("Failed to submit draw command buffer"); } }
+
 
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -862,11 +877,6 @@ void VulkanEngine::createLogicalDevice() {
     }
 
 
-
-    VkPhysicalDeviceSynchronization2Features extraFeatures{};
-    extraFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
-    extraFeatures.synchronization2 = VK_TRUE;
-
     settings.configureDeviceFeatures(&requiredDeviceFeatures);
 
     VkDeviceCreateInfo createInfo{};
@@ -885,7 +895,7 @@ void VulkanEngine::createLogicalDevice() {
     VkPhysicalDeviceFeatures2 extras{};
     extras.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
     extras.features = standard;
-    extras.pNext = &extras2;
+    extras.pNext = (params.vulkan_1_3) ? &extras2 : nullptr;
 
     createInfo.pNext = &extras;
 
